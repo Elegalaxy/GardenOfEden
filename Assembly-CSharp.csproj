@@ -62,6 +62,7 @@
     <Compile Include="Assets\Script\Human\Schedule.cs" />
     <Compile Include="Assets\Script\Maker\RawMat.cs" />
     <Compile Include="Assets\Script\Maker\Seller.cs" />
+    <Compile Include="Assets\Script\Maker\Building.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

@@ -23,6 +23,6 @@ public class Timer : MonoBehaviour
 
         now = getNowTime(real);
 
-        Debug.Log((int)(now/3600)); //Hour
+        // Debug.Log((int)(now/3600)); //Hour
     }
 }

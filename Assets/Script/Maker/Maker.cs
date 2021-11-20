@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Maker: MonoBehaviour
 {
-    //Index 1 = Raw Material, 2 = Factory, 3 = Seller
+    //Index 1 = Raw Material, 2 = Firm, 3 = Seller
 
     string name;
     int id;
@@ -27,8 +27,6 @@ public class Maker: MonoBehaviour
         sellPrice = s;
 
         itemNeed = i;
-
-        gameObject.tag = "Maker";
     }
 
     // Get labour
