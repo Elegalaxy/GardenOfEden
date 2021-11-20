@@ -52,4 +52,8 @@ public class Maker: MonoBehaviour
         }
         return itemProduce;
     }
+
+    public string get_name() {
+        return name;
+    }
 }
