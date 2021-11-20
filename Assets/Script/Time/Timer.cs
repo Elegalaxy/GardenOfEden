@@ -11,6 +11,9 @@ public class Timer : MonoBehaviour
         return t*720;
     }
 
+    public int getTime() {
+        return ((int)now);
+    }
     void Update()
     {
         real += Time.deltaTime;
