@@ -1,13 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class human 
+public class Human 
 {
     static int id = 0;
-    void pluser()
-    {
+    Status status;
+
+    public Human() {
         id++;
+        status = new Status();
     }
 
 }

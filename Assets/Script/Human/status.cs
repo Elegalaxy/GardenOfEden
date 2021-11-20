@@ -1,11 +1,16 @@
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
-public class status : MonoBehaviour
+public class Status
 {
-    static int stamina = 100;
-    static int starvation = 100;
+    int stamina = 100;
+    int starvation = 100;
+
+    public Status() {
+        stamina = 100;
+        starvation = 100;
+    }
+
     public int get_stamina()
     {
         return stamina;
@@ -15,6 +20,10 @@ public class status : MonoBehaviour
     public void set_stamina(int temp)
     {
         stamina = temp;
+    }
+
+    public void change_stamina(int temp) {
+        stamina += temp;
     }
 
     public int get_starvation()
@@ -27,4 +36,9 @@ public class status : MonoBehaviour
     {
         starvation = temp;
     }
+
+    public void change_starvation(int temp) {
+        starvation += temp;
+    }
+
 }
