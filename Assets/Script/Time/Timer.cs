@@ -6,13 +6,14 @@ public class Timer : MonoBehaviour
 {
     float real = 0f;
     float now = 0f;
+    int tmp = -1;
 
     float getNowTime(float t) { //1s in world = 720s in Eden
         return t*720;
     }
 
     public int getTime() {
-        return ((int)now);
+        return ((int)(now / 3600));
     }
     void Update()
     {
@@ -23,6 +24,7 @@ public class Timer : MonoBehaviour
 
         now = getNowTime(real);
 
-        Debug.Log((int)(now/3600)); //Hour
+        // Debug.Log((int) (now / 3600)); //Hour
+
     }
 }
