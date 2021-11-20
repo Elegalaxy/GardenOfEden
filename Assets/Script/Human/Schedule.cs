@@ -25,6 +25,8 @@ public class Schedule : MonoBehaviour
             Debug.Log("Breakfast");
         }
 
+        GameObject[] workplace = GameObject.FindGameObjectsWithTag("Maker");
+
     }
 
 }

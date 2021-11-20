@@ -11,4 +11,8 @@ public class Human
         status = new Status();
     }
 
+    //return status value for every human object
+    public Status get_Stat() {
+        return status;
+    }
 }
