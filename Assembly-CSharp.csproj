@@ -53,6 +53,7 @@
     <UnityVersion>2020.3.22f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Assets\Script\Maker\Building.cs" />
     <Compile Include="Assets\Script\Maker\Firm.cs" />
     <Compile Include="Assets\Script\Maker\Maker.cs" />
     <Compile Include="Assets\Script\Human\status.cs" />
