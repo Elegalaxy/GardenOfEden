@@ -25,7 +25,12 @@ public class Schedule : MonoBehaviour
             Debug.Log("Breakfast");
         }
 
-        GameObject[] workplace = GameObject.FindGameObjectsWithTag("Maker");
+        else if (temp > 8 && temp < 17)
+        {
+            GameObject[] workplace = GameObject.FindGameObjectsWithTag("Maker");
+            workplace[0].GetComponent<Maker>().work(GetComponent<Human>().get_Stat());
+            Debug.Log("Working"+workplace[0]);
+        }
 
     }
 
