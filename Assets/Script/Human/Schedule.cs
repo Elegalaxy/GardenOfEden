@@ -29,7 +29,13 @@ public class Schedule : MonoBehaviour
         {
             GameObject[] workplace = GameObject.FindGameObjectsWithTag("Maker");
             workplace[0].GetComponent<Maker>().work(GetComponent<Human>().get_Stat());
-            Debug.Log("Working"+workplace[0]);
+            Debug.Log("Working"+workplace[0].GetComponent<Maker>().get_name());
+
+        }
+
+        else if(temp >=17 && temp < 24)
+        {
+            Debug.Log("Free Time!!!");
         }
 
     }
