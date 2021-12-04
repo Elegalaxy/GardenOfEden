@@ -40,6 +40,8 @@ public class Building : MonoBehaviour
                 Debug.Log("No id");
                 break;
         }
+
+        maker = new Maker(name, id, labourNeed, timeNeed, sellPrice, itemNeed, itemProduce, salary, stamNeed);
     }
 
     public Maker get_maker() {

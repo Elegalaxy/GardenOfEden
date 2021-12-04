@@ -18,7 +18,7 @@ public class Maker: MonoBehaviour
     int salary; // Basic salary
     int stamNeed; // Basic stamina needed for the job
 
-    public Maker(string n = "", int d = 0, int l = 0, int t = 0, int s = 0, Item[] i = null, int sal = 0, int stam = 0) {
+    public Maker(string n = "", int d = 0, int l = 0, int t = 0, int s = 0, Item[] i = null, Item ip = null, int sal = 0, int stam = 0) {
         name = n;
         id = d;
 
@@ -26,6 +26,7 @@ public class Maker: MonoBehaviour
         timeNeed = t;
         sellPrice = s;
         itemNeed = i;
+        itemProduce = ip;
 
         salary = sal;
         stamNeed = stam;
@@ -34,8 +35,15 @@ public class Maker: MonoBehaviour
     // Get labour
     public int work(Status stat) { // Cost stamina and give salary
         int currStam = stat.get_stamina();
+        int currStar = stat.get_starvation();
+
         if(currStam < stamNeed) { // Return if stamina not enough
             Debug.Log("Not enough stamina");
+            return 0;
+        }
+
+        if(currStar <= 0) { // Return if stamina not enough
+            Debug.Log("Starving");
             return 0;
         }
 
@@ -45,11 +53,12 @@ public class Maker: MonoBehaviour
     }
 
     // Sell service
-    public Item service(int price) { // Provide price and return product
-        if(price < sellPrice) {
+    public Item service(Status stat) { // Provide price and return product
+        if(stat.get_money() < sellPrice) {
             Debug.Log("Not enough money");
             return null;
         }
+        stat.change_money(-sellPrice);
         return itemProduce;
     }
 
