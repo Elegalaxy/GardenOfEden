@@ -59,11 +59,12 @@
     <Compile Include="Assets\Script\Time\Timer.cs" />
     <Compile Include="Assets\Script\Human\Human.cs" />
     <Compile Include="Assets\Script\Items\Item.cs" />
+    <Compile Include="Assets\Script\Items\Object.cs" />
     <Compile Include="Assets\Script\Human\Schedule.cs" />
     <Compile Include="Assets\Script\Maker\RawMat.cs" />
     <Compile Include="Assets\Script\Maker\Seller.cs" />
     <Compile Include="Assets\Script\Maker\Building.cs" />
-    <Compile Include="Assets\Script\Items\Object.cs" />
+    <Compile Include="Assets\Script\House\House.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

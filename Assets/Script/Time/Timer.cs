@@ -32,6 +32,6 @@ public class Timer : MonoBehaviour
 
     public void addTime() {
         real += 5;
-        Debug.Log((int) (getNowTime(real) / 3600));
+        //Debug.Log((int) (getNowTime(real) / 3600));
     }
 }

@@ -35,12 +35,18 @@ public class Maker: MonoBehaviour
     // Get labour
     public int work(Status stat) { // Cost stamina and give salary
         int currStam = stat.get_stamina();
-        
+        int currStar = stat.get_starvation();
+
         if(currStam < stamNeed) { // Return if stamina not enough
             Debug.Log("Not enough stamina");
             return 0;
         }
-        
+
+        if(currStar <= 0) { // Return if stamina not enough
+            Debug.Log("Starving");
+            return 0;
+        }
+
         // Return if work success
         stat.change_stamina(-stamNeed);
         return salary;
