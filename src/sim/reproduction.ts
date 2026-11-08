@@ -6,10 +6,12 @@
 // `childEnergyShare` of the parent's energy into a `Conception`, so the
 // parent's energy is already lower when the loop moves on. `spawnChildren`
 // runs after the loop and creates the bots, using the `birth` random stream
-// (three draws per child: angle, distance, heading). Children copy the
-// parent's traits exactly; mutation comes later (M6).
+// (three draws per child: angle, distance, heading; then eight more for the
+// traits, two per trait, see traits.ts). A child inherits the parent's traits
+// with a small seeded mutation, clamped into the bounds in `tuning.mutation`.
 
 import { nextFloat } from './rng.ts'
+import { mutateTraits } from './traits.ts'
 import type { Bot, Tuning, Traits, World } from './types.ts'
 import { pushEvent } from './world.ts'
 
@@ -34,7 +36,7 @@ export function meetsReproductionNeeds(bot: Bot, tuning: Tuning): boolean {
 export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning: Tuning): Conception | null {
   if (!inShelter || !hasRoom || !meetsReproductionNeeds(bot, tuning)) return null
   const energy = bot.energy * tuning.bot.childEnergyShare
-  bot.energy -= energy
+  bot.energy -= energy + tuning.bot.birthCost
   bot.cooldown = tuning.bot.reproCooldown
   return { parentId: bot.id, generation: bot.generation, traits: { ...bot.traits }, x: bot.x, y: bot.y, energy }
 }
@@ -46,6 +48,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
     const angle = nextFloat(stream) * TWO_PI
     const reach = nextFloat(stream) * tuning.bot.spawnSpread
     const heading = nextFloat(stream) * TWO_PI
+    const traits = mutateTraits(c.traits, tuning.mutation, stream)
     const x = Math.min(world.width, Math.max(0, c.x + Math.cos(angle) * reach))
     const y = Math.min(world.height, Math.max(0, c.y + Math.sin(angle) * reach))
     const child: Bot = {
@@ -60,7 +63,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       cooldown: tuning.bot.reproCooldown,
       generation: c.generation + 1,
       parentId: c.parentId,
-      traits: { ...c.traits },
+      traits,
       memory: [],
       intent: { kind: 'wander', targetId: null },
       heading,

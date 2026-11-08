@@ -107,18 +107,21 @@ describe('reproduction', () => {
   const shelterScene = scene({ nodes: [{ kind: 'shelter', x: 20, y: 20 }], bots: [{ x: 20, y: 20 }] })
 
   it('births a child in a shelter and moves the right share of energy', () => {
-    const world = createWorld('a', shelterScene, rules)
+    // Mutation off, so the child's traits can be compared with the parent's (see traits.test.ts for mutation).
+    const still: Rules = { ...rules, tuning: { ...rules.tuning, mutation: { ...rules.tuning.mutation, strength: 0 } } }
+    const world = createWorld('a', shelterScene, still)
     ready(world, 90)
     const parent = world.bots[0]
-    step(world, rules)
+    step(world, still)
     expect(world.bots).toHaveLength(2)
     const child = world.bots[1]
-    const { childEnergyShare, reproCooldown } = rules.tuning.bot
-    const pooled = parent.energy + child.energy
-    expect(child.energy / pooled).toBeCloseTo(childEnergyShare, 10)
-    expect(parent.energy / pooled).toBeCloseTo(1 - childEnergyShare, 10)
-    expect(pooled).toBeLessThan(90) // only the tick's metabolism was lost
-    expect(pooled).toBeGreaterThan(89)
+    const { childEnergyShare, reproCooldown, birthCost } = rules.tuning.bot
+    // The parent burns birthCost on top of what it hands over, so compare the two shares after adding it back.
+    const handedOver = child.energy
+    const parentBefore = parent.energy + handedOver + birthCost
+    expect(handedOver / parentBefore).toBeCloseTo(childEnergyShare, 10)
+    expect(parentBefore).toBeLessThan(90) // only the tick's metabolism was lost
+    expect(parentBefore).toBeGreaterThan(89)
     expect(child).toMatchObject({ parentId: parent.id, generation: 1, age: 0 })
     expect(child.id).toBeGreaterThan(parent.id)
     expect(child.traits).toEqual(parent.traits)

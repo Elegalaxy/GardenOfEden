@@ -14,6 +14,8 @@ export const tuning: Tuning = {
     turnRate: 0.5,
     baseDrain: 0.25,
     moveDrain: 0.25,
+    senseDrain: 0.02,
+    metabolismSpeed: 2,
     hungryBelow: 0.6,
     satedAbove: 0.9,
     eatRate: 5,
@@ -23,6 +25,7 @@ export const tuning: Tuning = {
     adultAge: 200,
     reproCooldown: 300,
     childEnergyShare: 0.4,
+    birthCost: 20,
     spawnSpread: 1.5,
   },
   brain: {
@@ -49,6 +52,18 @@ export const tuning: Tuning = {
     caution: 0.5,
     reproThreshold: 80,
     metabolism: 1,
+  },
+  mutation: {
+    rate: 0.5,
+    strength: 0.1,
+    bounds: {
+      senseRadius: { min: 3, max: 12 },
+      caution: { min: 0.05, max: 1.5 },
+      // Above satedAbove (90) a bot stops eating, so it could never reach the threshold; below 55 it
+      // would breed while still hungry.
+      reproThreshold: { min: 55, max: 90 },
+      metabolism: { min: 0.7, max: 1.6 },
+    },
   },
   memory: {
     cap: 8,

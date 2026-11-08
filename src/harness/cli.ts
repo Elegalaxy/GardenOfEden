@@ -4,14 +4,17 @@
 // First form: one row at tick 0, then one every `--every` ticks (and the last
 // tick), then the final state hash. Second form: one summary row per seed
 // (final, min and max population after the warmup, births, deaths by cause).
+// Both print the mean of each trait over the living bots (sense, caution,
+// reproAt, metab), after a line with the founders' values.
 // Same arguments always print the same output.
 
 import { findPreset, presets, rules } from '../content/index.ts'
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
+import { meanTraits } from '../sim/traits.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import type { World } from '../sim/types.ts'
-import { formatSurvey, surveySeed } from './survey.ts'
+import { formatSurvey, surveySeed, traitCell } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
@@ -78,6 +81,7 @@ function parseArgs(argv: string[]): Options {
 
 function row(world: World): string {
   const { starve, danger, age } = world.deathsByCause
+  const traits = meanTraits(world.bots)
   const cells = [
     world.tick,
     world.bots.length,
@@ -87,8 +91,17 @@ function row(world: World): string {
     danger,
     age,
     totalFood(world).toFixed(1),
+    traitCell(traits, 'senseRadius'),
+    traitCell(traits, 'caution'),
+    traitCell(traits, 'reproThreshold'),
+    traitCell(traits, 'metabolism'),
   ]
   return cells.map((cell) => String(cell).padStart(8)).join('')
+}
+
+function foundersLine(): string {
+  const t = rules.tuning.traits
+  return `founders: sense=${t.senseRadius} caution=${t.caution} reproAt=${t.reproThreshold} metab=${t.metabolism}`
 }
 
 function main(argv: string[]): void {
@@ -105,14 +118,18 @@ function main(argv: string[]): void {
   if (preset === undefined) return
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}`)
+    console.log(foundersLine())
     console.log(formatSurvey(options.seeds.map((seed) => surveySeed(seed, preset, rules, options.ticks, options.warmup))))
     return
   }
   const seed = options.seeds[0]
   const world = createWorld(seed, preset, rules)
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}`)
+  console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'danger', 'age', 'food'].map((cell) => cell.padStart(8)).join(''),
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'danger', 'age', 'food', 'sense', 'caution', 'reproAt', 'metab']
+      .map((cell) => cell.padStart(8))
+      .join(''),
   )
   console.log(row(world))
   for (let i = 0; i < options.ticks; i += 1) {

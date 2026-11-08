@@ -1,7 +1,8 @@
-// The event log: newest first, filterable by type, scrollable. Clicking an
-// entry selects the bot or node it is about in the inspector. If that thing no
-// longer exists (every death entry, a removed node) the entry is marked "gone"
-// and cannot be selected.
+// The event log: newest first, filterable by type, scrollable. Depleted events
+// start hidden (they are frequent and drown out the rest); the Depleted button
+// turns them on. Clicking an entry selects the bot or node it is about in the
+// inspector. If that thing no longer exists (every death entry, a removed
+// node) the entry is marked "gone" and cannot be selected.
 //
 // The sim keeps the newest `logCap` events (500); at most `MAX_ROWS` of the
 // matching ones are drawn. The list is rebuilt only when the log, the filters
@@ -112,7 +113,7 @@ export function EventLog() {
     birth: true,
     death: true,
     command: true,
-    depleted: true,
+    depleted: false, // off by default: depletions would drown out births, deaths and commands
   })
 
   const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0, depleted: 0 }

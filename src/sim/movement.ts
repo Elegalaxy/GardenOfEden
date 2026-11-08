@@ -12,9 +12,13 @@
 // tick, taken even when avoidance changes the step, so the draw order never
 // depends on where danger is. A bot that reaches the map edge turns around.
 //
+// Steps are `speedOf(bot)` cells long: the base speed scaled by the metabolism
+// trait (metabolism.ts).
+//
 // `act` returns whether the bot moved (moving costs extra energy).
 
 import { isDesperate } from './brain.ts'
+import { speedOf } from './metabolism.ts'
 import { eat } from './nodes.ts'
 import { distance, knownDangers } from './perception.ts'
 import { nextFloat } from './rng.ts'
@@ -64,7 +68,8 @@ function steer(world: World, bot: Bot, heading: number, length: number, dangers:
 function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: MemoryEntry[], rules: Rules): boolean {
   const d = distance(bot.x, bot.y, tx, ty)
   const heading = Math.atan2(ty - bot.y, tx - bot.x)
-  const length = Math.min(rules.tuning.bot.speed, d)
+  const speed = speedOf(bot, rules.tuning)
+  const length = Math.min(speed, d)
   // Aim exactly at the target while the straight step is safe, so a bot can arrive on it.
   const straight = stepAlong(world, bot, heading, length)
   if (isSafe(bot, straight.x, straight.y, dangers, rules.tuning.brain.avoidMargin)) {
@@ -73,7 +78,7 @@ function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: Mem
     bot.heading = heading
     return true
   }
-  return steer(world, bot, heading, rules.tuning.bot.speed, dangers, rules)
+  return steer(world, bot, heading, speed, dangers, rules)
 }
 
 /** Walk straight away from every remembered danger the bot is at or near. */
@@ -96,7 +101,7 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
   }
   if (awayX === 0 && awayY === 0) return false
   const heading = Math.atan2(awayY, awayX)
-  const next = stepAlong(world, bot, heading, rules.tuning.bot.speed)
+  const next = stepAlong(world, bot, heading, speedOf(bot, rules.tuning))
   if (next.x === bot.x && next.y === bot.y) return false
   bot.x = next.x
   bot.y = next.y
@@ -107,7 +112,7 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
 function wander(world: World, bot: Bot, dangers: MemoryEntry[], rules: Rules): boolean {
   const t = rules.tuning.bot
   const heading = bot.heading + (nextFloat(world.rng.ai) * 2 - 1) * t.turnRate
-  if (steer(world, bot, heading, t.speed, dangers, rules)) return true
+  if (steer(world, bot, heading, speedOf(bot, rules.tuning), dangers, rules)) return true
   bot.heading = heading + Math.PI
   return false
 }

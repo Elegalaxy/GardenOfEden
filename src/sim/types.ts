@@ -65,7 +65,7 @@ export type WorldNode = {
   drainMult: number
 }
 
-/** Per-bot numbers that later generations can inherit (M6). */
+/** Per-bot numbers that children inherit with a small mutation (M6). */
 export type Traits = {
   senseRadius: number
   caution: number
@@ -137,13 +137,19 @@ export type Command =
   | { type: 'removeNode'; id: number }
   | { type: 'placeBot'; x: number; y: number }
 
-/** One stats row. `births` and `deaths` are running totals; `food` is the sum of resource amounts. */
+export type TraitName = keyof Traits
+
+/**
+ * One stats row. `births` and `deaths` are running totals; `food` is the sum of resource amounts;
+ * `traits` is the population mean of each trait, or null when nobody is alive.
+ */
 export type Sample = {
   tick: number
   pop: number
   births: number
   deaths: number
   food: number
+  traits: Traits | null
 }
 
 export type DeathsByCause = Record<DeathCause, number>
@@ -195,6 +201,17 @@ export type Tuning = {
     baseDrain: number
     /** Extra energy lost on a tick the bot moved, times `traits.metabolism`. */
     moveDrain: number
+    /**
+     * Extra energy lost per tick for each cell of `senseRadius` above the default
+     * (`Tuning.traits.senseRadius`); a smaller radius saves the same amount per cell.
+     * Times `traits.metabolism`. This is what stops evolution from maximising sight.
+     */
+    senseDrain: number
+    /**
+     * How much `traits.metabolism` changes walking speed: speed is `speed` times
+     * `1 + metabolismSpeed * (metabolism - 1)`. A hotter bot burns more but moves faster.
+     */
+    metabolismSpeed: number
     /** A bot starts looking for food below this fraction of `maxEnergy`. */
     hungryBelow: number
     /** ...and keeps eating until it reaches this fraction. */
@@ -213,6 +230,12 @@ export type Tuning = {
     reproCooldown: number
     /** Fraction of the parent's energy handed to the child at birth. */
     childEnergyShare: number
+    /**
+     * Energy the parent burns at a birth, on top of what it hands over (that part is lost, not
+     * given to the child). It makes breeding on a thin energy reserve risky, which is what keeps
+     * `reproThreshold` from evolving down to its floor.
+     */
+    birthCost: number
     /** A child appears at most this far from its parent, in cells. */
     spawnSpread: number
   }
@@ -250,8 +273,16 @@ export type Tuning = {
     /** Hard cap on living bots; births stop at the cap. */
     cap: number
   }
-  /** Traits given to bots placed by a preset. */
+  /** Traits given to bots placed by a preset or by the player (the founders). */
   traits: Traits
+  mutation: {
+    /** Chance (0 to 1) that a given trait of a newborn is changed. */
+    rate: number
+    /** A changed trait is multiplied by a factor between 1 - strength and 1 + strength. 0 turns mutation off. */
+    strength: number
+    /** Every trait of every newborn is clamped into these bounds. */
+    bounds: Record<TraitName, { min: number; max: number }>
+  }
   memory: {
     /** Most entries a bot keeps. */
     cap: number

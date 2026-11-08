@@ -3,7 +3,7 @@
 // ticks; callers pass a `current` sample from `takeSample(world)` for the
 // freshest numbers. All functions are pure.
 
-import type { Sample } from './types.ts'
+import type { Sample, TraitName } from './types.ts'
 
 export type SampleField = 'pop' | 'births' | 'deaths' | 'food'
 
@@ -51,4 +51,30 @@ export function ratePer(
   const { span, delta } = windowChange(samples, current, field, windowTicks)
   if (span < minSpan || span <= 0) return null
   return (delta / span) * perTicks
+}
+
+export type TraitDrift = {
+  /** Mean at the first sample that had anyone alive. */
+  start: number
+  /** Mean at `current`, or at the newest sample that had anyone alive if `current` is empty. */
+  now: number
+  /** `now` minus `start`. */
+  delta: number
+}
+
+/**
+ * How the population mean of a trait has moved since the start of the stored samples.
+ * Null when no sample (and not `current`) has anyone alive.
+ */
+export function traitDrift(samples: readonly Sample[], current: Sample, name: TraitName): TraitDrift | null {
+  let start: number | null = null
+  let latest: number | null = null
+  for (const sample of [...samples, current]) {
+    const value = sample.traits?.[name]
+    if (value === undefined) continue
+    if (start === null) start = value
+    latest = value
+  }
+  if (start === null || latest === null) return null
+  return { start, now: latest, delta: latest - start }
 }

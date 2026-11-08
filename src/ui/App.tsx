@@ -7,6 +7,8 @@ import { RunPanel } from './RunPanel.tsx'
 import { SpeedControls } from './SpeedControls.tsx'
 import { StatsStrip } from './StatsStrip.tsx'
 import { Toolbar } from './Toolbar.tsx'
+import { TraitChart } from './TraitChart.tsx'
+import { TraitSummary } from './TraitSummary.tsx'
 import { WorldCanvas } from './WorldCanvas.tsx'
 import { startLoop } from './loop.ts'
 import { useWorldStore } from './store.ts'
@@ -81,6 +83,8 @@ export default function App() {
           </section>
           <div className="area-chart">
             <PopulationChart />
+            <TraitChart />
+            <TraitSummary />
           </div>
           <div className="area-side">
             <div className="side-inspector">

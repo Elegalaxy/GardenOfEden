@@ -5,11 +5,13 @@
 
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
-import type { Bot, World, WorldNode } from '../sim/types.ts'
+import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
+import type { Bot, TraitName, World, WorldNode } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
-import { CAUSE_LABEL, INTENT_LABEL, KIND_LABEL, formatPoint } from './labels.ts'
+import { CAUSE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import type { Selection } from './tools.ts'
+import { TREND_GLYPH, signedDelta, trendOf } from './traitMath.ts'
 
 const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(1)
 const fixed2 = (value: number): string => (Math.round(value * 100) / 100).toFixed(2)
@@ -50,6 +52,24 @@ function Meter({ label, value, max, low }: { label: string; value: number; max: 
   )
 }
 
+/** A trait row: the bot's value, and how far it is from the average of the living population (the bot itself included). */
+function TraitRow({ name, bot, mean }: { name: TraitName; bot: Bot; mean: number }) {
+  const delta = bot.traits[name] - mean
+  const trend = trendOf(name, delta)
+  return (
+    <div className="kv-row" title={TRAIT_HELP[name]}>
+      <dt>{TRAIT_LABEL[name]}</dt>
+      <dd className="figure">
+        {formatTrait(name, bot.traits[name])}{' '}
+        <span className={`trait-diff trait-${trend}`}>
+          <span aria-hidden="true">{TREND_GLYPH[trend]}</span>{' '}
+          {trend === 'flat' ? 'average' : `${signedDelta(name, delta)} vs avg`}
+        </span>
+      </dd>
+    </div>
+  )
+}
+
 function botsInside(world: World, node: WorldNode): number {
   let count = 0
   for (const bot of world.bots) {
@@ -71,6 +91,8 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
   const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
   const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
   const adult = bot.age >= tuning.bot.adultAge
+  // The bot is alive, so the population is never empty here.
+  const mean = meanTraits(world.bots) ?? bot.traits
   return (
     <>
       <h3>Bot #{bot.id}</h3>
@@ -110,10 +132,9 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
       </dl>
       <h4>Traits</h4>
       <dl className="kv">
-        <Row label="Sense radius">{fixed1(bot.traits.senseRadius)} cells</Row>
-        <Row label="Caution">{fixed2(bot.traits.caution)}</Row>
-        <Row label="Repro threshold">{fixed1(bot.traits.reproThreshold)} energy</Row>
-        <Row label="Metabolism">&times;{fixed2(bot.traits.metabolism)}</Row>
+        {TRAIT_NAMES.map((name) => (
+          <TraitRow key={name} name={name} bot={bot} mean={mean[name]} />
+        ))}
       </dl>
     </>
   )

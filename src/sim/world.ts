@@ -4,6 +4,7 @@
 // depend on how many things are scattered after it.
 
 import { createRng, nextFloat } from './rng.ts'
+import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, SimEvent, Tuning, World, WorldNode } from './types.ts'
 
 const TWO_PI = Math.PI * 2
@@ -95,6 +96,7 @@ export function takeSample(world: World): Sample {
     births: world.totalBirths,
     deaths: totalDeaths(world),
     food: totalFood(world),
+    traits: meanTraits(world.bots),
   }
 }
 

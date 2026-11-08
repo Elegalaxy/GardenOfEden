@@ -1,7 +1,8 @@
 // Words for things, shared by the inspector, the event log, the chart and the
 // notices, so the same thing is always called the same name.
 
-import type { CommandType, DeathCause, IntentKind, NodeKind, SimEvent } from '../sim/types.ts'
+import type { CommandType, DeathCause, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
+import { traitNumber } from './traitMath.ts'
 
 export const KIND_LABEL: Record<NodeKind, string> = { resource: 'resource', danger: 'danger', shelter: 'shelter' }
 
@@ -42,4 +43,34 @@ export function eventSubject(event: SimEvent): string {
   const kind = event.nodeKind
   const name = kind === undefined ? 'Node' : `${KIND_LABEL[kind][0]!.toUpperCase()}${KIND_LABEL[kind].slice(1)}`
   return event.nodeId === undefined ? name : `${name} #${event.nodeId}`
+}
+
+export const TRAIT_LABEL: Record<TraitName, string> = {
+  senseRadius: 'Sense radius',
+  caution: 'Caution',
+  reproThreshold: 'Repro threshold',
+  metabolism: 'Metabolism',
+}
+
+/** One line on what a trait does, for tooltips. */
+export const TRAIT_HELP: Record<TraitName, string> = {
+  senseRadius: 'How far a bot sees nodes. Seeing further costs energy every tick.',
+  caution: 'How strongly a bot flees danger instead of seeking food.',
+  reproThreshold: 'Energy a bot needs before it reproduces. Low is early but risky for the parent.',
+  metabolism: 'Scales energy loss and walking speed. Higher burns more but moves faster.',
+}
+
+/** A trait value with its unit: "6.4 cells", "0.45", "62.0 energy", "×1.05". */
+export function formatTrait(name: TraitName, value: number): string {
+  const text = traitNumber(name, value)
+  switch (name) {
+    case 'senseRadius':
+      return `${text} cells`
+    case 'reproThreshold':
+      return `${text} energy`
+    case 'metabolism':
+      return `×${text}`
+    case 'caution':
+      return text
+  }
 }

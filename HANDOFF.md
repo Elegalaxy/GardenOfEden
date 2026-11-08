@@ -1,19 +1,19 @@
 # Project Handoff State
 
 - **Last Updated By:** Claude (implementer)
-- **Current Goal:** Garden of Eden MVP (M0 to M5) is built. M6 (trait inheritance with mutation) is next, not started.
-- **Recent Changes (M4, player tools):**
-  - `src/sim/commands.ts` (`checkCommand`, `applyCommand`), `replay.ts` (`replayWorld`), `stats.ts` (window change, per-minute rates). `types.ts`: `SimEvent` got `command` and `nodeKind`; `Tuning` got `stats.minuteTicks` (600), `player.minNodeGap` (1), `player.maxNodes` (400).
-  - `src/ui`: `store.ts` rewritten (tool, selection, notice, `dispatch`, `clickMap`, `resetWorld`), `tools.ts`, `labels.ts`, `geometry.ts`, `Toolbar.tsx` (keys 1-6, Esc), `Inspector.tsx`, `WorldCanvas.tsx` (click, hover ghost, keyboard cursor), `render.ts` (overlay: selection, target line, ghost).
-- **Recent Changes (M5, observability):**
-  - `StatsStrip.tsx` replaces the deleted `Readout.tsx`; `PopulationChart.tsx` (+ `chartMath.ts`), `DeathCauses.tsx`, `EventLog.tsx`, `RunPanel.tsx` (seed + reset, confirm if commands exist), `App.tsx` layout, `panels.css`.
-  - Tests: `tests/commands.test.ts` (replay hash equals live run), `src/sim/stats.test.ts`, `src/ui/{geometry,chartMath,store}.test.ts`.
-  - Docs: `CLAUDE.md`, `doc/GAME_DESIGN.md` (tags, milestone table, changelog), `../docs/ideas/garden-of-eden.md` changelog.
+- **Current Goal:** Garden of Eden MVP (M0 to M5) plus M6 (trait inheritance with mutation) is built. Nothing is planned beyond M6; saves (`src/persist`), more node purposes and societal events are `[LATER]` / `[OPEN]` in `doc/GAME_DESIGN.md`.
+- **Recent Changes (M6, traits):**
+  - Sim: `src/sim/traits.ts` (new: `mutateTraits`, `traitStats`, `meanTraits`, `TRAIT_NAMES`), `reproduction.ts` (child traits mutate, 8 extra `birth` draws per child, parent burns `birthCost`), `metabolism.ts` (`speedOf`, sense-radius drain), `movement.ts` (uses `speedOf`), `world.ts` (`Sample.traits` = population mean), `stats.ts` (`traitDrift`), `types.ts`.
+  - Content: `tuning.ts` got `mutation` (rate 0.5, strength 0.1, bounds), `bot.senseDrain` 0.02, `bot.metabolismSpeed` 2, `bot.birthCost` 20.
+  - UI: `TraitChart.tsx` (small multiples), `TraitSummary.tsx` (mean/min/max table + spread bar), `traitMath.ts`, `useElementWidth.ts` (moved out of `PopulationChart`), Inspector shows +/- vs population mean, `labels.ts` trait labels, `panels.css`. Depleted filter in `EventLog.tsx` is now OFF by default.
+  - Harness: `--seeds` survey and single-run table print mean traits; a "founders:" line precedes them.
+  - Tests: `tests/traits.test.ts` (bounds, strength 0, determinism, replay with commands, costs, selection on 6 seeds), `src/sim/traits.test.ts`, `src/ui/traitMath.test.ts`, trait cases in `src/sim/stats.test.ts`; `tests/survival.test.ts` birth test updated for `birthCost`.
+  - Docs: `CLAUDE.md`, `doc/GAME_DESIGN.md` (rules, milestone table, changelog), `../docs/ideas/garden-of-eden.md` changelog.
 - **Active Decisions / Constraints:**
-  - A command is applied between ticks and recorded as `{tick, cmd}`; refused commands are not recorded. Placed bots draw their heading from the `world` stream, never `ai`.
-  - UI snaps placements to cell centres. Same-kind nodes closer than 1 cell are refused; different kinds may overlap. Removing a bot is not a command.
-  - Remove tool picks the smallest node under the click, newest first on ties.
-  - A "minute" is 600 ticks (1 minute at 1x). Chart markers come from `world.commands`; the event log only holds the newest 500 events.
-  - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** `depleted` events fill the 500-event log within a few hundred ticks, pushing player commands out of it. Filter depletions by default, or log fewer? Eden preset numbers (40 bots, swings about 2x) still await a feel check.
-- **Exact Next Step:** M6 per the plan (offspring inherit traits with small mutations; `Traits` already exist, children copy the parent exactly in `reproduction.ts`). Before it, the user may want to look at the MVP in a visible browser window: the built-in pane was hidden during testing, so frame-loop timing and smooth bot motion were not judged by eye.
+  - `birthCost` is new: it changes the old "child share is a pure transfer" rule. It is what stops `reproThreshold` pinning to its floor. Every state hash changed (mutation draws, new energy rules); hashes are only compared, never pinned, so no test constants moved.
+  - Metabolism also scales speed (`1 + 2 x (m - 1)`); at `metabolismSpeed` 1 travel cost per cell is flat and metabolism evolved to its floor, so keep it above 1.
+  - `reproThreshold` upper bound is 90 (bots stop eating at 90, so a higher value could never be reached).
+  - Founders and placed bots keep default traits. A command is applied between ticks and recorded as `{tick, cmd}`. Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
+  - Retune with `npm run sim -- --seeds a,b,c,d --ticks 60000`; check final mean traits are not all at their bounds.
+- **Open Questions for the user:** (1) Depletions still fill the sim's 500-event buffer (the UI now hides them by default), so older births, deaths and commands still scroll out; give depletions their own buffer or stop logging them? (2) Over 60,000 ticks `reproThreshold` falls from 80 to about 59-66 on every seed, metabolism and sense radius stay near their founder values, caution drifts down slightly. Is that the trait story wanted? (3) Eden swings (about 23 to 75 bots, about 2x) still await a feel check.
+- **Exact Next Step:** The user looks at the app in a visible browser window (the built-in pane was hidden, so timers, screenshots and smooth motion were only partly checked), then decides the open questions above. Nothing else is queued.

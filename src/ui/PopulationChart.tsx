@@ -10,13 +10,14 @@
 // values and any command at that marker. Long runs are thinned to about one
 // point per pixel.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import type { Command, Sample, SimEvent, World } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
 import { compact, nearestIndex, niceMax, thin } from './chartMath.ts'
 import { commandLetter, commandName, formatPoint } from './labels.ts'
 import { useWorldStore } from './store.ts'
+import { useElementWidth } from './useElementWidth.ts'
 
 const HEIGHT = 240
 const MARGIN = { left: 40, right: 48, top: 24, bottom: 26 }
@@ -31,21 +32,6 @@ type Marker = {
 }
 
 const numberFormat = new Intl.NumberFormat('en-US')
-
-/** A callback ref plus the element's width. A callback ref, because the chart's box is not rendered in the empty state. */
-function useElementWidth(): [(element: HTMLDivElement | null) => void, number] {
-  const [element, setElement] = useState<HTMLDivElement | null>(null)
-  const [width, setWidth] = useState(0)
-  useEffect(() => {
-    if (element === null) return
-    const measure = (): void => setWidth(Math.floor(element.getBoundingClientRect().width))
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(element)
-    return () => observer.disconnect()
-  }, [element])
-  return [setElement, width]
-}
 
 function toMarker(entry: { tick: number; cmd: Command }): Marker {
   const { cmd } = entry
