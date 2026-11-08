@@ -116,17 +116,22 @@ export type DeathCause = 'starve' | 'danger' | 'age'
 
 export type SimEventType = 'birth' | 'death' | 'depleted' | 'command'
 
+export type CommandType = 'placeNode' | 'removeNode' | 'placeBot'
+
 export type SimEvent = {
   tick: number
   type: SimEventType
   botId?: number
   nodeId?: number
   cause?: DeathCause
+  /** Command events only: which command, and for placeNode/removeNode the node's kind. */
+  command?: CommandType
+  nodeKind?: NodeKind
   x: number
   y: number
 }
 
-/** Player actions (M2). Recorded in `World.commands` so a run can be replayed. */
+/** Player actions (M4). Recorded in `World.commands` so a run can be replayed. */
 export type Command =
   | { type: 'placeNode'; kind: NodeKind; x: number; y: number }
   | { type: 'removeNode'; id: number }
@@ -164,7 +169,7 @@ export type World = {
   totalBirths: number
 }
 
-/** Numbers for one kind of node, applied by createWorld (and by placeNode in M2). */
+/** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
 export type NodeDef = {
   radius: number
   capacity: number
@@ -258,6 +263,14 @@ export type Tuning = {
     sampleEvery: number
     /** Oldest samples are dropped past this many. */
     maxSamples: number
+    /** Ticks that count as one "minute" for per-minute rates (10 ticks/s at 1x speed, so 600 = one minute). */
+    minuteTicks: number
+  }
+  player: {
+    /** A node may not be placed with its centre closer than this (cells) to a node of the same kind. */
+    minNodeGap: number
+    /** Most nodes the world may hold; placing stops at the cap. */
+    maxNodes: number
   }
   /** Events kept in `World.log`. */
   logCap: number

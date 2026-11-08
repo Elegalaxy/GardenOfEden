@@ -1,0 +1,203 @@
+// Details of the selected bot or node, as key-value rows. Reads the live
+// world on every publish, so a running bot's numbers move. If the selection
+// has died or been removed the panel says so (and, for a death, how) instead
+// of going blank.
+
+import type { ReactNode } from 'react'
+import { tuning } from '../content/index.ts'
+import type { Bot, World, WorldNode } from '../sim/types.ts'
+import { findBot, findNode } from './geometry.ts'
+import { CAUSE_LABEL, INTENT_LABEL, KIND_LABEL, formatPoint } from './labels.ts'
+import { select, useWorldStore } from './store.ts'
+import type { Selection } from './tools.ts'
+
+const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(1)
+const fixed2 = (value: number): string => (Math.round(value * 100) / 100).toFixed(2)
+const capital = (text: string): string => `${text[0]!.toUpperCase()}${text.slice(1)}`
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="kv-row">
+      <dt>{label}</dt>
+      <dd className="figure">{children}</dd>
+    </div>
+  )
+}
+
+/** A bar with its number beside it. The number and the "low" flag carry the meaning; the fill is decoration. */
+function Meter({ label, value, max, low }: { label: string; value: number; max: number; low: boolean }) {
+  const fraction = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0
+  return (
+    <div className="kv-row">
+      <dt>{label}</dt>
+      <dd className="figure meter-cell">
+        <span
+          className="meter"
+          role="meter"
+          aria-label={label}
+          aria-valuemin={0}
+          aria-valuemax={max}
+          aria-valuenow={Math.round(value)}
+        >
+          <span className="meter-fill" style={{ width: `${fraction * 100}%` }} />
+        </span>
+        <span className="meter-value">
+          {Math.round(value)} / {max}
+        </span>
+        <span className="meter-flag">{low ? '▼ low' : ''}</span>
+      </dd>
+    </div>
+  )
+}
+
+function botsInside(world: World, node: WorldNode): number {
+  let count = 0
+  for (const bot of world.bots) {
+    if (Math.hypot(bot.x - node.x, bot.y - node.y) <= node.radius) count += 1
+  }
+  return count
+}
+
+function SelectButton({ target, children }: { target: Selection; children: ReactNode }) {
+  return (
+    <button type="button" className="link-button" onClick={() => select(target)}>
+      {children}
+    </button>
+  )
+}
+
+function BotDetails({ bot, world }: { bot: Bot; world: World }) {
+  const { intent } = bot
+  const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
+  const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
+  const adult = bot.age >= tuning.bot.adultAge
+  return (
+    <>
+      <h3>Bot #{bot.id}</h3>
+      <dl className="kv">
+        <Meter label="Energy" value={bot.energy} max={tuning.bot.maxEnergy} low={bot.energy < 0.2 * tuning.bot.maxEnergy} />
+        <Meter label="Health" value={bot.health} max={tuning.bot.maxHealth} low={bot.health < 0.3 * tuning.bot.maxHealth} />
+        <Row label="Age">
+          {bot.age} ticks · {adult ? 'adult' : 'child'}
+        </Row>
+        <Row label="Generation">{bot.generation}</Row>
+        <Row label="Parent">
+          {bot.parentId === null ? (
+            'none (founder)'
+          ) : parent === undefined ? (
+            <>#{bot.parentId} (gone)</>
+          ) : (
+            <SelectButton target={{ kind: 'bot', id: parent.id }}>#{parent.id}</SelectButton>
+          )}
+        </Row>
+        <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>
+        <Row label="Target">
+          {intent.targetId === null ? (
+            'none'
+          ) : target === undefined ? (
+            <>#{intent.targetId} (gone)</>
+          ) : (
+            <SelectButton target={{ kind: 'node', id: target.id }}>
+              {KIND_LABEL[target.kind]} #{target.id}
+            </SelectButton>
+          )}
+        </Row>
+        <Row label="Position">{formatPoint(bot.x, bot.y)}</Row>
+        <Row label="Repro cooldown">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
+        <Row label="Memory">
+          {bot.memory.length} / {tuning.memory.cap} nodes
+        </Row>
+      </dl>
+      <h4>Traits</h4>
+      <dl className="kv">
+        <Row label="Sense radius">{fixed1(bot.traits.senseRadius)} cells</Row>
+        <Row label="Caution">{fixed2(bot.traits.caution)}</Row>
+        <Row label="Repro threshold">{fixed1(bot.traits.reproThreshold)} energy</Row>
+        <Row label="Metabolism">&times;{fixed2(bot.traits.metabolism)}</Row>
+      </dl>
+    </>
+  )
+}
+
+function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
+  return (
+    <>
+      <h3>
+        {capital(KIND_LABEL[node.kind])} #{node.id}
+      </h3>
+      <dl className="kv">
+        <Row label="Kind">{KIND_LABEL[node.kind]}</Row>
+        <Row label="Position">{formatPoint(node.x, node.y)}</Row>
+        <Row label="Radius">{fixed1(node.radius)} cells</Row>
+        {node.kind === 'resource' && (
+          <>
+            <Meter label="Amount" value={node.amount} max={node.capacity} low={node.amount <= 0} />
+            <Row label="Regrowth">+{fixed2(node.regen)} / tick</Row>
+          </>
+        )}
+        {node.kind === 'danger' && <Row label="Damage">{fixed1(node.damage)} health / tick</Row>}
+        {node.kind === 'shelter' && (
+          <>
+            <Row label="Heal">+{fixed1(node.heal)} health / tick</Row>
+            <Row label="Energy loss">&times;{fixed2(node.drainMult)}</Row>
+          </>
+        )}
+        <Row label="Bots inside">{botsInside(world, node)}</Row>
+      </dl>
+    </>
+  )
+}
+
+function GoneNotice({ selection, world }: { selection: Selection; world: World }) {
+  // The newest event about this thing tells the player what happened to it.
+  let detail = ''
+  for (let i = world.log.length - 1; i >= 0; i -= 1) {
+    const event = world.log[i]!
+    if (selection.kind === 'bot' && event.type === 'death' && event.botId === selection.id) {
+      detail = `Died of ${CAUSE_LABEL[event.cause ?? 'starve'].toLowerCase()} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
+      break
+    }
+    if (selection.kind === 'node' && event.command === 'removeNode' && event.nodeId === selection.id) {
+      detail = `Removed at tick ${event.tick}.`
+      break
+    }
+  }
+  return (
+    <>
+      <h3>
+        {selection.kind === 'bot' ? 'Bot' : 'Node'} #{selection.id}
+      </h3>
+      <p className="gone" role="status">
+        <span aria-hidden="true">✕</span> Gone. {detail || 'It is no longer in the world.'}
+      </p>
+      <button type="button" className="secondary" onClick={() => select(null)}>
+        Clear selection
+      </button>
+    </>
+  )
+}
+
+export function Inspector() {
+  const { world, selection } = useWorldStore()
+  let body: ReactNode
+  if (selection === null) {
+    body = (
+      <p className="empty">
+        Nothing selected. Pick <strong>Inspect (1)</strong> and click a bot or node on the map, or pick an entry in the event
+        log.
+      </p>
+    )
+  } else if (selection.kind === 'bot') {
+    const bot = findBot(world, selection.id)
+    body = bot === undefined ? <GoneNotice selection={selection} world={world} /> : <BotDetails bot={bot} world={world} />
+  } else {
+    const node = findNode(world, selection.id)
+    body = node === undefined ? <GoneNotice selection={selection} world={world} /> : <NodeDetails node={node} world={world} />
+  }
+  return (
+    <section className="panel inspector" aria-label="Inspector">
+      <h2>Inspector</h2>
+      {body}
+    </section>
+  )
+}

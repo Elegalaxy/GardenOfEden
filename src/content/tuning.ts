@@ -57,6 +57,11 @@ export const tuning: Tuning = {
   stats: {
     sampleEvery: 50,
     maxSamples: 2000,
+    minuteTicks: 600,
+  },
+  player: {
+    minNodeGap: 1,
+    maxNodes: 400,
   },
   logCap: 500,
 }

@@ -8,16 +8,35 @@
 // amount. Bots are dots: children are smaller, and a fleeing bot gets a ring.
 // Bot positions blend from where the bot was at the start of its last turn
 // (px, py) to where it is now (x, y), by `alpha`.
+//
+// On top of the world, `drawOverlay` adds what the player is doing: the
+// selection (a double ring, plus a dashed line from a selected bot to its
+// target), an outline on whatever the inspect or remove tool would hit, and a
+// ghost of what a placement tool would add (an X through it when it would be
+// refused).
 
 import type { NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
+import { botPosition, findBot, findNode } from './geometry.ts'
+import type { Layout } from './geometry.ts'
+import type { Selection } from './tools.ts'
 
 export type Size = { width: number; height: number }
 
-export type Layout = {
-  /** CSS pixels per map cell. */
-  scale: number
-  offsetX: number
-  offsetY: number
+/** A placement preview: a node (with its radius) or a bot, centred at map position (x, y). */
+export type Ghost = {
+  kind: NodeKind | 'bot'
+  x: number
+  y: number
+  radius: number
+  /** False when the command would be refused; the ghost then shows an X. */
+  valid: boolean
+}
+
+export type Overlay = {
+  selection: Selection | null
+  /** The thing the inspect or remove tool would act on under the pointer. */
+  hover: Selection | null
+  ghost: Ghost | null
 }
 
 export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S' }
@@ -35,6 +54,8 @@ export const COLORS = {
   flee: '#ffffff',
   ringTrack: '#2a3a2e',
   label: '#f4f6fb',
+  select: '#ffffff',
+  ghostInvalid: '#c9d1d9',
 } as const
 
 const NODE_COLOR: Record<NodeKind, string> = {
@@ -132,12 +153,105 @@ function drawResource(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   drawLetter(ctx, NODE_LETTER.resource, cx, cy, layout.scale * 1.3)
 }
 
+function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number, layout: Layout, overlay: Overlay): void {
+  const { scale, offsetX, offsetY } = layout
+  const px = (x: number): number => offsetX + x * scale
+  const py = (y: number): number => offsetY + y * scale
+
+  const outline = (sel: Selection, width: number, gap: number, dash: number[], alphaValue: number): void => {
+    ctx.save()
+    ctx.globalAlpha = alphaValue
+    ctx.strokeStyle = COLORS.select
+    ctx.lineWidth = width
+    ctx.setLineDash(dash)
+    ctx.beginPath()
+    if (sel.kind === 'node') {
+      const node = findNode(world, sel.id)
+      if (node === undefined) {
+        ctx.restore()
+        return
+      }
+      ctx.arc(px(node.x), py(node.y), node.radius * scale + gap, 0, Math.PI * 2)
+    } else {
+      const bot = findBot(world, sel.id)
+      if (bot === undefined) {
+        ctx.restore()
+        return
+      }
+      const p = botPosition(bot, alpha)
+      ctx.arc(px(p.x), py(p.y), Math.max(3, scale * 0.55) + gap, 0, Math.PI * 2)
+    }
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  if (overlay.hover !== null) outline(overlay.hover, 1.5, 4, [3, 3], 0.8)
+
+  const sel = overlay.selection
+  if (sel !== null) {
+    outline(sel, 2.5, 5, [], 1)
+    outline(sel, 1, 9, [2, 3], 0.7)
+    if (sel.kind === 'bot') {
+      const bot = findBot(world, sel.id)
+      const target = bot === undefined || bot.intent.targetId === null ? undefined : findNode(world, bot.intent.targetId)
+      if (bot !== undefined && target !== undefined) {
+        const p = botPosition(bot, alpha)
+        ctx.save()
+        ctx.globalAlpha = 0.5
+        ctx.strokeStyle = COLORS.select
+        ctx.lineWidth = 1
+        ctx.setLineDash([5, 4])
+        ctx.beginPath()
+        ctx.moveTo(px(p.x), py(p.y))
+        ctx.lineTo(px(target.x), py(target.y))
+        ctx.stroke()
+        ctx.restore()
+      }
+    }
+  }
+
+  const ghost = overlay.ghost
+  if (ghost !== null) {
+    const cx = px(ghost.x)
+    const cy = py(ghost.y)
+    const r = ghost.kind === 'bot' ? Math.max(3, scale * 0.55) : ghost.radius * scale
+    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(cx, cy, r, 0, Math.PI * 2)
+    ctx.globalAlpha = 0.25
+    ctx.fillStyle = color
+    ctx.fill()
+    ctx.globalAlpha = 0.9
+    ctx.lineWidth = 2
+    ctx.strokeStyle = color
+    ctx.setLineDash([4, 4])
+    ctx.stroke()
+    ctx.setLineDash([])
+    if (ghost.valid) {
+      if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
+    } else {
+      // An X through the ghost: "refused", not just a different colour.
+      const arm = Math.max(5, Math.min(r, scale * 1.2) * 0.7)
+      ctx.beginPath()
+      ctx.moveTo(cx - arm, cy - arm)
+      ctx.lineTo(cx + arm, cy + arm)
+      ctx.moveTo(cx + arm, cy - arm)
+      ctx.lineTo(cx - arm, cy + arm)
+      ctx.lineWidth = 2.5
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   world: World,
   alpha: number,
   size: Size,
   tuning: Tuning,
+  overlay?: Overlay,
 ): void {
   const layout = computeLayout(size, world)
   const { scale, offsetX, offsetY } = layout
@@ -168,8 +282,9 @@ export function drawWorld(
 
   const adultAge = tuning.bot.adultAge
   for (const bot of world.bots) {
-    const x = offsetX + (bot.px + (bot.x - bot.px) * alpha) * scale
-    const y = offsetY + (bot.py + (bot.y - bot.py) * alpha) * scale
+    const position = botPosition(bot, alpha)
+    const x = offsetX + position.x * scale
+    const y = offsetY + position.y * scale
     const radius = Math.max(3, scale * (bot.age < adultAge ? 0.38 : 0.55))
     ctx.beginPath()
     ctx.arc(x, y, radius, 0, Math.PI * 2)
@@ -186,4 +301,6 @@ export function drawWorld(
       ctx.stroke()
     }
   }
+
+  if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay)
 }

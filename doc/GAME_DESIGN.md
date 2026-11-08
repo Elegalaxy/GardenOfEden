@@ -1,6 +1,6 @@
 # Garden of Eden Living Game Design
 
-Status: Active design. Milestones M0 (scaffold), M1 (headless sim core), M2 (canvas and loop) and M3 (full survival loop) are built; the rest of the plan is design only.  
+Status: Active design. Milestones M0 (scaffold), M1 (headless sim core), M2 (canvas and loop), M3 (full survival loop), M4 (player tools) and M5 (observability) are built; the MVP is complete. Trait inheritance (M6) and saves are not started.  
 Working title: Garden of Eden  
 Portfolio brief: [docs/ideas/garden-of-eden.md](../../docs/ideas/garden-of-eden.md). Keep that brief aligned when this document's concept or status changes. The full idea index is [docs/ideas/README.md](../../docs/ideas/README.md).
 
@@ -69,9 +69,9 @@ All nodes share one data shape (`WorldNode`). A node's `kind` decides which fiel
 ## 7. Society and Events
 
 1. `[CONFIRMED]` The sim keeps a stats sample every N ticks (population, running births and deaths, total food) and an event log of births, deaths, depletions and player commands (a ring buffer of about 500).
-2. `[CONFIRMED]` Player actions are commands (place node, remove node, place bot) recorded with their tick, so a run can be replayed. `[LATER]` M4 or after.
+2. `[CONFIRMED]` Player actions are commands (place node, remove node, place bot) recorded with their tick, so a run can be replayed. Built in M4. `[PROVISIONAL]` A command is applied between two ticks (after tick T, before T+1) and recorded as `{tick: T, cmd}`; a refused command is not recorded. A placed node uses its kind's defaults and may not sit within 1 cell of a node of the same kind (different kinds may overlap, like the preset groves); the map holds at most 400 nodes; a placed bot uses the default traits and a heading from the `world` stream, so placing never shifts the `ai` draws. The UI snaps placements to cell centres. Removing a bot is not a command.
 3. `[OPEN]` A catalogue of societal events (drought, plague, and so on) and what they change.
-4. `[OPEN]` What the observer UI shows so cause and effect are readable beyond the map and a population chart.
+4. `[PROVISIONAL]` The observer UI (M5): KPI strip (tick, population with change arrow, births and deaths per minute, food), a population and food chart with a marker per player command, deaths by cause, a filterable event log whose entries select the bot or node in the inspector, and an inspector. A "minute" is 600 ticks (`tuning.stats.minuteTicks`), which is one minute at 1x speed. `[OPEN]` Whether this is enough for cause and effect (see Open Questions).
 
 ## 8. Technology
 
@@ -88,20 +88,23 @@ All nodes share one data shape (`WorldNode`). A node's `kind` decides which fiel
 | M1 | Headless sim core: resource nodes, wander, seek food, eat, starve, CLI | built |
 | M2 | Canvas view and frame loop: map, nodes, interpolated bots, pause, step, 1/4/16/64x | built |
 | M3 | Full survival loop: danger, shelter, reproduction, three death causes, tuned eden preset | built |
-| M4+ | Player commands (place node, remove node, place bot) with replay, observer UI, saves | not started |
+| M4 | Player commands (place node, remove node, place bot) with replay; toolbar, inspector, hover ghost, selection | built |
+| M5 | Observability: stats strip, population and food chart with command markers, death causes, event log, reset with seed | built |
 | M6 | Trait inheritance with mutation | not started |
+| Later | Saves (`src/persist`), further node purposes, societal events | not started |
 
-`[PROVISIONAL]` M2 and M3 here follow the plan as handed to the implementer (canvas and loop, then survival loop); the earlier table in this document listed commands as M2 and reproduction and danger as M3 and M4, so commands moved later. Check the plan before starting M4.
+`[PROVISIONAL]` M2 and M3 here follow the plan as handed to the implementer (canvas and loop, then survival loop); the earlier table in this document listed commands as M2 and reproduction and danger as M3 and M4, so commands moved later. M4 and M5 follow the plan as handed to the implementer.
 
 ## 10. Open Questions
 
 - Which extra node purposes are needed?
 - Which societal events exist, and what do they change?
-- What should the observer UI show so cause and effect are readable?
+- Is the M5 observer UI enough for cause and effect? The event log keeps only the newest 500 events and `depleted` events fill it within a few hundred ticks, so older player commands scroll out of the log (the chart markers keep all of them). Should depletions be filtered out of the log by default, or logged less often?
 - Is there any player goal beyond observation and intervention?
 - Numbers: the eden preset (40 bots, 28 food nodes plus 3 groves, 4 danger, 7 shelter) holds 20 to 65 bots across seeds a..j over 20,000 ticks. Is that the feel the user wants (swings are about 2x)? The founders all die of age together near tick 3000, which causes the first big dip.
 
 ## 11. Changelog
 
+- 2026-11-08: M4 and M5 built (MVP complete). Player commands with replay, toolbar (keys 1-6, Esc), inspector, hover ghost; stats strip, population and food chart with command markers, death causes, event log, reset with seed. Commands moved from `[LATER]` to built.
 - 2026-11-08: M2 and M3 built. Canvas view and loop, then danger, shelter, reproduction, age death and a tuned eden preset (survives 20,000 ticks on seeds a..j). Rules above moved from `[LATER]` to built.
 - 2026-11-08: M0 and M1 built. The user approved the full plan defaults (grid map, bots interact only through nodes, reproduce alone in shelter, traits from M1, stack as `trading-sim`). Status changed from `concept` to `active`.
