@@ -1,0 +1,292 @@
+/* Palette and form controls follow trading-sim: dark panels, blue primary action. */
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.45;
+  background: #12141a;
+  color: #e7e9ee;
+
+  --bg: #12141a;
+  --panel: #1c2030;
+  --panel-border: #3d4660;
+  --text: #e7e9ee;
+  --text-strong: #f4f6fb;
+  --text-muted: #b7becc; /* secondary: labels, units */
+  --text-faint: #98a1b6; /* tertiary: hints (still above 4.5:1 on the panel) */
+  --primary: #3d6bf5;
+  --disabled: #3a4158;
+  --focus: #d6e4ff;
+  --resource: #3fb950;
+  --danger: #f85149;
+  --shelter: #58a6ff;
+  --bot: #f2cc60;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 16px;
+  display: grid;
+  gap: 16px;
+}
+
+h1 {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.6rem;
+  font-weight: 650;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.figure {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Buttons: distinct hover, focus-visible, pressed and disabled states. */
+button {
+  font: inherit;
+  color: var(--text-strong);
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 14px;
+  border: 1px solid #6a738c;
+  border-radius: 6px;
+  background: #0e1118;
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+button:hover:not(:disabled) {
+  border-color: #9ec1ff;
+  filter: brightness(1.15);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(0.95);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+button[aria-pressed='true'].secondary {
+  background: #26324a;
+  border-color: #9ec1ff;
+  box-shadow: inset 0 -3px 0 #9ec1ff;
+}
+
+button:disabled {
+  background: var(--disabled);
+  border-color: var(--disabled);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Readout tiles */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.tile {
+  min-width: 0;
+}
+
+.tile dt {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tile dd {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.6rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.tile-detail {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Map */
+.map-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.map-frame {
+  width: min(100%, calc(62vh * 1.5));
+  margin: 0 auto;
+  background: #0e1118;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.map-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-note {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.key {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
+.key-resource {
+  border-color: var(--resource);
+}
+
+.key-danger {
+  border-color: var(--danger);
+  border-style: dashed;
+}
+
+.key-shelter {
+  border-color: var(--shelter);
+}
+
+.key-bot {
+  width: 12px;
+  height: 12px;
+  margin: 0 5px;
+  border: 1px solid #0e1118;
+  background: var(--bot);
+}
+
+/* Controls */
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.play-button {
+  min-width: 112px; /* "Play" and "Pause" are the same width, so nothing shifts */
+}
+
+.speed-group {
+  display: flex;
+  gap: 4px;
+}
+
+.speed-button {
+  min-width: 52px;
+}
+
+.rate {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 0 auto;
+  color: var(--text-strong);
+}
+
+.rate .figure {
+  display: inline-block;
+  min-width: 4ch;
+  text-align: right;
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.rate-label,
+.rate-unit {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+  .layout {
+    padding: 12px;
+  }
+
+  .tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tile dd {
+    font-size: 1.3rem;
+  }
+
+  /* Room for the deaths-by-cause line. */
+  .tile-wide {
+    grid-column: span 2;
+  }
+
+  .rate {
+    margin-left: 0;
+  }
+
+  .map-frame {
+    width: 100%;
+  }
+}
