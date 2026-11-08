@@ -78,5 +78,11 @@ export const tuning: Tuning = {
     minNodeGap: 1,
     maxNodes: 400,
   },
+  ruin: {
+    baseAmount: 24,
+    energyShare: 0.5,
+    mergeRadius: 2,
+    maxCount: 60,
+  },
   logCap: 500,
 }

@@ -5,7 +5,8 @@
 //
 // A remembered resource is only worth walking to if it held at least one bite
 // when last seen, or if the sighting is old enough (`memory.retryTicks`) that
-// it has probably regrown. Danger entries keep their radius so a bot can steer
+// it has probably regrown. A ruin counts as food too, but it never regrows, so
+// it is only worth walking to while it held a bite when last seen. Danger entries keep their radius so a bot can steer
 // around them without seeing them again.
 
 import type { Bot, MemoryEntry, NodeKind, Tuning, World, WorldNode } from './types.ts'
@@ -89,8 +90,13 @@ export function nearestKnown(bot: Bot, kind: NodeKind): MemoryEntry | null {
   return best
 }
 
+/** Nodes a bot can eat: resources and ruins. */
+export function isFood(kind: NodeKind): boolean {
+  return kind === 'resource' || kind === 'ruin'
+}
+
 /**
- * Nearest remembered resource worth walking to; ties go to the lower node id.
+ * Nearest remembered food (resource or ruin) worth walking to; ties go to the lower node id.
  * Unless the bot is `brave`, food sitting inside a remembered danger (plus the
  * avoid margin) is skipped.
  */
@@ -99,8 +105,10 @@ export function chooseFood(world: World, bot: Bot, tuning: Tuning, brave: boolea
   let best: MemoryEntry | null = null
   let bestDistance = Infinity
   for (const entry of bot.memory) {
-    if (entry.kind !== 'resource') continue
-    const worthIt = entry.amount >= tuning.bot.eatRate || world.tick - entry.seenTick >= tuning.memory.retryTicks
+    if (!isFood(entry.kind)) continue
+    const regrows = entry.kind === 'resource'
+    const worthIt =
+      entry.amount >= tuning.bot.eatRate || (regrows && world.tick - entry.seenTick >= tuning.memory.retryTicks)
     if (!worthIt) continue
     if (insideDanger(dangers, entry.x, entry.y, tuning.brain.avoidMargin)) continue
     const d = distance(bot.x, bot.y, entry.x, entry.y)

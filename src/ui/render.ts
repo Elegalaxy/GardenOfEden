@@ -2,10 +2,10 @@
 // draws it, nothing else. Everything is drawn in CSS pixels; the caller sets
 // the context transform for devicePixelRatio.
 //
-// The map is letterboxed to fit. Nodes are tinted circles with a letter, so
+// The map is letterboxed to fit. Nodes are tinted shapes with a letter, so
 // kind never relies on colour alone: R resource, D danger (dashed edge),
-// S shelter. A resource also has a ring that fills in with its remaining
-// amount. Bots are dots: children are smaller, and a fleeing bot gets a ring.
+// S shelter, U ruin (a diamond, not a circle). A resource also has a ring that
+// fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring.
 // Bot positions blend from where the bot was at the start of its last turn
 // (px, py) to where it is now (x, y), by `alpha`.
 //
@@ -39,7 +39,7 @@ export type Overlay = {
   ghost: Ghost | null
 }
 
-export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S' }
+export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U' }
 
 export const COLORS = {
   background: '#0e1118',
@@ -49,6 +49,7 @@ export const COLORS = {
   resource: '#3fb950',
   danger: '#f85149',
   shelter: '#58a6ff',
+  ruin: '#bc8cff',
   bot: '#f2cc60',
   botEdge: '#0e1118',
   flee: '#ffffff',
@@ -62,6 +63,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
   resource: COLORS.resource,
   danger: COLORS.danger,
   shelter: COLORS.shelter,
+  ruin: COLORS.ruin,
 }
 
 /** Largest scale that fits the whole map, centred. */
@@ -151,6 +153,29 @@ function drawResource(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
     ctx.stroke()
   }
   drawLetter(ctx, NODE_LETTER.resource, cx, cy, layout.scale * 1.3)
+}
+
+/** A ruin is a diamond (a circle's corners pulled out), filled in by how much food is left. */
+function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
+  const cx = layout.offsetX + node.x * layout.scale
+  const cy = layout.offsetY + node.y * layout.scale
+  // A diamond with the circle's radius would look smaller than a circle of the same radius.
+  const r = node.radius * layout.scale * 1.35
+  const fraction = node.capacity > 0 ? Math.min(1, Math.max(0, node.amount / node.capacity)) : 0
+  ctx.beginPath()
+  ctx.moveTo(cx, cy - r)
+  ctx.lineTo(cx + r, cy)
+  ctx.lineTo(cx, cy + r)
+  ctx.lineTo(cx - r, cy)
+  ctx.closePath()
+  ctx.globalAlpha = 0.25 + 0.5 * fraction
+  ctx.fillStyle = COLORS.ruin
+  ctx.fill()
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.ruin
+  ctx.stroke()
+  drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
 }
 
 function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number, layout: Layout, overlay: Overlay): void {
@@ -265,7 +290,7 @@ export function drawWorld(
 
   // Big zones first so smaller things sit on top of them.
   for (const node of world.nodes) {
-    if (node.kind === 'resource') continue
+    if (node.kind !== 'danger' && node.kind !== 'shelter') continue
     drawZone(ctx, node, layout)
     // Near the top of the zone, so a resource growing in its middle stays readable.
     drawLetter(
@@ -278,6 +303,9 @@ export function drawWorld(
   }
   for (const node of world.nodes) {
     if (node.kind === 'resource') drawResource(ctx, node, layout)
+  }
+  for (const node of world.nodes) {
+    if (node.kind === 'ruin') drawRuin(ctx, node, layout)
   }
 
   const adultAge = tuning.bot.adultAge

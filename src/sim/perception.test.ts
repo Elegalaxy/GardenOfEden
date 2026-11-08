@@ -12,7 +12,7 @@ const tuning = {
 } as unknown as Tuning
 
 function node(id: number, kind: WorldNode['kind'], x: number, over: Partial<WorldNode> = {}): WorldNode {
-  return { id, kind, x, y: 10, radius: 2, amount: 100, capacity: 100, regen: 0, damage: 0, heal: 0, drainMult: 1, ...over }
+  return { id, kind, x, y: 10, radius: 2, amount: 100, capacity: 100, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, ...over }
 }
 
 function worldWith(nodes: WorldNode[], tick = 1): World {
@@ -29,6 +29,7 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     log: [],
     commands: [],
     deathsByCause: { starve: 0, danger: 0, age: 0 },
+    eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
   }
 }
@@ -89,6 +90,13 @@ describe('chooseFood', () => {
     const bot = botAt(10, [empty])
     expect(chooseFood(worldWith([], 150), bot, tuning, false)).toBeNull()
     expect(chooseFood(worldWith([], 400), bot, tuning, false)?.nodeId).toBe(1)
+  })
+
+  it('treats a ruin as food, but never retries an empty one (ruins do not regrow)', () => {
+    const bot = botAt(10, [entry(1, 'ruin', 14, { amount: 20 }), entry(2, 'resource', 30)])
+    expect(chooseFood(worldWith([], 2), bot, tuning, false)?.nodeId).toBe(1)
+    const spent = botAt(10, [entry(1, 'ruin', 14, { amount: 2, seenTick: 1 })])
+    expect(chooseFood(worldWith([], 1000), spent, tuning, false)).toBeNull()
   })
 
   it('prefers the nearest resource and breaks ties by node id', () => {

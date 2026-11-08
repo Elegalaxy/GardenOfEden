@@ -5,11 +5,13 @@
 // min and max are taken over ticks after `warmup` (the founders settling in is
 // not a swing). `final` is the population at the last tick. `traits` is the
 // mean of each trait over the bots alive at the last tick (null if none).
+// `eaten` is the food units eaten over the whole run, from resources and from
+// ruins; `ruin%` in the table is the ruins' share of it.
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
-import type { DeathsByCause, Preset, Rules, Traits } from '../sim/types.ts'
+import type { DeathsByCause, Eaten, Preset, Rules, Traits } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
 
 export type SeedSurvey = {
@@ -21,7 +23,14 @@ export type SeedSurvey = {
   births: number
   deaths: DeathsByCause
   traits: Traits | null
+  eaten: Eaten
   hash: string
+}
+
+/** The ruins' share of all food eaten, as a percentage with one decimal; a dash when nothing was eaten. */
+export function ruinShareCell(eaten: Eaten): string {
+  const total = eaten.resource + eaten.ruin
+  return total <= 0 ? '-' : `${((100 * eaten.ruin) / total).toFixed(1)}`
 }
 
 /** A mean trait for a table cell: two decimals, or a dash when nobody is alive. */
@@ -53,12 +62,13 @@ export function surveySeed(seed: string, preset: Preset, rules: Rules, ticks: nu
     births: world.totalBirths,
     deaths: { ...world.deathsByCause },
     traits: meanTraits(world.bots),
+    eaten: { ...world.eaten },
     hash: stateHash(world),
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'danger', 'age', 'sense', 'caution', 'reproAt', 'metab']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'danger', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -75,6 +85,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       traitCell(r.traits, 'caution'),
       traitCell(r.traits, 'reproThreshold'),
       traitCell(r.traits, 'metabolism'),
+      ruinShareCell(r.eaten),
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

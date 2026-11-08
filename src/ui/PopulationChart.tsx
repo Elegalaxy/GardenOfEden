@@ -3,7 +3,8 @@
 // stays readable on a phone).
 //
 // Population is a solid line on the left axis, food a dashed line on the right
-// axis, so the two read apart without colour. Every player command is a thin
+// axis, so the two read apart without colour. Food here is resource food only
+// (food sitting in ruins is not added in). Every player command is a thin
 // vertical marker topped with a letter: R, D, S for a placed resource, danger
 // or shelter, B for a bot, X for a removed node. Hover (or touch, or the
 // arrow keys when the chart has focus) shows a tooltip with the tick, both
@@ -200,7 +201,7 @@ export function PopulationChart() {
           <svg width="30" height="10" aria-hidden="true">
             <line x1="1" x2="29" y1="5" y2="5" className="line-food" />
           </svg>
-          Food <strong className="figure">{numberFormat.format(Math.round(shown.food))}</strong>
+          Resource food <strong className="figure">{numberFormat.format(Math.round(shown.food))}</strong>
           <span className="legend-note">right axis</span>
         </li>
         <li>

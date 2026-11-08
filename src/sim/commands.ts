@@ -4,6 +4,9 @@
 // event. A rejected command changes nothing and is not recorded, so replaying
 // the recorded list always reproduces the run.
 //
+// Ruins are made by the sim when a bot dies, so the player cannot place them
+// (they can remove one). Ruins do not count toward `player.maxNodes`.
+//
 // A command is applied between two ticks: at world.tick = T, after step T and
 // before step T+1. Placed nodes use the numbers for their kind from
 // `rules.nodeDefs`. A placed bot gets the default traits, full health and a
@@ -12,7 +15,7 @@
 
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
-import { makeBot, makeNode, pushEvent } from './world.ts'
+import { makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 
 export type CommandResult = { ok: true; id: number } | { ok: false; reason: string }
 
@@ -26,7 +29,8 @@ export function checkCommand(world: World, rules: Rules, cmd: Command): string |
   switch (cmd.type) {
     case 'placeNode': {
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
-      if (world.nodes.length >= tuning.player.maxNodes) {
+      if (cmd.kind === 'ruin') return 'Ruins are left by dead bots. They cannot be placed.'
+      if (placedNodeCount(world) >= tuning.player.maxNodes) {
         return `The map is full (${tuning.player.maxNodes} nodes).`
       }
       for (const node of world.nodes) {

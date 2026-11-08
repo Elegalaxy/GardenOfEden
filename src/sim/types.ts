@@ -42,7 +42,7 @@ export type Weighted<T> = {
   weight: number
 }
 
-export type NodeKind = 'resource' | 'danger' | 'shelter'
+export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin'
 
 /**
  * One purposeful spot on the map. Only the fields a kind uses matter; the
@@ -50,6 +50,8 @@ export type NodeKind = 'resource' | 'danger' | 'shelter'
  * - resource: `amount` (0..capacity) refills by `regen` per tick.
  * - danger: `damage` health per tick to a bot inside `radius`.
  * - shelter: `heal` health per tick, and `drainMult` scales energy loss.
+ * - ruin: food left by a dead bot. `amount` (0..capacity) falls by `decay` per tick and by being
+ *   eaten; the node is removed at 0. Made by the sim only (ruins.ts), never by a preset.
  */
 export type WorldNode = {
   id: number
@@ -63,6 +65,8 @@ export type WorldNode = {
   damage: number
   heal: number
   drainMult: number
+  /** Ruins only: amount lost per tick. */
+  decay: number
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -114,7 +118,7 @@ export type Bot = {
 
 export type DeathCause = 'starve' | 'danger' | 'age'
 
-export type SimEventType = 'birth' | 'death' | 'depleted' | 'command'
+export type SimEventType = 'birth' | 'death' | 'command'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot'
 
@@ -154,6 +158,8 @@ export type Sample = {
 
 export type DeathsByCause = Record<DeathCause, number>
 
+export type Eaten = { resource: number; ruin: number }
+
 export type World = {
   seed: string
   /** Ticks completed. The first step turns 0 into 1. */
@@ -171,6 +177,8 @@ export type World = {
   log: SimEvent[]
   commands: { tick: number; cmd: Command }[]
   deathsByCause: DeathsByCause
+  /** Running totals of food units bots have eaten, by where it came from. */
+  eaten: Eaten
   /** Running count of births, for the stats samples. */
   totalBirths: number
 }
@@ -183,6 +191,7 @@ export type NodeDef = {
   damage: number
   heal: number
   drainMult: number
+  decay: number
 }
 
 export type NodeDefs = Record<NodeKind, NodeDef>
@@ -300,10 +309,21 @@ export type Tuning = {
   player: {
     /** A node may not be placed with its centre closer than this (cells) to a node of the same kind. */
     minNodeGap: number
-    /** Most nodes the world may hold; placing stops at the cap. */
+    /** Most nodes the player may place; placing stops at the cap. Ruins do not count (see `ruin.maxCount`). */
     maxNodes: number
   }
-  /** Events kept in `World.log`. */
+  /** What a dead bot leaves behind (a ruin node; its radius, capacity and decay are in `nodeDefs.ruin`). */
+  ruin: {
+    /** Food units every ruin starts with, whatever the bot's energy. */
+    baseAmount: number
+    /** Plus this fraction of the bot's remaining energy, counted in food units (energy / `energyPerUnit`). */
+    energyShare: number
+    /** A death within this distance (cells) of an existing ruin adds to it instead of making a new one. */
+    mergeRadius: number
+    /** Most ruins the world may hold; past it a death adds to the nearest ruin, however far. */
+    maxCount: number
+  }
+  /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number
 }
 

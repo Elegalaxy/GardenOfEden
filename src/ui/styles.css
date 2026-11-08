@@ -20,6 +20,7 @@
   --resource: #3fb950;
   --danger: #f85149;
   --shelter: #58a6ff;
+  --ruin: #bc8cff;
   --bot: #f2cc60;
 }
 
@@ -211,6 +212,16 @@ button:disabled {
 
 .key-shelter {
   border-color: var(--shelter);
+}
+
+.key-ruin {
+  border-color: var(--ruin);
+  border-radius: 3px;
+  transform: rotate(45deg);
+}
+
+.key-ruin > span {
+  transform: rotate(-45deg); /* keeps the letter upright inside the diamond */
 }
 
 .key-bot {

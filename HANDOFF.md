@@ -1,19 +1,18 @@
 # Project Handoff State
 
 - **Last Updated By:** Claude (implementer)
-- **Current Goal:** Garden of Eden MVP (M0 to M5) plus M6 (trait inheritance with mutation) is built. Nothing is planned beyond M6; saves (`src/persist`), more node purposes and societal events are `[LATER]` / `[OPEN]` in `doc/GAME_DESIGN.md`.
-- **Recent Changes (M6, traits):**
-  - Sim: `src/sim/traits.ts` (new: `mutateTraits`, `traitStats`, `meanTraits`, `TRAIT_NAMES`), `reproduction.ts` (child traits mutate, 8 extra `birth` draws per child, parent burns `birthCost`), `metabolism.ts` (`speedOf`, sense-radius drain), `movement.ts` (uses `speedOf`), `world.ts` (`Sample.traits` = population mean), `stats.ts` (`traitDrift`), `types.ts`.
-  - Content: `tuning.ts` got `mutation` (rate 0.5, strength 0.1, bounds), `bot.senseDrain` 0.02, `bot.metabolismSpeed` 2, `bot.birthCost` 20.
-  - UI: `TraitChart.tsx` (small multiples), `TraitSummary.tsx` (mean/min/max table + spread bar), `traitMath.ts`, `useElementWidth.ts` (moved out of `PopulationChart`), Inspector shows +/- vs population mean, `labels.ts` trait labels, `panels.css`. Depleted filter in `EventLog.tsx` is now OFF by default.
-  - Harness: `--seeds` survey and single-run table print mean traits; a "founders:" line precedes them.
-  - Tests: `tests/traits.test.ts` (bounds, strength 0, determinism, replay with commands, costs, selection on 6 seeds), `src/sim/traits.test.ts`, `src/ui/traitMath.test.ts`, trait cases in `src/sim/stats.test.ts`; `tests/survival.test.ts` birth test updated for `birthCost`.
-  - Docs: `CLAUDE.md`, `doc/GAME_DESIGN.md` (rules, milestone table, changelog), `../docs/ideas/garden-of-eden.md` changelog.
+- **Current Goal:** Garden of Eden M0 to M6 are committed and pushed. M7a (ruin node) is built but NOT committed or pushed (the lead verifies and commits). M7b (water) is not started.
+- **Recent Changes (M7a, ruins):**
+  - New `src/sim/ruins.ts` (`ruinAmount`, `leaveRuin`, `decayRuins`). `step.ts`: after children are spawned each dead bot leaves a ruin, then resources regrow, then ruins decay and emptied ones are removed.
+  - `types.ts`: `NodeKind` + `ruin`, `WorldNode`/`NodeDef` + `decay`, `Tuning.ruin` (`baseAmount` 24, `energyShare` 0.5, `mergeRadius` 2, `maxCount` 60), `World.eaten` ({resource, ruin} food units eaten), `SimEventType` lost `depleted`. `nodeDefs.ruin`: radius 1, capacity 60, decay 0.05.
+  - `nodes.ts`: `exposureAt` skips ruins (it only reads danger and shelter), `eat` counts `world.eaten` and no longer logs. `perception.ts`: `isFood`, `chooseFood` takes ruins (no retry of an empty one). `commands.ts`: ruins cannot be placed; `maxNodes` counts placed nodes only (`placedNodeCount` in `world.ts`).
+  - UI: ruin is a violet diamond with U (`render.ts`, `labels.ts`, legend in `App.tsx`, `.key-ruin` in `styles.css`), Inspector rows (amount, decay, time left), Food tile detail "+N in ruins" (resource food stays the tile value and chart line; chart legend says "Resource food"), EventLog lost the Depleted filter.
+  - Harness: `ruin%` column (share of food eaten from ruins) in the survey and CLI, plus a `ruins` column (food units in ruins) in the single-run CLI table.
+  - Tests: new `tests/ruins.test.ts` (amount, merge, cap, decay, eating, safe removal, player cap, determinism, replay); additions in `nodes.test.ts` and `perception.test.ts`; test helpers got `decay` and `eaten`.
 - **Active Decisions / Constraints:**
-  - `birthCost` is new: it changes the old "child share is a pure transfer" rule. It is what stops `reproThreshold` pinning to its floor. Every state hash changed (mutation draws, new energy rules); hashes are only compared, never pinned, so no test constants moved.
-  - Metabolism also scales speed (`1 + 2 x (m - 1)`); at `metabolismSpeed` 1 travel cost per cell is flat and metabolism evolved to its floor, so keep it above 1.
-  - `reproThreshold` upper bound is 90 (bots stop eating at 90, so a higher value could never be reached).
-  - Founders and placed bots keep default traits. A command is applied between ticks and recorded as `{tick, cmd}`. Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-  - Retune with `npm run sim -- --seeds a,b,c,d --ticks 60000`; check final mean traits are not all at their bounds.
-- **Open Questions for the user:** (1) Depletions still fill the sim's 500-event buffer (the UI now hides them by default), so older births, deaths and commands still scroll out; give depletions their own buffer or stop logging them? (2) Over 60,000 ticks `reproThreshold` falls from 80 to about 59-66 on every seed, metabolism and sense radius stay near their founder values, caution drifts down slightly. Is that the trait story wanted? (3) Eden swings (about 23 to 75 bots, about 2x) still await a feel check.
-- **Exact Next Step:** The user looks at the app in a visible browser window (the built-in pane was hidden, so timers, screenshots and smooth motion were only partly checked), then decides the open questions above. Nothing else is queued.
+  - Ruins are sim-made only. Player can inspect and Remove them (a recorded `removeNode`), not place them. No RNG, no log events for ruins. Depletions are no longer logged, so the log holds births, deaths and commands.
+  - Tuning kept all 10 seeds surviving 20,000 ticks (27 to 76 bots, swings about 1.5 to 2.2x); `tests/tuning.test.ts` thresholds unchanged. Ruins give about 6 to 8% of food eaten at 20,000 ticks, 8 to 10% at 60,000.
+  - Side effect to watch: over 60,000 ticks mean caution drifts down to about 0.28 to 0.35 and danger deaths rise (up to about 170 per run on some seeds), since ruins in groves feed desperate bots.
+  - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
+- **Open Questions for the user:** Is the lower caution / more danger deaths over long runs a story worth keeping, or should ruins in danger zones be smaller? Eden swings (about 2x) and the founders' age-death dip near tick 3000 still await a feel check. Built-in browser pane was used for M7a (ruins render, inspect and remove fine at desktop and 375px), but smooth motion was not judged by eye.
+- **Exact Next Step:** Lead verifies and commits M7a. Then M7b (water) needs a design decision first (what does water do: a second need, a drain, a new death cause?) before code; record it in `doc/GAME_DESIGN.md` section 4 as `[PROVISIONAL]`.

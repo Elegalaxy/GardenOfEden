@@ -2,11 +2,13 @@
 // Population shows its change over the last "minute" with an arrow and a sign.
 // A minute is `tuning.stats.minuteTicks` ticks (600, which is one minute of
 // real time at 1x speed); births and deaths per minute are measured over the
-// same window, or over the whole run while it is younger than that.
+// same window, or over the whole run while it is younger than that. The Food
+// tile counts resource food (what the chart plots); food in ruins is shown
+// beside it, not added in.
 
 import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
-import { takeSample } from '../sim/world.ts'
+import { takeSample, totalRuinFood } from '../sim/world.ts'
 import { useWorldStore } from './store.ts'
 
 const numberFormat = new Intl.NumberFormat('en-US')
@@ -47,7 +49,11 @@ export function StatsStrip() {
         />
         <Tile label="Births / min" value={rate(birthRate)} detail={`${numberFormat.format(births)} total`} />
         <Tile label="Deaths / min" value={rate(deathRate)} detail={`${numberFormat.format(deaths)} total`} />
-        <Tile label="Food" value={numberFormat.format(Math.round(current.food))} detail="resource units" />
+        <Tile
+          label="Food"
+          value={numberFormat.format(Math.round(current.food))}
+          detail={`+${numberFormat.format(Math.round(totalRuinFood(world)))} in ruins`}
+        />
       </dl>
     </section>
   )

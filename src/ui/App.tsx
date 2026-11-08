@@ -31,6 +31,10 @@ function Legend() {
         <span className="legend-note">heals, rests, reproduces</span>
       </li>
       <li>
+        <span className="key key-ruin" aria-hidden="true"><span>U</span></span> Ruin
+        <span className="legend-note">diamond, left by a dead bot, decays</span>
+      </li>
+      <li>
         <span className="key key-bot" aria-hidden="true" /> Bot
         <span className="legend-note">small = child, ringed = fleeing</span>
       </li>

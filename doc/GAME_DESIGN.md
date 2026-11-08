@@ -1,6 +1,6 @@
 # Garden of Eden Living Game Design
 
-Status: Active design. Milestones M0 (scaffold), M1 (headless sim core), M2 (canvas and loop), M3 (full survival loop), M4 (player tools), M5 (observability) and M6 (trait inheritance with mutation) are built; the MVP is complete. Saves are not started.  
+Status: Active design. Milestones M0 (scaffold), M1 (headless sim core), M2 (canvas and loop), M3 (full survival loop), M4 (player tools), M5 (observability), M6 (trait inheritance with mutation) and M7a (ruin node) are built; the MVP is complete. Water (M7b) and saves are not started.  
 Working title: Garden of Eden  
 Portfolio brief: [docs/ideas/garden-of-eden.md](../../docs/ideas/garden-of-eden.md). Keep that brief aligned when this document's concept or status changes. The full idea index is [docs/ideas/README.md](../../docs/ideas/README.md).
 
@@ -36,7 +36,7 @@ A god-style observation simulation. The player sets an environment, places bot e
 1. `[CONFIRMED]` The map is a grid, about 96 x 64 cells. Positions are continuous inside it; nodes and bots have real-valued x and y.
 2. `[CONFIRMED]` One run is one shared society on one map.
 3. `[CONFIRMED]` Time advances in fixed ticks. Bots act in id order inside a tick, so the order is deterministic.
-4. `[PROVISIONAL]` Tick order for one bot: perceive, memory, decide, act, metabolise, death check. After the bot loop: new children are added, nodes regrow, a stats sample is taken every N ticks, and events go to the log.
+4. `[PROVISIONAL]` Tick order for one bot: perceive, memory, decide, act, metabolise, death check. After the bot loop, in this order: dead bots are removed, new children are added, each dead bot leaves a ruin (in id order), resources regrow, ruins decay and the emptied ones are removed, and a stats sample is taken every N ticks. Births, deaths and player commands go to the event log.
 
 ## 4. Environment Nodes
 
@@ -47,7 +47,14 @@ All nodes share one data shape (`WorldNode`). A node's `kind` decides which fiel
 3. `[CONFIRMED]` **Shelter**: heals bots inside it and slows their energy loss. It is the only place a bot can reproduce. Built in M3.
 4. `[PROVISIONAL]` Radii, capacity, regrowth, damage, heal and energy-loss multiplier per kind (`src/content/nodeDefs.ts`).
 5. `[PROVISIONAL]` Bots steer around a remembered danger (radius plus a 0.75 cell margin) with greedy turning, no path search. A bot inside a danger flees. A bot below 20% energy that is seeking food ignores avoidance and may walk into danger for food ("groves" in the eden preset put food inside danger zones). This is why danger deaths are rare but real.
-6. `[OPEN]` Further node purposes (water, disease, trade, ruin). None are named yet. Record them here when decided.
+6. `[PROVISIONAL]` **Ruin** (M7a, built): when a bot dies, from any cause, it leaves a small temporary food node at the place of death. It closes the loop (the dead feed the living) and leaves a visible trace where bots starve or die in danger.
+   - Amount: 24 food units (`ruin.baseAmount`) plus half of the bot's remaining energy counted in food units (`ruin.energyShare` 0.5, energy / `energyPerUnit`). A bot that starved has none left and leaves 24; one that died of old age at 90 energy leaves 46. Because the base is a fixed gift, ruins add some food to the world, which is why the numbers were re-checked (see Open Questions).
+   - Bots treat a ruin as food, using the same seek-and-eat path as a resource (same hunger rule, same danger avoidance; a desperate bot may walk into danger for it). Two differences: a ruin never regrows, so a remembered ruin that held less than one bite is not retried later, and an emptied ruin is removed.
+   - Decay: a ruin loses 0.05 units per tick (`nodeDefs.ruin.decay`), so an untouched 24-unit ruin lasts about 480 ticks. It is removed when it reaches 0, whether eaten or decayed. A bot heading for a removed ruin finds the node missing and wanders; memory drops removed nodes, as for any removed node.
+   - Merging: a death within 2 cells of an existing ruin (`ruin.mergeRadius`) adds to it instead of making a new one, up to the ruin's capacity of 60 (`nodeDefs.ruin.capacity`; the excess is lost). At 60 ruins (`ruin.maxCount`) a death adds to the nearest ruin however far away. This count is separate from the player's `maxNodes` cap: ruins are not counted against it and never stop the player placing a node.
+   - Ruins are made by the sim only. The player cannot place one (not in the toolbar, and a `placeNode` command with kind `ruin` is refused), but can inspect a ruin and remove it with the Remove tool (a recorded `removeNode` command, replay-safe).
+   - Ruin creation uses no random draws and is not logged (one event per death would flood the log). Resource depletion is not logged any more either (see section 7).
+7. `[OPEN]` Further node purposes (water, disease, trade). Water is next (M7b) but not designed or started. Record them here when decided.
 
 ## 5. Bots
 
@@ -69,10 +76,10 @@ All nodes share one data shape (`WorldNode`). A node's `kind` decides which fiel
 
 ## 7. Society and Events
 
-1. `[CONFIRMED]` The sim keeps a stats sample every N ticks (population, running births and deaths, total food, and from M6 the population mean of each trait) and an event log of births, deaths, depletions and player commands (a ring buffer of about 500).
+1. `[CONFIRMED]` The sim keeps a stats sample every N ticks (population, running births and deaths, total food, and from M6 the population mean of each trait) and an event log of births, deaths and player commands (a ring buffer of about 500). `[PROVISIONAL]` Resource depletions are no longer logged (M7a): they filled the buffer within a few hundred ticks and pushed births, deaths and commands out of it. The chart's command markers still come from `World.commands`, which keeps every command.
 2. `[CONFIRMED]` Player actions are commands (place node, remove node, place bot) recorded with their tick, so a run can be replayed. Built in M4. `[PROVISIONAL]` A command is applied between two ticks (after tick T, before T+1) and recorded as `{tick: T, cmd}`; a refused command is not recorded. A placed node uses its kind's defaults and may not sit within 1 cell of a node of the same kind (different kinds may overlap, like the preset groves); the map holds at most 400 nodes; a placed bot uses the default traits and a heading from the `world` stream, so placing never shifts the `ai` draws. The UI snaps placements to cell centres. Removing a bot is not a command.
 3. `[OPEN]` A catalogue of societal events (drought, plague, and so on) and what they change.
-4. `[PROVISIONAL]` The observer UI (M5): KPI strip (tick, population with change arrow, births and deaths per minute, food), a population and food chart with a marker per player command, deaths by cause, a filterable event log whose entries select the bot or node in the inspector, and an inspector. A "minute" is 600 ticks (`tuning.stats.minuteTicks`), which is one minute at 1x speed. `[OPEN]` Whether this is enough for cause and effect (see Open Questions). `[PROVISIONAL]` The event log starts with `depleted` events hidden (the Depleted filter is off; the user can turn it on), so births, deaths and commands are what you see first. `[PROVISIONAL]` Trait panels (M6): a "Traits over time" section with one small line chart per trait (current mean, drift since the first sample with a sign and arrow, the founders' value as a faint dotted line; distinct line style and end marker per trait), a "Population traits" table (mean, min, max, with a bar showing the spread inside the trait's allowed range), and the inspector shows how far the selected bot is from the population mean (+/-).
+4. `[PROVISIONAL]` The observer UI (M5): KPI strip (tick, population with change arrow, births and deaths per minute, food), a population and food chart with a marker per player command, deaths by cause, a filterable event log whose entries select the bot or node in the inspector, and an inspector. A "minute" is 600 ticks (`tuning.stats.minuteTicks`), which is one minute at 1x speed. `[OPEN]` Whether this is enough for cause and effect (see Open Questions). `[PROVISIONAL]` The event log has Birth, Death and Command filters (all on). `[PROVISIONAL]` Food is shown as resource food: the KPI Food tile and the chart's food line count resources only, and the tile's detail line shows the food sitting in ruins separately (for example "+84 in ruins"), never added in. The map draws a ruin as a diamond with the letter U in violet (a resource is a circle, R), with a legend entry and an inspector view (amount, decay per tick, time left if untouched). `[PROVISIONAL]` Trait panels (M6): a "Traits over time" section with one small line chart per trait (current mean, drift since the first sample with a sign and arrow, the founders' value as a faint dotted line; distinct line style and end marker per trait), a "Population traits" table (mean, min, max, with a bar showing the spread inside the trait's allowed range), and the inspector shows how far the selected bot is from the population mean (+/-).
 
 ## 8. Technology
 
@@ -92,21 +99,24 @@ All nodes share one data shape (`WorldNode`). A node's `kind` decides which fiel
 | M4 | Player commands (place node, remove node, place bot) with replay; toolbar, inspector, hover ghost, selection | built |
 | M5 | Observability: stats strip, population and food chart with command markers, death causes, event log, reset with seed | built |
 | M6 | Trait inheritance with mutation, trait costs, trait charts and summary, trait means in the survey | built |
+| M7a | Ruin node: dead bots leave decaying food; depleted events dropped from the log; ruin share of intake in the survey | built |
+| M7b | Water node | not started |
 | Later | Saves (`src/persist`), further node purposes, societal events | not started |
 
 `[PROVISIONAL]` M2 and M3 here follow the plan as handed to the implementer (canvas and loop, then survival loop); the earlier table in this document listed commands as M2 and reproduction and danger as M3 and M4, so commands moved later. M4 and M5 follow the plan as handed to the implementer.
 
 ## 10. Open Questions
 
-- Which extra node purposes are needed?
+- Which extra node purposes are needed beyond water (M7b)?
 - Which societal events exist, and what do they change?
-- Is the M5 observer UI enough for cause and effect? The Depleted filter is now off by default, but the sim still stores depletions in the same 500-event buffer, so they still push older births, deaths and commands out of it within a few hundred ticks (the chart markers keep every command). Should depletions get their own buffer or stop being logged?
+- Is the M5 observer UI enough for cause and effect? Depletions are no longer logged, so the 500-event buffer holds births, deaths and commands only. It still turns over (a few thousand ticks at eden's rates), so an old player command can leave the log while its chart marker stays. Is that enough, or should commands get their own buffer?
 - Is there any player goal beyond observation and intervention?
-- Numbers: the eden preset (40 bots, 28 food nodes plus 3 groves, 4 danger, 7 shelter) holds 23 to 64 bots across seeds a..j over 20,000 ticks with mutation on (about 23 to 75 over 60,000). Is that the feel the user wants (swings are about 2x)? The founders all die of age together near tick 3000, which causes the first big dip.
+- Numbers: the eden preset (40 bots, 28 food nodes plus 3 groves, 4 danger, 7 shelter) with ruins on holds 27 to 76 bots across seeds a..j over 20,000 ticks (27 to 89 over 60,000 across seeds a..j); ruins supply about 6 to 8% of the food eaten over 20,000 ticks and 8 to 10% over 60,000. Is that the feel the user wants (swings are about 2x)? Ruins also make a danger zone slightly more tempting: on some seeds the mean caution falls to about 0.28 to 0.35 over 60,000 ticks and danger deaths rise to as many as 100 to 170 per run (under 10 per 20,000 ticks), because the dead in a grove leave food for the next desperate bot. The founders all die of age together near tick 3000, which causes the first big dip.
 - Traits (M6): over 60,000 ticks the reproduction threshold falls from 80 to about 59 to 66 on every seed (breeding early pays), metabolism and sense radius wander around their founder values (about 0.8 to 1.1 and 4.2 to 6.7), and caution drifts down a little with little pressure. Are those the trait stories the user wants to watch, or should the costs be tuned to keep more variety?
 
 ## 11. Changelog
 
+- 2026-11-09: M7a built. Every death leaves a ruin (small decaying food node, no RNG, no log event, shared seek and eat path, nearby deaths merge, own count cap separate from the player's node cap); the player cannot place ruins but can remove them. `depleted` events are no longer logged (the fix for the crowded event buffer), so the Depleted filter is gone. New `World.eaten` totals (food eaten from resources and from ruins) feed a `ruin%` column in the survey and CLI. `NodeKind` gained `ruin`, `WorldNode` and `NodeDef` gained `decay`, `Tuning` gained `ruin`. The new tick phases and the extra food change every state hash, as expected. M7 split into M7a (ruin, built) and M7b (water, not started).
 - 2026-11-09: M6 built. Children inherit traits with a seeded, bounded mutation (`mutation` in `tuning.ts`). Tradeoffs added so no trait is best at an extreme: `senseDrain` (sight costs energy), `metabolismSpeed` (metabolism also scales walking speed), `birthCost` (the parent burns 20 energy per birth; this changes the old "transfer, not new energy" birth rule). Samples carry the population mean of each trait; new "Traits over time" and "Population traits" panels, inspector shows the difference from the population mean, survey and CLI print mean traits. The mutation draws (eight per child on the `birth` stream) and the new energy rules change every state hash, as expected. The Depleted event filter now starts off.
 - 2026-11-08: M4 and M5 built (MVP complete). Player commands with replay, toolbar (keys 1-6, Esc), inspector, hover ghost; stats strip, population and food chart with command markers, death causes, event log, reset with seed. Commands moved from `[LATER]` to built.
 - 2026-11-08: M2 and M3 built. Canvas view and loop, then danger, shelter, reproduction, age death and a tuned eden preset (survives 20,000 ticks on seeds a..j). Rules above moved from `[LATER]` to built.

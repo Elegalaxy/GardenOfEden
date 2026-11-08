@@ -12,9 +12,9 @@ import { findPreset, presets, rules } from '../content/index.ts'
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
-import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
+import { createWorld, totalDeaths, totalFood, totalRuinFood } from '../sim/world.ts'
 import type { World } from '../sim/types.ts'
-import { formatSurvey, surveySeed, traitCell } from './survey.ts'
+import { formatSurvey, ruinShareCell, surveySeed, traitCell } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
@@ -91,10 +91,12 @@ function row(world: World): string {
     danger,
     age,
     totalFood(world).toFixed(1),
+    totalRuinFood(world).toFixed(1),
     traitCell(traits, 'senseRadius'),
     traitCell(traits, 'caution'),
     traitCell(traits, 'reproThreshold'),
     traitCell(traits, 'metabolism'),
+    ruinShareCell(world.eaten),
   ]
   return cells.map((cell) => String(cell).padStart(8)).join('')
 }
@@ -127,7 +129,7 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'danger', 'age', 'food', 'sense', 'caution', 'reproAt', 'metab']
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'danger', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
       .map((cell) => cell.padStart(8))
       .join(''),
   )

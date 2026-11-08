@@ -1,6 +1,6 @@
-// The event log: newest first, filterable by type, scrollable. Depleted events
-// start hidden (they are frequent and drown out the rest); the Depleted button
-// turns them on. Clicking an entry selects the bot or node it is about in the
+// The event log: newest first, filterable by type, scrollable. It holds births,
+// deaths and your commands. (Resource depletions and ruins are not logged: they
+// were frequent enough to push everything else out of the buffer.) Clicking an entry selects the bot or node it is about in the
 // inspector. If that thing no longer exists (every death entry, a removed
 // node) the entry is marked "gone" and cannot be selected.
 //
@@ -24,10 +24,9 @@ const FILTERS: { type: SimEventType; label: string; glyph: string }[] = [
   { type: 'birth', label: 'Birth', glyph: '+' },
   { type: 'death', label: 'Death', glyph: '✕' },
   { type: 'command', label: 'Command', glyph: '▸' },
-  { type: 'depleted', label: 'Depleted', glyph: '○' },
 ]
-const GLYPH: Record<SimEventType, string> = { birth: '+', death: '✕', command: '▸', depleted: '○' }
-const TYPE_LABEL: Record<SimEventType, string> = { birth: 'Birth', death: 'Death', command: 'Command', depleted: 'Depleted' }
+const GLYPH: Record<SimEventType, string> = { birth: '+', death: '✕', command: '▸' }
+const TYPE_LABEL: Record<SimEventType, string> = { birth: 'Birth', death: 'Death', command: 'Command' }
 
 /** What a log entry is about, when the player could select it. */
 function targetOf(event: SimEvent): Selection | null {
@@ -47,8 +46,6 @@ function describe(event: SimEvent): string {
       return `Bot #${event.botId} born at ${where}`
     case 'death':
       return `Bot #${event.botId} died: ${CAUSE_LABEL[event.cause ?? 'starve'].toLowerCase()}, at ${where}`
-    case 'depleted':
-      return `Resource #${event.nodeId} ran out at ${where}`
     case 'command': {
       const name = commandName(event.command ?? 'placeNode', event.nodeKind)
       const subject = event.botId !== undefined ? `bot #${event.botId}` : `${event.nodeKind === undefined ? 'node' : KIND_LABEL[event.nodeKind]} #${event.nodeId}`
@@ -113,10 +110,9 @@ export function EventLog() {
     birth: true,
     death: true,
     command: true,
-    depleted: false, // off by default: depletions would drown out births, deaths and commands
   })
 
-  const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0, depleted: 0 }
+  const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0 }
   for (const event of world.log) counts[event.type] += 1
 
   const selectedKey = selection === null ? '' : `${selection.kind}:${selection.id}`
@@ -143,7 +139,7 @@ export function EventLog() {
         ))}
       </div>
       {world.log.length === 0 ? (
-        <p className="empty">No events yet. Births, deaths, empty resources and your commands appear here.</p>
+        <p className="empty">No events yet. Births, deaths and your commands appear here.</p>
       ) : list.matching === 0 ? (
         <p className="empty">No events match these filters. Turn a filter back on above.</p>
       ) : (

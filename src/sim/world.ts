@@ -44,6 +44,7 @@ export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: 
     damage: def.damage,
     heal: def.heal,
     drainMult: def.drainMult,
+    decay: def.decay,
   }
 }
 
@@ -76,6 +77,24 @@ export function totalFood(world: World): number {
     if (node.kind === 'resource') total += node.amount
   }
   return total
+}
+
+/** Sum of every ruin's current amount (kept apart from `totalFood`, which counts resources only). */
+export function totalRuinFood(world: World): number {
+  let total = 0
+  for (const node of world.nodes) {
+    if (node.kind === 'ruin') total += node.amount
+  }
+  return total
+}
+
+/** Nodes the player counts against `player.maxNodes`: everything except ruins. */
+export function placedNodeCount(world: World): number {
+  let count = 0
+  for (const node of world.nodes) {
+    if (node.kind !== 'ruin') count += 1
+  }
+  return count
 }
 
 /** Append to the event log, keeping only the newest `logCap` events. */
@@ -117,6 +136,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     log: [],
     commands: [],
     deathsByCause: { starve: 0, danger: 0, age: 0 },
+    eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
   }
   const stream = world.rng.world

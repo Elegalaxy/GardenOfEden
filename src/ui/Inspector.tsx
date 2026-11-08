@@ -78,6 +78,12 @@ function botsInside(world: World, node: WorldNode): number {
   return count
 }
 
+/** Ticks until a ruin has decayed away if nobody eats it. */
+function ruinTimeLeft(node: WorldNode): string {
+  if (node.decay <= 0) return 'does not decay'
+  return `about ${Math.ceil(node.amount / node.decay).toLocaleString('en-US')} ticks`
+}
+
 function SelectButton({ target, children }: { target: Selection; children: ReactNode }) {
   return (
     <button type="button" className="link-button" onClick={() => select(target)}>
@@ -154,6 +160,13 @@ function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
           <>
             <Meter label="Amount" value={node.amount} max={node.capacity} low={node.amount <= 0} />
             <Row label="Regrowth">+{fixed2(node.regen)} / tick</Row>
+          </>
+        )}
+        {node.kind === 'ruin' && (
+          <>
+            <Meter label="Amount" value={node.amount} max={node.capacity} low={false} />
+            <Row label="Decay">&minus;{fixed2(node.decay)} / tick</Row>
+            <Row label="Time left">{ruinTimeLeft(node)}</Row>
           </>
         )}
         {node.kind === 'danger' && <Row label="Damage">{fixed1(node.damage)} health / tick</Row>}

@@ -4,9 +4,9 @@
 import type { CommandType, DeathCause, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
 
-export const KIND_LABEL: Record<NodeKind, string> = { resource: 'resource', danger: 'danger', shelter: 'shelter' }
+export const KIND_LABEL: Record<NodeKind, string> = { resource: 'resource', danger: 'danger', shelter: 'shelter', ruin: 'ruin' }
 
-export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S' }
+export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U' }
 
 export const CAUSE_LABEL: Record<DeathCause, string> = { starve: 'Starved', danger: 'Danger', age: 'Old age' }
 
@@ -19,7 +19,7 @@ export const INTENT_LABEL: Record<IntentKind, string> = {
 }
 
 /** One letter for a chart marker: R, D, S for a placed node of that kind, B for a bot, X for a removal. */
-export function commandLetter(command: CommandType, nodeKind?: 'resource' | 'danger' | 'shelter'): string {
+export function commandLetter(command: CommandType, nodeKind?: NodeKind): string {
   if (command === 'placeBot') return 'B'
   if (command === 'removeNode') return 'X'
   return nodeKind === undefined ? '+' : KIND_LETTER[nodeKind]
