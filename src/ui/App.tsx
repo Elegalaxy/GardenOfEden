@@ -4,11 +4,10 @@ import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
-import { RunPanel } from './RunPanel.tsx'
-import { SavePanel } from './SavePanel.tsx'
+import { RunMenu } from './RunMenu.tsx'
 import { SpeedControls } from './SpeedControls.tsx'
 import { StatsStrip } from './StatsStrip.tsx'
-import { Toolbar } from './Toolbar.tsx'
+import { ToolStatus, Toolbar } from './Toolbar.tsx'
 import { TraitChart } from './TraitChart.tsx'
 import { TraitSummary } from './TraitSummary.tsx'
 import { WorldCanvas } from './WorldCanvas.tsx'
@@ -22,7 +21,7 @@ import './panels.css'
 
 function Legend() {
   return (
-    <ul className="legend" aria-label="Map key">
+    <ul className="panel legend" aria-label="Map key">
       <li>
         <span className="key key-resource" aria-hidden="true">R</span> Resource
         <span className="legend-note">ring shows what is left</span>
@@ -59,22 +58,21 @@ function Legend() {
   )
 }
 
-/** Shown under the map when nobody is alive: at the very start, or after everyone died. */
+/** A note over the bottom edge of the map when nobody is alive: at the very start, or after everyone died. */
 function EmptyWorld() {
   const { population, births, deaths, tick } = useWorldStore()
   if (population > 0) return null
   const addBot = toolInfo('bot')
   const fresh = births === 0 && deaths === 0
   return (
-    <p className="empty banner" role="status">
+    <p className="empty map-note" role="status">
       {fresh ? (
         <>
           No bots yet. Pick <strong>{addBot.label} ({addBot.key})</strong> and click the map.
         </>
       ) : (
         <>
-          Everyone is gone (tick {tick}). Pick <strong>{addBot.label} ({addBot.key})</strong> and click the map to start a new
-          line, or start a new world above.
+          Everyone is gone (tick {tick}). Pick <strong>{addBot.label} ({addBot.key})</strong>, click the map, or start a new world.
         </>
       )}
     </p>
@@ -90,22 +88,29 @@ export default function App() {
       <div className="layout">
         <header className="app-header">
           <h1>Garden of Eden</h1>
-          <RunPanel />
+          <RunMenu />
         </header>
-        <SavePanel />
-        <StatsStrip />
         <div className="workspace">
+          <div className="area-stats">
+            <StatsStrip />
+          </div>
           <div className="area-speed">
             <SpeedControls />
           </div>
           <div className="area-tools">
             <Toolbar />
           </div>
-          <section className="panel map-panel area-map">
-            <WorldCanvas />
-            <EmptyWorld />
-            <Legend />
+          <section className="area-map" aria-label="Map">
+            <WorldCanvas>
+              <EmptyWorld />
+            </WorldCanvas>
           </section>
+          <div className="area-status">
+            <ToolStatus />
+          </div>
+          <div className="area-legend">
+            <Legend />
+          </div>
           <div className="area-events">
             <EventsPanel />
           </div>

@@ -102,3 +102,20 @@ export function formatTrait(name: TraitName, value: number): string {
       return text
   }
 }
+
+/**
+ * The first of `candidates` (write them longest first) whose width, by `measure`, fits in `maxWidth`; null when
+ * none does, so the caller can leave the label out instead of letting it spill over its shape.
+ */
+export function fitLabel(candidates: readonly string[], maxWidth: number, measure: (text: string) => number): string | null {
+  for (const text of candidates) {
+    if (measure(text) <= maxWidth) return text
+  }
+  return null
+}
+
+/** Width of the chord of a circle of radius `r` at `dy` from its centre (0 when `dy` is outside the circle). */
+export function chordWidth(r: number, dy: number): number {
+  const d = Math.abs(dy)
+  return d >= r ? 0 : 2 * Math.sqrt(r * r - d * d)
+}

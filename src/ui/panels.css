@@ -1,13 +1,128 @@
 /* Panels added in M4 (tools, inspector) and M5 (chart, log, deaths, run panel).
    Same tokens as styles.css. Loaded after it. */
 
-/* Header and run panel */
+/* Header: the title, a one-line run summary and the Run & save button. The menu and the
+   toast are positioned against the header (the menu root is display: contents), so they
+   float over the page and never push the map down. */
 .app-header {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+}
+
+.app-header h1 {
+  flex: none;
+}
+
+.run-menu-root {
+  display: contents;
+}
+
+.run-summary {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-toggle {
+  flex: none;
+}
+
+/* A phone: the title may wrap to two lines rather than push the button off the screen, and the
+   summary (also in the menu) goes once there is no room for it. */
+@media (max-width: 640px) {
+  .app-header {
+    gap: 8px;
+  }
+
+  .app-header h1 {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .run-summary {
+    display: none;
+  }
+
+  .run-toggle {
+    padding-inline: 10px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 640px) {
+  .run-summary {
+    display: block;
+  }
+}
+
+.run-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(580px, 100%);
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+.run-menu[hidden] {
+  display: none;
+}
+
+.run-menu h2:not(:first-child) {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #2a3350;
+}
+
+.save-toast-slot {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  width: min(580px, 100%);
+  height: 0; /* the slot takes no room; the toast hangs from it */
+  pointer-events: none;
+}
+
+.save-toast {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 8px 24px;
+  gap: 12px;
+  padding: 6px 8px 6px 14px;
+  background: #0e1118;
+  border-width: 2px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+}
+
+.save-toast p {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.save-toast.save-ok {
+  border-color: #7ee787;
+}
+
+.save-toast.save-warn {
+  border-color: #ffd479;
+}
+
+.save-toast.save-error {
+  border-color: #ffb4a8;
 }
 
 .run-panel {
@@ -84,80 +199,163 @@
   gap: 8px;
 }
 
-/* Workspace: speed, tools, map and chart on the left; inspector, deaths and
-   log on the right. Narrow: one column, inspector right after the map. */
+/* Workspace. Narrow (a phone): one column with the map first, then what it says, the speed
+   controls and the tools, so everything to play with is within a thumb of the map; the
+   panels follow. 901px and up: the main column (stats, speed, tools, map, ...) beside a
+   360px side column (inspector, deaths, log). 1100px and up: the tools become a rail to the
+   left of the map. --map-chrome is how tall everything above and below the map is, so the
+   map (3:2, see .map-frame) is capped to fit the screen's height. */
 .workspace {
+  --map-chrome: 230px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
+  grid-template-areas:
+    'map'
+    'status'
+    'speed'
+    'tools'
+    'stats'
+    'inspector'
+    'legend'
+    'events'
+    'chart'
+    'deaths'
+    'log';
+  gap: 12px;
   align-items: start;
+}
+
+.area-stats {
+  grid-area: stats;
+}
+
+.area-speed {
+  grid-area: speed;
+}
+
+.area-tools {
+  grid-area: tools;
+}
+
+.area-map {
+  grid-area: map;
+}
+
+.area-status {
+  grid-area: status;
+}
+
+.area-legend {
+  grid-area: legend;
+}
+
+.area-events {
+  grid-area: events;
+  min-width: 0;
+}
+
+.area-chart {
+  display: grid;
+  grid-area: chart;
+  grid-template-columns: minmax(0, 1fr); /* a fixed-width chart must not stretch the column */
+  gap: 16px;
+  min-width: 0;
 }
 
 .area-side {
   display: contents;
 }
 
-.area-speed {
-  order: 1;
-}
-
-.area-tools {
-  order: 2;
-}
-
-.area-map {
-  order: 3;
-}
-
-.area-events {
-  min-width: 0;
-  order: 4;
-}
-
 .side-inspector {
-  order: 5;
-}
-
-.area-chart {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr); /* a fixed-width chart must not stretch the column */
-  gap: 16px;
-  min-width: 0;
-  order: 6;
+  grid-area: inspector;
 }
 
 .side-deaths {
-  order: 7;
+  grid-area: deaths;
 }
 
 .side-log {
-  order: 8;
+  grid-area: log;
 }
 
 @media (min-width: 901px) {
   .workspace {
+    --map-chrome: 430px;
     grid-template-columns: minmax(0, 1fr) 360px;
-  }
-
-  .area-speed,
-  .area-tools,
-  .area-map,
-  .area-events,
-  .area-chart {
-    grid-column: 1;
+    grid-template-areas:
+      'stats side'
+      'speed side'
+      'tools side'
+      'map side'
+      'status side'
+      'legend side'
+      'events side'
+      'chart side';
   }
 
   .area-side {
     display: grid;
-    gap: 16px;
-    grid-column: 2;
-    grid-row: 1 / span 5;
+    grid-area: side;
+    gap: 12px;
   }
 
   .side-inspector,
   .side-deaths,
   .side-log {
-    order: 0;
+    grid-area: auto;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1099px) {
+  /* The tools sit in a row above the map: tight buttons, so seven fit in two rows. */
+  .toolbar {
+    padding: 6px;
+  }
+
+  .toolbar .tool-group {
+    gap: 6px;
+  }
+
+  .toolbar .tool-button {
+    padding-inline: 8px;
+    gap: 6px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .workspace {
+    --map-chrome: 330px;
+    grid-template-columns: 190px minmax(0, 1fr) 360px;
+    grid-template-areas:
+      'stats stats side'
+      'speed speed side'
+      'tools map side'
+      'tools status side'
+      'legend legend side'
+      'events events side'
+      'chart chart side';
+  }
+
+  /* The tool rail: one tool per row, label and key on the same line. */
+  .toolbar {
+    padding: 6px;
+  }
+
+  .toolbar .tool-group {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  .toolbar .tool-button {
+    width: 100%;
+    justify-content: flex-start;
+    padding-inline: 8px;
+    gap: 6px;
+  }
+
+  .toolbar .tool-key {
+    margin-left: auto;
   }
 }
 
@@ -235,8 +433,17 @@ h4 {
   border-color: #b7becc;
 }
 
+/* Tool help under the map. It reserves the room of the longest hint and the longest notice,
+   so switching tools or placing things never moves anything. */
+.tool-status {
+  padding: 0 2px;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
 .tool-hint {
-  margin: 10px 0 0;
+  min-height: 2.8em; /* two lines */
+  margin: 0;
   color: var(--text);
 }
 
@@ -246,9 +453,8 @@ h4 {
 }
 
 .tool-notice {
-  min-height: 1.45em; /* reserved so a notice appearing never moves the map */
-  margin: 4px 0 0;
-  font-size: 0.9rem;
+  min-height: 2.8em; /* two lines: the longest notice, a meteor strike, is about 90 characters */
+  margin: 2px 0 0;
 }
 
 .notice-ok {
@@ -949,6 +1155,30 @@ button.log-button[aria-pressed='true'] {
   .legend-tick {
     margin-left: 0;
   }
+
+  /* Tool help: about 48 characters a line, so the longest hint takes four lines (three
+     without the Esc note, see below); the longest notice still takes two. */
+  .tool-status {
+    font-size: 0.85rem;
+  }
+
+  .tool-hint {
+    min-height: 5.6em;
+  }
+
+  .toolbar.panel {
+    padding: 8px;
+  }
+}
+
+@media (max-width: 640px) and (pointer: coarse) {
+  .tool-hint {
+    min-height: 4.2em;
+  }
+
+  .tool-hint-keys {
+    display: none; /* no Esc key on a touch screen */
+  }
 }
 
 /* World events (M8): the Events panel, its active list and the map banners. */
@@ -1098,11 +1328,11 @@ button.log-button[aria-pressed='true'] {
 
 .map-banners {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  right: 6px;
-  display: grid;
-  justify-items: start;
+  top: 4px;
+  left: 4px;
+  right: 4px;
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 0;
   padding: 0;
@@ -1112,16 +1342,17 @@ button.log-button[aria-pressed='true'] {
 
 .map-banner {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 2px 8px;
+  gap: 6px;
   max-width: 100%;
-  padding: 3px 8px;
+  padding: 1px 8px 1px 4px;
   color: var(--text-strong);
-  font-size: 0.8rem;
-  background: rgba(14, 17, 24, 0.9);
-  border: 2px solid var(--text-muted);
-  border-radius: 6px;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  white-space: nowrap; /* one line: a chip, not a box */
+  background: rgba(14, 17, 24, 0.88);
+  border: 1.5px solid var(--text-muted);
+  border-radius: 999px;
 }
 
 .banner-drought {
@@ -1136,17 +1367,46 @@ button.log-button[aria-pressed='true'] {
 
 .banner-letter {
   display: inline-grid;
+  flex: none;
   place-items: center;
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   border: 1.5px solid currentColor;
   border-radius: 50%;
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   font-weight: 700;
 }
 
 .banner-effect {
   color: var(--text-muted);
+}
+
+/* A small map (a phone, or a narrow column) keeps the chip to the name and the ticks left;
+   the Events panel has the effect. */
+@container (max-width: 559px) {
+  .banner-effect {
+    display: none;
+  }
+
+  .map-banner {
+    font-size: 0.72rem;
+  }
+}
+
+/* Shown over the bottom edge of the map while nobody is alive. */
+.map-note {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  left: 6px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: center;
+  background: rgba(14, 17, 24, 0.9);
+  border: 1px dashed var(--panel-border);
+  border-radius: 6px;
+  pointer-events: none;
 }
 
 @media (min-width: 801px) and (max-width: 900px), (min-width: 1200px) {
@@ -1159,18 +1419,10 @@ button.log-button[aria-pressed='true'] {
   .event-card {
     padding: 8px;
   }
-
-  .map-banner {
-    font-size: 0.72rem;
-  }
-
-  .banner-effect {
-    display: none; /* the strip over a phone-sized map stays short; the Events panel has the effect */
-  }
 }
 
-/* Save and load (M9): one row of buttons (or, while loading, the progress bar and
-   Cancel, the same height), then a status line that reserves two lines. */
+/* Save and load (M9), inside the Run & save menu: one row of buttons (or, while loading,
+   the progress bar and Cancel, the same height), then a status line. */
 .save-panel {
   display: grid;
   gap: 8px;
@@ -1219,7 +1471,7 @@ button.log-button[aria-pressed='true'] {
 }
 
 .save-status {
-  min-height: 2.9em; /* two lines, reserved so a notice appearing never moves the page */
+  min-height: 1.45em;
   margin: 0;
   font-size: 0.9rem;
   overflow-wrap: anywhere;
@@ -1248,10 +1500,6 @@ button.log-button[aria-pressed='true'] {
 }
 
 @media (max-width: 640px) {
-  .save-status {
-    min-height: 5.8em; /* four lines on a phone */
-  }
-
   .save-progress {
     flex-wrap: wrap;
   }

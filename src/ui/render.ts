@@ -17,7 +17,7 @@
 // refused).
 //
 // World events (M8): a plague zone is a hatched disc with a dashed ring and the
-// label "P PLAGUE" with the ticks left; a meteor crater is a danger zone drawn in
+// label "P PLAGUE" with the ticks left (shortened, or left out, when the zone is small); a meteor crater is a danger zone drawn in
 // the meteor colour with an M instead of a D, and for its first moments an
 // expanding ring shows the impact. The global events (drought, bounty) are
 // banners over the map, in WorldCanvas.
@@ -25,6 +25,7 @@
 import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { botPosition, findBot, findNode } from './geometry.ts'
 import type { Layout } from './geometry.ts'
+import { chordWidth, fitLabel } from './labels.ts'
 import type { Selection } from './tools.ts'
 
 export type Size = { width: number; height: number }
@@ -283,7 +284,14 @@ function drawPlague(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: num
   ctx.setLineDash([3, 5])
   ctx.stroke()
   ctx.restore()
-  drawOutlinedLabel(ctx, `P PLAGUE ${Math.max(0, event.endTick - tick)}`, cx, cy - r + Math.max(12, layout.scale * 1.2), layout.scale * 1.15)
+  // The label sits near the top of the disc. It shrinks (P PLAGUE 800, then P 800, then P) to the width of the
+  // disc at that height, and is left out when even the letter would spill over a tiny zone.
+  const left = Math.max(0, event.endTick - tick)
+  const labelY = cy - r + Math.max(12, layout.scale * 1.2)
+  const labelPx = Math.max(10, Math.round(layout.scale * 1.15))
+  ctx.font = `700 ${labelPx}px "Segoe UI", system-ui, sans-serif`
+  const text = fitLabel([`P PLAGUE ${left}`, `P ${left}`, 'P'], chordWidth(r, labelY - cy) - 8, (t) => ctx.measureText(t).width)
+  if (text !== null) drawOutlinedLabel(ctx, text, cx, labelY, labelPx)
 }
 
 /** The impact of a fresh meteor: a ring that grows to the impact radius and fades. `age` is the crater's age in ticks. */

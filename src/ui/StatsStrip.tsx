@@ -19,7 +19,9 @@ function Tile({ label, value, detail }: { label: string; value: string; detail?:
     <div className="tile">
       <dt>{label}</dt>
       <dd className="figure">{value}</dd>
-      <p className="tile-detail figure">{detail ?? ' '}</p>
+      <p className="tile-detail figure" title={detail}>
+        {detail ?? ' '}
+      </p>
     </div>
   )
 }
@@ -39,7 +41,7 @@ export function StatsStrip() {
   const deathRate = ratePer(world.samples, current, 'deaths', minuteTicks, minuteTicks, sampleEvery)
   const rate = (value: number | null): string => (value === null ? '—' : rateFormat.format(value))
   return (
-    <section className="panel" aria-label="Society">
+    <section className="panel stats-panel" aria-label="Society">
       <dl className="tiles">
         <Tile label="Tick" value={numberFormat.format(tick)} detail={`1 min = ${numberFormat.format(minuteTicks)} ticks`} />
         <Tile

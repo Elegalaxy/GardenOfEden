@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, commandLetter, commandName, eventSubject } from './labels.ts'
+import { CAUSE_LABEL, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, chordWidth, commandLetter, commandName, eventSubject, fitLabel } from './labels.ts'
 import { NODE_LETTER } from './render.ts'
 
 const KINDS: NodeKind[] = ['resource', 'danger', 'shelter', 'ruin', 'water']
@@ -53,5 +53,31 @@ describe('labels', () => {
     expect(commandName('triggerEvent', undefined, 'drought')).toBe('trigger drought')
     expect(EVENT_LABEL.meteor).toBe('Meteor')
     expect(eventSubject({ tick: 5, type: 'event', eventKind: 'plague', x: 0, y: 0 })).toBe('Plague')
+  })
+})
+
+describe('fitLabel', () => {
+  const measure = (text: string): number => text.length * 7
+
+  it('takes the longest candidate that fits', () => {
+    const candidates = ['P PLAGUE 800', 'P 800', 'P']
+    expect(fitLabel(candidates, 100, measure)).toBe('P PLAGUE 800')
+    expect(fitLabel(candidates, 40, measure)).toBe('P 800')
+    expect(fitLabel(candidates, 8, measure)).toBe('P')
+  })
+
+  it('returns null when nothing fits, so the label is left out', () => {
+    expect(fitLabel(['P PLAGUE 800', 'P'], 5, measure)).toBeNull()
+    expect(fitLabel([], 100, measure)).toBeNull()
+  })
+})
+
+describe('chordWidth', () => {
+  it('is the diameter through the centre and shrinks toward the edge', () => {
+    expect(chordWidth(10, 0)).toBe(20)
+    expect(chordWidth(10, 6)).toBeCloseTo(16)
+    expect(chordWidth(10, -6)).toBeCloseTo(16)
+    expect(chordWidth(10, 10)).toBe(0)
+    expect(chordWidth(10, 12)).toBe(0)
   })
 })

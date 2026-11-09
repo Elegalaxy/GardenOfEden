@@ -7,11 +7,12 @@
 // placement tool would add. For keyboard users the canvas takes focus: arrow
 // keys move a cursor cell (Shift moves 4), Enter or Space acts like a click.
 //
-// Global world events in progress (drought, bounty) are listed as banners in the
-// top-left corner of the map: a letter badge, the name, the ticks left and what
+// Global world events in progress (drought, bounty) are small chips along the top
+// edge of the map: a letter badge, the name, the ticks left and, on a wide map, what
 // they do, in text. Area events are drawn on the map itself (render.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { rules, tuning } from '../content/index.ts'
 import { checkCommand } from '../sim/commands.ts'
 import type { Command } from '../sim/types.ts'
@@ -46,7 +47,8 @@ function placementAt(tool: Tool, cell: Cell): Command | null {
   }
 }
 
-export function WorldCanvas() {
+/** `children` are drawn over the map (the empty-world note), inside its frame. */
+export function WorldCanvas({ children }: { children?: ReactNode }) {
   const snapshot = useWorldStore()
   const wrapRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -199,6 +201,7 @@ export function WorldCanvas() {
           ))}
         </ul>
       )}
+      {children}
     </div>
   )
 }

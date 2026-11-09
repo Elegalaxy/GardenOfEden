@@ -4,8 +4,9 @@
 //   Copy share link    puts the run in the address-bar fragment (capped; long runs use a file)
 //   Resume last run    the browser keeps the latest run automatically (autosave.ts)
 // A load replays the run in slices with a progress bar and a Cancel button, and the old
-// run stays until the new one is complete. The row of buttons and the progress row take
-// the same height, and the status line below reserves two lines, so nothing moves.
+// run stays until the new one is complete. It lives in the header's Run & save menu
+// (RunMenu.tsx), which also shows results when it is closed. The row of buttons and the
+// progress row take the same height, so the menu does not jump while a load runs.
 // Everything read from a file is untrusted: it goes through `decodeSave`, and the seed
 // and other text are only ever rendered as text.
 
@@ -113,7 +114,7 @@ export function SavePanel() {
   const saved = autosave.saved
 
   return (
-    <section className="panel save-panel" aria-label="Save and load">
+    <section className="save-panel" aria-label="Save and load">
       <input
         ref={fileInput}
         id={fileId}

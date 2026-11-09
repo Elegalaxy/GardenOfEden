@@ -20,7 +20,7 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import { tuning } from '../content/index.ts'
 import type { Command, Sample, SimEvent, TimedEventKind, World } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
-import { compact, eventBands, nearestIndex, niceMax, thin } from './chartMath.ts'
+import { compact, eventBands, nearestIndex, niceMax, thin, xAxisTicks } from './chartMath.ts'
 import type { EventBand } from './chartMath.ts'
 import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
 import { useWorldStore } from './store.ts'
@@ -212,7 +212,8 @@ export function PopulationChart() {
     setHoverTick(points[next]?.tick ?? null)
   }
 
-  const xTicks = Array.from({ length: 5 }, (_, i) => Math.round(x0 + (xSpan * i) / 4))
+  // As many round ticks as fit the plot width without their labels touching (fewer, or abbreviated, on a phone).
+  const xTicks = xAxisTicks(x0, x1, plotWidth, { padLeft: MARGIN.left - 4, padRight: MARGIN.right - 4 })
   const tooltipOnLeft = hoverX !== null && hoverX > MARGIN.left + plotWidth / 2
 
   return (
@@ -293,15 +294,9 @@ export function PopulationChart() {
                 </g>
               )
             })}
-            {xTicks.map((t, i) => (
-              <text
-                key={i}
-                x={px(t)}
-                y={HEIGHT - 8}
-                textAnchor={i === 0 ? 'start' : i === xTicks.length - 1 ? 'end' : 'middle'}
-                className="axis-text"
-              >
-                {compact(t)}
+            {xTicks.map((tick) => (
+              <text key={tick.value} x={px(tick.value)} y={HEIGHT - 8} textAnchor="middle" className="axis-text x-tick">
+                {tick.label}
               </text>
             ))}
             {visibleBands.map((band, index) => {

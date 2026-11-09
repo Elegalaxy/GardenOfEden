@@ -1,18 +1,19 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer, M9)
-- **Current Goal:** Garden of Eden M0 to M9 are built (MVP plus trait inheritance, ruins, water and thirst, world events, save and load). M9 is implemented and verified but not committed (the lead commits and pushes).
-- **Recent Changes (M9, save and load):**
-  - `src/persist/save.ts` (+ test): versioned save `{version, seed, presetId, tick, hash, commands}`, `encodeSave`, `decodeSave` / `validateSave` (strict, typed `SaveError`, never throws), `makeSave`, `saveFileName`. `share.ts` (+ test): base64url link in `#run=`, cap 12,000 chars. `autosave.ts` (+ test): read/write/clear through an injected storage.
-  - `src/ui/replayJob.ts`: replay in slices (same result as `replayWorld`). `store.ts`: `presetId`, `runId`, `saveNotice`, `load` progress in the snapshot; `exportSave`, `startLoad` (promise; swaps the world in only when complete, paused, hash check with warning), `cancelLoad`, `reportSave`. While loading, `advance`, `dispatch`, tools and `resetWorld` are blocked.
-  - `src/ui/SavePanel.tsx` (save file, load file with confirm if the run has commands, copy link with manual-copy fallback, resume and clear autosave, progress and cancel), `autosave.ts` (throttled writer), `shareLink.ts` (loads `#run=` at start and on `hashchange`, then strips the fragment), `download.ts`; `App.tsx`, `RunPanel.tsx` (restart disabled while loading), `panels.css`.
-  - Tests: `tests/save.test.ts` (replay hash equals live run with events and placements, chunked equals one-shot, link roundtrip, kind lists match content), `src/ui/loadRun.test.ts` (load success, hash warning, failure keeps old run, cancel, blocked while loading).
-  - Docs: `doc/GAME_DESIGN.md` (section 8 item 4 save format, M9 row, changelog, open question), `CLAUDE.md`, `../docs/ideas/garden-of-eden.md`.
+- **Last Updated By:** Claude (implementer)
+- **Current Goal:** Garden of Eden MVP plus M6 to M9 are built (traits, ruins, water, world events, save/load). The UI layout polish stage is done and awaiting the lead's verify, commit and push. No sim change: `src/sim`, `src/content` and every state hash are untouched (the 3-seed survey is byte-identical).
+- **Recent Changes (UI layout polish, all in `src/ui` plus docs):**
+  - `RunMenu.tsx` (new): header "Run & save" disclosure holding `RunPanel` (seed form, `onStarted` closes the menu) and `SavePanel` (no longer a full-width panel). Floating over the page, closed by default, Esc / outside click / button close it, forced open while a load runs, results shown as a toast when shut (success fades after 6 s, warn/error stay until dismissed).
+  - `App.tsx` / `panels.css` / `styles.css`: `.workspace` is a named-area grid (phone: map, status, speed, tools, stats, panels; 901px: main + 360px side; 1100px: tool rail left of the map). Stats strip is one slim row. Map width is capped by `--map-chrome` so it fits the screen height; phone map is edge to edge. Legend moved into its own panel area; `EmptyWorld` is now a chip over the map (`WorldCanvas` takes children).
+  - `Toolbar.tsx`: split into `Toolbar` (buttons, keys) and `ToolStatus` (hint + notice, under the map, reserved height) so switching tools or placing never moves anything.
+  - Map event banners are one-line chips (effect text hidden below 560px via a container query); `render.ts` plague label shrinks via `fitLabel`/`chordWidth` (`labels.ts`) or hides on a tiny zone.
+  - `chartMath.ts`: `xAxisTicks` and `tickLabel` choose x-axis ticks from the plot width (tests in `chartMath.test.ts`); `PopulationChart.tsx` uses them. Trait mini charts have no x labels.
+  - Docs: `CLAUDE.md` (UI layout rules), `doc/GAME_DESIGN.md` (section 7 item 5, changelog), `../docs/ideas/garden-of-eden.md` changelog.
 - **Active Decisions / Constraints:**
-  - A save is seed + preset + commands + tick + hash; no sim code changed, so no run hash changed. A bigger `version` is refused; add an `upgradeSave` step when the format changes. Command key order is part of the hash, so the decoder rebuilds commands in the sim's order.
-  - Share links are capped (12,000 chars, about 150 commands); longer runs use the file. A link loads without confirmation; file and resume loads confirm only when the current run has commands.
-  - Autosave only runs for a run with a command or one started on purpose (restart or load), so opening the page never overwrites the last real run. Clear suspends autosave until the run changes.
-  - Replay speed is about 4,000 ticks per second; a 60,000-tick load takes about 15 s with a cancel button.
+  - `--map-chrome` (per breakpoint in `panels.css`) must be updated if rows above or below the map change. Map frame uses `box-shadow`, not a border (the canvas must fill the measured box).
+  - Everything that changes while playing must reserve its height or float (hint, notice, toast, menu, chips, empty note). Buttons stay at 44px or more on every layout; nothing was shrunk.
+  - Hint text for Esc is hidden only on `(max-width: 640px) and (pointer: coarse)`; the keys still work.
+  - Sticky map was considered and left out (the first screen already holds map, controls, tools). Layout max-width is still 1280px.
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** Compressed share links (async `CompressionStream`)? Keep pause or speed in a save? Simulation version in a save so the hash warning can say which side is newer? Earlier: `depleted` events no longer logged (done in M7a); eden numbers still await a feel check.
-- **Exact Next Step:** The lead verifies and commits M9. The frame loop and the live autosave throttle were not seen running (the built-in browser pane does not fire animation frames), so open the app in a visible browser, play a minute, reload and try Resume last run. Then pick the next milestone with the user.
+- **Open Questions for the user:** Tile detail lines (for example "+1,234 in ruins") truncate with an ellipsis (full text in the tooltip) once numbers get large in the one-row stats strip. Eden preset feel check and the older log question still stand.
+- **Exact Next Step:** The lead verifies (`npm test`, lint, typecheck, build), commits and pushes the UI polish, then re-checks the deployed site at 1280x800 and on a phone. After that, pick the next stage with the user.

@@ -1,7 +1,7 @@
 // Arithmetic for the population chart, kept apart from the drawing so it can
 // be tested: round axis ends, thinning a long series to the pixels available,
-// finding the point or marker nearest the pointer, and the shaded bands for timed
-// world events. All pure.
+// finding the point or marker nearest the pointer, choosing x-axis ticks that fit the
+// width without their labels touching, and the shaded bands for timed world events. All pure.
 
 import type { Command, TimedEventKind } from '../sim/types.ts'
 
@@ -48,6 +48,74 @@ export function nearestIndex(ticks: readonly number[], tick: number): number {
 export function compact(value: number): string {
   if (Math.abs(value) >= 10_000) return `${Math.round(value / 100) / 10}k`
   return String(Math.round(value))
+}
+
+/** A tick number as an axis label: plain ("5000") or abbreviated from 1000 up ("5k", "1.2k"). */
+export function tickLabel(value: number, abbreviate: boolean): string {
+  if (abbreviate && Math.abs(value) >= 1000) return `${Math.round(value / 100) / 10}k`
+  return compact(value)
+}
+
+/** Round steps (1, 2, 2.5 and 5 times a power of ten) from `low` up to `high`, smallest first. */
+function niceSteps(low: number, high: number): number[] {
+  const steps: number[] = []
+  for (let magnitude = 10 ** Math.floor(Math.log10(Math.max(low, 1e-9))); magnitude <= high * 10; magnitude *= 10) {
+    for (const factor of [1, 2, 2.5, 5]) {
+      const step = factor * magnitude
+      if (step >= low && step <= high) steps.push(step)
+    }
+  }
+  return steps
+}
+
+export type AxisTick = { value: number; label: string }
+
+export type AxisTickOptions = {
+  /** Estimated width of one character of the axis font, in pixels. */
+  charPx?: number
+  /** Smallest empty space between two neighbouring labels. */
+  gapPx?: number
+  /** Room the first and the last label may use outside the plot (the chart margins). */
+  padLeft?: number
+  padRight?: number
+}
+
+/**
+ * Round tick values for the x axis of a plot `plotWidth` pixels wide that shows ticks `x0` to `x1`.
+ * It looks for a round step that gives two to five ticks, smallest step (most ticks) first, and takes the first
+ * whose labels do not touch (each label is centred on its tick and `charPx` wide per character, with `gapPx`
+ * between neighbours); each step is tried with plain numbers first, then abbreviated ("5k"). Labels that would
+ * repeat are never used. When nothing fits it returns the single last tick, so a very narrow chart drops labels
+ * instead of overlapping them.
+ */
+export function xAxisTicks(x0: number, x1: number, plotWidth: number, options: AxisTickOptions = {}): AxisTick[] {
+  const { charPx = 6.6, gapPx = 10, padLeft = 16, padRight = 16 } = options
+  const span = x1 - x0
+  const last: AxisTick = { value: x1, label: tickLabel(x1, true) }
+  if (!(span > 0) || !(plotWidth > 0)) return [last]
+  const at = (value: number): number => ((value - x0) / span) * plotWidth
+
+  // The smallest round step that gives between two and five ticks and whose labels fit, so the most ticks that fit.
+  for (const step of niceSteps(span / 5, span)) {
+    const values: number[] = []
+    for (let v = Math.ceil(x0 / step) * step; v <= x1 + 1e-9; v += step) values.push(Math.round(v))
+    if (values.length < 2 || values.length > 5) continue
+    for (const abbreviate of [false, true]) {
+      const labels = values.map((v) => tickLabel(v, abbreviate))
+      if (new Set(labels).size !== labels.length) continue
+      let ok = true
+      let previousEnd = -Infinity
+      for (let i = 0; i < values.length && ok; i += 1) {
+        const half = (labels[i]!.length * charPx) / 2
+        const left = at(values[i]!) - half
+        const right = at(values[i]!) + half
+        if (left < -padLeft || right > plotWidth + padRight || left - previousEnd < gapPx) ok = false
+        previousEnd = right
+      }
+      if (ok) return values.map((value, i) => ({ value, label: labels[i]! }))
+    }
+  }
+  return [last]
 }
 
 /** The stretch of a run in which a timed world event (drought, bounty, plague) was in force. */

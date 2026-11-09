@@ -1,7 +1,8 @@
 // The player's tools. One is active at a time (aria-pressed, a filled background
-// with an underline bar, and the line below names it; not colour alone). Keys 1-7 pick a tool and Esc goes back to
-// inspect; the keys are ignored while typing in a field. The line under the
-// buttons says what the active tool does and what the last click did.
+// with an underline bar, and the status line names it; not colour alone). Keys 1-7 pick a tool and Esc goes back to
+// inspect; the keys are ignored while typing in a field. `ToolStatus` (under the map, not
+// above it) says what the active tool does and what the last click did; it reserves the
+// room of its longest text, so switching tools or placing things never moves the page.
 // The world-event keys live here too: P and M arm the plague and meteor tools (like a
 // tool key), D and B fire a drought or a bounty at once (a refused one just says why).
 
@@ -52,7 +53,7 @@ function ToolBadge({ id }: { id: Tool }) {
 }
 
 export function Toolbar() {
-  const { tool, notice } = useWorldStore()
+  const { tool } = useWorldStore()
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -72,7 +73,6 @@ export function Toolbar() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  const active = toolInfo(tool)
   return (
     <section className="panel toolbar" aria-label="Tools">
       <div className="tool-group" role="group" aria-label="Tool">
@@ -91,6 +91,16 @@ export function Toolbar() {
           </button>
         ))}
       </div>
+    </section>
+  )
+}
+
+/** What the active tool does and what the last click did. Fixed height: see `.tool-status` in panels.css. */
+export function ToolStatus() {
+  const { tool, notice } = useWorldStore()
+  const active = toolInfo(tool)
+  return (
+    <section className="tool-status" aria-label="Tool help">
       <p className="tool-hint">
         <strong>{active.label}.</strong> {active.hint} <span className="tool-hint-keys">Esc returns to Inspect.</span>
       </p>

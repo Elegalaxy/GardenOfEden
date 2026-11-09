@@ -1,13 +1,14 @@
 // Start a new world: a seed field and one button. Same seed plus the same
 // commands always gives the same world, so restarting a seed is how you run a
 // control. If the current run holds player commands, the button first asks
-// before throwing them away.
+// before throwing them away. It lives in the header's Run & save menu; `onStarted` lets
+// the menu close once a new world is running.
 
 import { useId, useState } from 'react'
 import { DEFAULT_SEED, isValidSeed, resetWorld, useWorldStore } from './store.ts'
 
-export function RunPanel() {
-  const { seed, commandCount, tick, load } = useWorldStore()
+export function RunPanel({ onStarted }: { onStarted?: () => void }) {
+  const { seed, commandCount, load } = useWorldStore()
   const [draft, setDraft] = useState(seed || DEFAULT_SEED)
   const [confirming, setConfirming] = useState(false)
   const inputId = useId()
@@ -16,7 +17,10 @@ export function RunPanel() {
   const valid = isValidSeed(draft)
   const same = draft === seed
   const start = (): void => {
-    if (resetWorld(draft)) setConfirming(false)
+    if (resetWorld(draft)) {
+      setConfirming(false)
+      onStarted?.()
+    }
   }
   const onSubmit = (): void => {
     if (!valid) return
@@ -56,7 +60,7 @@ export function RunPanel() {
       </form>
       <p id={hintId} className={valid ? 'run-hint' : 'run-hint run-hint-error'}>
         {valid
-          ? `Running seed "${seed}" at tick ${tick}. ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
+          ? `Running seed "${seed}". ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
           : 'A seed is 1 to 32 letters, digits or dashes.'}
       </p>
       {confirming && (
