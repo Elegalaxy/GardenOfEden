@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { chooseFood, chooseWater, insideDanger, nearestKnown, perceive, remember } from './perception.ts'
+import { chooseFood, chooseWater, insideDanger, nearestKnown, perceive, remember, trimMemory } from './perception.ts'
 import { createRng } from './rng.ts'
 import type { Bot, MemoryEntry, Tuning, World, WorldNode } from './types.ts'
 
@@ -32,6 +32,7 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     events: [],
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
+    familyLearned: 0,
   }
 }
 
@@ -57,7 +58,7 @@ function botAt(x: number, memory: MemoryEntry[] = []): Bot {
 }
 
 function entry(nodeId: number, kind: MemoryEntry['kind'], x: number, over: Partial<MemoryEntry> = {}): MemoryEntry {
-  return { nodeId, kind, x, y: 10, radius: 2, seenTick: 1, amount: 100, ...over }
+  return { nodeId, kind, x, y: 10, radius: 2, seenTick: 1, amount: 100, learnedFrom: null, ...over }
 }
 
 describe('perceive', () => {
@@ -97,6 +98,62 @@ describe('remember', () => {
     const bot = botAt(10, [entry(1, 'resource', 10, { seenTick: 5, amount: 100 }), entry(7, 'shelter', 12)])
     remember(world, bot, [food], tuning, new Set([1]))
     expect(bot.memory).toEqual([expect.objectContaining({ nodeId: 1, seenTick: 50, amount: 30, radius: 2 })])
+  })
+})
+
+describe('remember and learnedFrom', () => {
+  it('marks a node the bot sees itself as seen first-hand, new or already known', () => {
+    const nodes = [node(1, 'resource', 10), node(2, 'resource', 11)]
+    const world = worldWith(nodes, 20)
+    const bot = botAt(10, [entry(1, 'resource', 10, { seenTick: 3, learnedFrom: 7 })])
+    remember(world, bot, nodes, tuning, new Set([1, 2]))
+    expect(bot.memory.map((e) => [e.nodeId, e.seenTick, e.learnedFrom])).toEqual([
+      [1, 20, null],
+      [2, 20, null],
+    ])
+  })
+
+  it('keeps who an entry came from while the bot has not seen the node again', () => {
+    const world = worldWith([node(1, 'resource', 90)], 20)
+    const bot = botAt(10, [entry(1, 'resource', 90, { seenTick: 3, learnedFrom: 7 })])
+    remember(world, bot, [], tuning, new Set([1]))
+    expect(bot.memory[0]).toMatchObject({ nodeId: 1, seenTick: 3, learnedFrom: 7 })
+  })
+})
+
+describe('trimMemory', () => {
+  it('leaves a memory within its caps alone', () => {
+    const memory = [entry(1, 'resource', 10), entry(2, 'shelter', 11), entry(3, 'water', 12)]
+    const before = memory.map((e) => ({ ...e }))
+    trimMemory(memory, tuning)
+    expect(memory).toEqual(before)
+  })
+
+  it('forgets the oldest sightings first, ties to the lower node id, in place', () => {
+    const memory = [
+      entry(5, 'resource', 10, { seenTick: 9 }),
+      entry(3, 'danger', 10, { seenTick: 4 }),
+      entry(4, 'shelter', 10, { seenTick: 4 }),
+      entry(6, 'ruin', 10, { seenTick: 8 }),
+      entry(7, 'resource', 10, { seenTick: 2 }),
+    ]
+    const same = memory
+    trimMemory(memory, tuning) // cap 3: drops node 7 (tick 2), then node 3 (tick 4, lower id than 4)
+    expect(memory).toBe(same)
+    expect(memory.map((e) => e.nodeId)).toEqual([5, 4, 6])
+  })
+
+  it('counts water apart from the rest', () => {
+    const memory = [
+      entry(1, 'resource', 10, { seenTick: 9 }),
+      entry(2, 'resource', 10, { seenTick: 9 }),
+      entry(3, 'resource', 10, { seenTick: 9 }),
+      entry(4, 'water', 10, { seenTick: 1 }),
+      entry(5, 'water', 10, { seenTick: 2 }),
+      entry(6, 'water', 10, { seenTick: 3 }),
+    ]
+    trimMemory(memory, tuning) // 3 non-water fit; water cap is 2, so the oldest spring goes
+    expect(memory.map((e) => e.nodeId)).toEqual([1, 2, 3, 5, 6])
   })
 })
 

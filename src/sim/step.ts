@@ -1,24 +1,27 @@
 // One tick of the world. Bots act in id order, and each bot goes through the
 // same phases: perceive -> memory -> decide -> act -> metabolise -> death check
-// (then, if it lived, a reproduction check). Bots never read each other; they
-// only share nodes, so the order matters only when two bots reach the same
-// food in one tick (the lower id eats first).
+// (then, if it lived, a reproduction check). Bots never read each other, with one
+// exception: a parent and its own child share what they remember (family.ts, M10).
+// Otherwise they only share nodes, so the order matters only when two bots reach
+// the same food in one tick (the lower id eats first).
 //
 // After the loop, in this order: dead bots are removed, children are added,
 // each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
 // the emptied ones are removed, world events and meteor craters whose time is up are
-// removed (logging each), then a stats row is recorded every
+// removed (logging each), then family knowledge is shared (a living parent and child close
+// together swap memory on every `family.shareEvery`-th tick), then a stats row is recorded every
 // `stats.sampleEvery` ticks. A plague hurts inside the bot loop (metabolise); a drought or
 // bounty acts in the regrow phase; both are still in force on their last tick. A ruin made this tick is already decaying by its
 // end, and a ruin eaten empty this tick is gone before the next one; a bot
 // that was heading for it simply finds the node missing and wanders.
 //
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
-// reproduction.ts, ruins.ts, nodes.ts and worldEvents.ts. `step` changes the world it is
+// reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts and family.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick) and
-// the `birth` stream (eleven per child). Ruins draw nothing.
+// the `birth` stream (eleven per child). Ruins and family sharing draw nothing.
 
 import { decide } from './brain.ts'
+import { shareFamilyKnowledge } from './family.ts'
 import { deathCause, metabolise } from './metabolism.ts'
 import { act } from './movement.ts'
 import { exposureAt, regrow } from './nodes.ts'
@@ -71,6 +74,7 @@ export function step(world: World, rules: Rules): void {
   regrow(world)
   decayRuins(world)
   expireEvents(world, tuning)
+  shareFamilyKnowledge(world, tuning)
 
   if (world.tick % tuning.stats.sampleEvery === 0) {
     world.samples.push(takeSample(world))

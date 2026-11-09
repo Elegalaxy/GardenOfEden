@@ -1,14 +1,19 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer)
-- **Current Goal:** Garden of Eden MVP plus M6 to M9 and the UI layout polish are built and pushed. Two small UI-only fixes were just made and await the lead's verify, commit and push. No sim change: `src/sim`, `src/content` and every state hash are untouched (the 3-seed survey is byte-identical before and after).
-- **Recent Changes (UI-only fixes):**
-  - Death wording: `labels.ts` gained `CAUSE_SENTENCE` and `causeSentence(cause)` (Died of hunger / thirst / old age, Killed by danger / plague / a meteor). `Inspector.tsx` (gone notice) and `EventLog.tsx` (death rows, now "Died of hunger (bot #4) at x, y") use it; `CAUSE_LABEL` (noun, "Starved") stays for the death-causes table. Tests in `labels.test.ts`.
-  - Event log keeps commands: `logMerge.ts` (new, pure) `mergeLog(log, commands)` rebuilds the commands the sim's 500-event ring dropped from `world.commands` and puts them before the ring. Dedupe is by order (every accepted command adds one log event and one `commands` entry, and the ring drops oldest first, so the ring holds the newest M of N commands). `EventLog.tsx` uses it for rows, filter counts, and the empty state; footer text updated. Tests in `logMerge.test.ts` (including a real run with `logCap` 6).
-  - Docs: `doc/GAME_DESIGN.md` (section 7 item 1, open question reworded, changelog).
+- **Last Updated By:** Claude (implementer), M10 stage. Nothing committed or pushed by the implementer.
+- **Current Goal:** Garden of Eden M0 to M10 are built (MVP, water, world events, save/load, UI polish, family knowledge sharing). M11 (lineage) is next and not started; the user has not asked for it yet.
+- **Recent Changes (M10, family knowledge sharing):**
+  - `src/sim/family.ts` (new): `inheritMemory`, `mergeMemory`, `shareFamilyKnowledge`. New step phase after `expireEvents`, before the stats sample (`step.ts`). `perception.ts`: `trimMemory` split out of `remember`; `remember` sets `learnedFrom: null`. `reproduction.ts`: `Conception.memory`; the child copies it via `inheritMemory` when `family.inherit`.
+  - `types.ts`: `MemoryEntry.learnedFrom`, `World.familyLearned`, `Tuning.family`. `tuning.ts`: `family { inherit true, shareRadius 3, shareEvery 10, shareKinds resource/water/shelter/danger }`. `world.ts`: `familyLearned: 0`.
+  - Harness: survey/CLI `learned` column and `--no-family` flag (`withoutFamily` in `survey.ts`).
+  - UI: `Inspector.tsx` (memory row "n / 10 nodes · k from family", Family section: parent, living children), `render.ts` (dotted lines from a selected bot to its living parent and children).
+  - Tests: `tests/family.test.ts`, `trimMemory`/`learnedFrom` tests in `src/sim/perception.test.ts`; World literal in `nodes.test.ts` updated.
+  - Docs: `CLAUDE.md`, `doc/GAME_DESIGN.md` (5.1 and 5.2 rewritten as `[CONFIRMED]` with the family exception, new item 10, milestone table, open question, changelog), `../docs/ideas/garden-of-eden.md`.
 - **Active Decisions / Constraints:**
-  - Rebuilt (old) command rows have no id for placed nodes, bots or craters, and a rebuilt removal has no kind or position, so they show less text and are not selectable. Births, deaths and world-event ends are still limited to the newest 500.
-  - If the log's command events and `world.commands` ever stop matching one to one (a new command path that skips either), `mergeLog` would mis-count; keep them paired.
-  - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** Is losing old deaths and births from the log acceptable? Eden preset feel check still stands.
-- **Exact Next Step:** The lead verifies (`npm test`, lint, typecheck, build), commits and pushes, and checks the Event log in a visible browser window (not done here: the Browser pane was not open). After that, pick the next stage with the user.
+  - Sharing is parent-child only (siblings and grandparents hear it by relay); no player goals; no random draws; ruins are never shared. A copy keeps the original `seenTick` and `amount`, and is dropped by the normal 8+2 trim if it is the oldest.
+  - With `--no-family` (`inherit:false`, `shareRadius:0`) seeds a..j match the pre-M10 numbers exactly at 20k and 60k ticks; only the state hash changed. Old saves load with the existing hash-mismatch warning (accepted; no sim version added).
+  - With sharing on: thirst deaths about -60%, births -7 to -9%, population 19..76 (20k) and 19..97 (60k), swing >= 1.5 on every seed. No retuning needed; `tests/tuning.test.ts` unchanged.
+  - Retune order if a run gets too stable: raise `shareEvery`, shrink `shareRadius`, drop `resource` from `shareKinds`, inherit only.
+  - A command is applied between ticks and recorded as `{tick, cmd}`; never import `rpg/` or `trading-sim/`; do not commit or push unless the user asks.
+- **Open Questions for the user:** Is the family effect (fewer thirst deaths, mostly invisible on the map) what you want, and is the dotted family line plus inspector rows enough, or should M11 add a lineage view? Eden numbers (about 20 to 97 bots, swings about 2x) still await a feel check in a visible browser window (the built-in pane was small and the dotted lines were only checked at a phone-sized map).
+- **Exact Next Step:** The lead verifies the diff, runs the tests and commits and pushes M10. Then, only if the user asks, plan M11 (lineage).

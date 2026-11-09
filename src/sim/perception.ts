@@ -11,6 +11,9 @@
 // it has probably regrown. A ruin counts as food too, but it never regrows, so
 // it is only worth walking to while it held a bite when last seen. Danger entries keep their radius so a bot can steer
 // around them without seeing them again.
+//
+// Since M10 a bot's memory can also hold sightings copied from its parent or child (family.ts);
+// `learnedFrom` names the source, and seeing the node itself clears it.
 
 import type { Bot, MemoryEntry, NodeKind, Tuning, World, WorldNode } from './types.ts'
 
@@ -54,6 +57,7 @@ export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tu
       found.radius = node.radius
       found.seenTick = world.tick
       found.amount = node.amount
+      found.learnedFrom = null
     } else {
       memory.push({
         nodeId: node.id,
@@ -63,9 +67,16 @@ export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tu
         radius: node.radius,
         seenTick: world.tick,
         amount: node.amount,
+        learnedFrom: null,
       })
     }
   }
+  trimMemory(memory, tuning)
+  bot.memory = memory
+}
+
+/** Forgets entries (in place) until the memory fits its caps: oldest sighting first, ties to the lower node id. */
+export function trimMemory(memory: MemoryEntry[], tuning: Tuning): void {
   // Two separate caps: `cap` for everything but water, `waterCap` for water.
   const waterCount = memory.filter((entry) => entry.kind === 'water').length
   for (let over = memory.length - waterCount - tuning.memory.cap; over > 0; over -= 1) {
@@ -74,7 +85,6 @@ export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tu
   for (let over = waterCount - tuning.memory.waterCap; over > 0; over -= 1) {
     memory.splice(oldestEntry(memory, true), 1)
   }
-  bot.memory = memory
 }
 
 /** Remembered danger nodes. */

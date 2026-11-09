@@ -93,11 +93,16 @@ function SelectButton({ target, children }: { target: Selection; children: React
   )
 }
 
+/** Most children named as links in the inspector; the rest are counted. */
+const MAX_CHILD_LINKS = 4
+
 function BotDetails({ bot, world }: { bot: Bot; world: World }) {
   const { intent } = bot
   const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
   const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
   const adult = bot.age >= tuning.bot.adultAge
+  const children = world.bots.filter((other) => other.parentId === bot.id)
+  const fromFamily = bot.memory.filter((entry) => entry.learnedFrom !== null).length
   // The bot is alive, so the population is never empty here.
   const mean = meanTraits(world.bots) ?? bot.traits
   return (
@@ -111,15 +116,6 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
           {bot.age} ticks · {adult ? 'adult' : 'child'}
         </Row>
         <Row label="Generation">{bot.generation}</Row>
-        <Row label="Parent">
-          {bot.parentId === null ? (
-            'none (founder)'
-          ) : parent === undefined ? (
-            <>#{bot.parentId} (gone)</>
-          ) : (
-            <SelectButton target={{ kind: 'bot', id: parent.id }}>#{parent.id}</SelectButton>
-          )}
-        </Row>
         <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>
         <Row label="Target">
           {intent.targetId === null ? (
@@ -135,7 +131,36 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
         <Row label="Position">{formatPoint(bot.x, bot.y)}</Row>
         <Row label="Repro cooldown">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
         <Row label="Memory">
-          {bot.memory.length} / {tuning.memory.cap + tuning.memory.waterCap} nodes
+          {bot.memory.length} / {tuning.memory.cap + tuning.memory.waterCap} nodes · {fromFamily} from family
+        </Row>
+      </dl>
+      <h4>Family</h4>
+      <dl className="kv">
+        <Row label="Parent">
+          {bot.parentId === null ? (
+            'none (founder)'
+          ) : parent === undefined ? (
+            <>#{bot.parentId} · gone</>
+          ) : (
+            <>
+              <SelectButton target={{ kind: 'bot', id: parent.id }}>#{parent.id}</SelectButton> · alive
+            </>
+          )}
+        </Row>
+        <Row label="Children">
+          {children.length === 0 ? (
+            'none alive'
+          ) : (
+            <>
+              {children.length} alive{' '}
+              {children.slice(0, MAX_CHILD_LINKS).map((child) => (
+                <span key={child.id}>
+                  <SelectButton target={{ kind: 'bot', id: child.id }}>#{child.id}</SelectButton>{' '}
+                </span>
+              ))}
+              {children.length > MAX_CHILD_LINKS ? `+${children.length - MAX_CHILD_LINKS} more` : ''}
+            </>
+          )}
         </Row>
       </dl>
       <h4>Traits</h4>

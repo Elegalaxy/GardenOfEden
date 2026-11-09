@@ -84,6 +84,16 @@ export const tuning: Tuning = {
     waterCap: 2,
     retryTicks: 300,
   },
+  // Family knowledge sharing (M10): only a parent and its own child, never siblings or strangers (they
+  // hear it second-hand through a parent). A newborn copies its parent's memory at conception; after
+  // that a living parent and child within `shareRadius` cells swap memory every `shareEvery` ticks.
+  // Ruins stay out: they are gone before the telling is worth it. radius 0 turns the exchange off.
+  family: {
+    inherit: true,
+    shareRadius: 3,
+    shareEvery: 10,
+    shareKinds: ['resource', 'water', 'shelter', 'danger'],
+  },
   stats: {
     sampleEvery: 50,
     maxSamples: 2000,

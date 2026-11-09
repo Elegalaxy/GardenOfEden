@@ -12,10 +12,13 @@
 // (three draws per child: angle, distance, heading; then eight more for the
 // traits, two per trait, see traits.ts). A child inherits the parent's traits
 // with a small seeded mutation, clamped into the bounds in `tuning.mutation`.
+// It also starts with the shareable part of the parent's memory as it was at conception
+// (`family.inherit`, see family.ts); that draws no random numbers.
 
+import { inheritMemory } from './family.ts'
 import { nextFloat } from './rng.ts'
 import { mutateTraits } from './traits.ts'
-import type { Bot, Tuning, Traits, World } from './types.ts'
+import type { Bot, MemoryEntry, Tuning, Traits, World } from './types.ts'
 import { pushEvent } from './world.ts'
 
 const TWO_PI = Math.PI * 2
@@ -25,6 +28,8 @@ export type Conception = {
   parentId: number
   generation: number
   traits: Traits
+  /** Copy of the parent's memory at conception (family.ts picks what the child keeps). */
+  memory: MemoryEntry[]
   x: number
   y: number
   energy: number
@@ -41,7 +46,15 @@ export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning:
   const energy = bot.energy * tuning.bot.childEnergyShare
   bot.energy -= energy + tuning.bot.birthCost
   bot.cooldown = tuning.bot.reproCooldown
-  return { parentId: bot.id, generation: bot.generation, traits: { ...bot.traits }, x: bot.x, y: bot.y, energy }
+  return {
+    parentId: bot.id,
+    generation: bot.generation,
+    traits: { ...bot.traits },
+    memory: bot.memory.map((entry) => ({ ...entry })),
+    x: bot.x,
+    y: bot.y,
+    energy,
+  }
 }
 
 /** Adds the children after the bot loop, in the order they were conceived. */
@@ -68,10 +81,11 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       generation: c.generation + 1,
       parentId: c.parentId,
       traits,
-      memory: [],
+      memory: tuning.family.inherit ? inheritMemory(c.memory, c.parentId, tuning) : [],
       intent: { kind: 'wander', targetId: null },
       heading,
     }
+    world.familyLearned += child.memory.length
     world.nextId += 1
     world.bots.push(child)
     world.totalBirths += 1

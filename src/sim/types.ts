@@ -90,7 +90,10 @@ export type Intent = {
   targetId: number | null
 }
 
-/** What a bot remembers about a node it once sensed. */
+/**
+ * What a bot remembers about a node it once sensed. `learnedFrom` is the id of the parent or child
+ * the entry was copied from (M10, family.ts), or null when the bot saw the node itself.
+ */
 export type MemoryEntry = {
   nodeId: number
   kind: NodeKind
@@ -99,6 +102,7 @@ export type MemoryEntry = {
   radius: number
   seenTick: number
   amount: number
+  learnedFrom: number | null
 }
 
 export type Bot = {
@@ -219,6 +223,8 @@ export type World = {
   totalBirths: number
   /** Timed world events in progress, oldest first. Empty unless the player triggered one. */
   events: ActiveEvent[]
+  /** Running count of memory entries bots learned from a parent or child (at birth and by exchange), for the survey. */
+  familyLearned: number
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -351,6 +357,17 @@ export type Tuning = {
     waterCap: number
     /** A remembered-empty resource is worth another look after this many ticks. */
     retryTicks: number
+  }
+  /** Knowledge sharing between a parent and its own child (M10, see family.ts). Nobody else shares. */
+  family: {
+    /** A newborn starts with a copy of its parent's shareable memory as it was at conception. */
+    inherit: boolean
+    /** A living parent and child this close (cells) swap memory on share ticks. 0 turns exchange off. */
+    shareRadius: number
+    /** ...on ticks that are a multiple of this. */
+    shareEvery: number
+    /** Only entries of these kinds pass. */
+    shareKinds: NodeKind[]
   }
   stats: {
     /** A Sample is recorded every this many ticks. */

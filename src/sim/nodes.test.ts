@@ -25,6 +25,7 @@ function worldWith(nodes: WorldNode[]): World {
     events: [],
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
+    familyLearned: 0,
   }
 }
 

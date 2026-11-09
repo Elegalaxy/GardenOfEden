@@ -8,7 +8,9 @@
 // `eaten` is the food units eaten over the whole run, from resources and from
 // ruins; `ruin%` in the table is the ruins' share of it. A `script` (see script.ts)
 // applies player commands, such as world events, at their ticks; `refused` lists
-// the ones the sim refused.
+// the ones the sim refused. `learned` is how many memory entries bots took from a
+// parent or child over the run (M10); `withoutFamily` gives the rules with that
+// sharing switched off, for an A/B comparison (`--no-family`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
@@ -28,6 +30,8 @@ export type SeedSurvey = {
   deaths: DeathsByCause
   traits: Traits | null
   eaten: Eaten
+  /** Memory entries learned from a parent or child (birth and exchange). */
+  learned: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -37,6 +41,11 @@ export type SeedSurvey = {
 export function ruinShareCell(eaten: Eaten): string {
   const total = eaten.resource + eaten.ruin
   return total <= 0 ? '-' : `${((100 * eaten.ruin) / total).toFixed(1)}`
+}
+
+/** The same rules with family knowledge sharing off: newborns start empty and nobody exchanges. */
+export function withoutFamily(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, family: { ...rules.tuning.family, inherit: false, shareRadius: 0 } } }
 }
 
 /** A mean trait for a table cell: two decimals, or a dash when nobody is alive. */
@@ -79,13 +88,14 @@ export function surveySeed(
     deaths: { ...world.deathsByCause },
     traits: meanTraits(world.bots),
     eaten: { ...world.eaten },
+    learned: world.familyLearned,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -106,6 +116,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       traitCell(r.traits, 'reproThreshold'),
       traitCell(r.traits, 'metabolism'),
       ruinShareCell(r.eaten),
+      r.learned,
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

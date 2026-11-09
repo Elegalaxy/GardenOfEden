@@ -142,6 +142,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
     events: [],
+    familyLearned: 0,
   }
   const stream = world.rng.world
 

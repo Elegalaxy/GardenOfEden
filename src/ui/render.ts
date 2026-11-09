@@ -12,7 +12,7 @@
 //
 // On top of the world, `drawOverlay` adds what the player is doing: the
 // selection (a double ring, plus a dashed line from a selected bot to its
-// target), an outline on whatever the inspect or remove tool would hit, and a
+// target, and a thinner dotted line to its living parent and children), an outline on whatever the inspect or remove tool would hit, and a
 // ghost of what a placement tool would add (an X through it when it would be
 // refused).
 //
@@ -62,6 +62,7 @@ export const COLORS = {
   plague: '#ff7ab6',
   meteor: '#ff9f43',
   bot: '#f2cc60',
+  family: '#f2cc60',
   botEdge: '#0e1118',
   flee: '#ffffff',
   ringTrack: '#2a3a2e',
@@ -359,6 +360,25 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number,
         ctx.beginPath()
         ctx.moveTo(px(p.x), py(p.y))
         ctx.lineTo(px(target.x), py(target.y))
+        ctx.stroke()
+        ctx.restore()
+      }
+      if (bot !== undefined) {
+        // Family ties (M10): a dotted line to the living parent and each living child. The inspector
+        // names them too, so the line is never the only cue.
+        const p = botPosition(bot, alpha)
+        ctx.save()
+        ctx.globalAlpha = 0.7
+        ctx.strokeStyle = COLORS.family
+        ctx.lineWidth = 1
+        ctx.setLineDash([2, 4])
+        ctx.beginPath()
+        for (const other of world.bots) {
+          if (other.id !== bot.parentId && other.parentId !== bot.id) continue
+          const q = botPosition(other, alpha)
+          ctx.moveTo(px(p.x), py(p.y))
+          ctx.lineTo(px(q.x), py(q.y))
+        }
         ctx.stroke()
         ctx.restore()
       }
