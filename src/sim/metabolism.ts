@@ -8,11 +8,14 @@
 // slow it (drinking at a spring, in movement.ts, comes first in the tick). The
 // steep power is deliberate: a fast bot is cheaper per cell walked and finds the
 // rare springs sooner, so with a gentler cost it simply out-breeds everyone
-// (see tuning.ts). A bot dies of danger (health <= 0), thirst (thirst <= 0),
+// (see tuning.ts). A bot dies of danger or plague (health <= 0), thirst (thirst <= 0),
 // starvation (energy <= 0) or old age (age >= maxAge). When more than one is true on
 // the same tick the first in that order is the recorded cause: the acute ones
-// come first, and danger before everything because it is the only one that is
-// done to the bot.
+// come first, and the health causes before everything because they are done to
+// the bot. If health ran out and the bot took plague damage this tick, the cause is
+// plague when the plague damage was larger than the danger damage, otherwise danger
+// (a tie goes to danger). A meteor's cause, 'meteor', is only recorded by the command that
+// strikes (worldEvents.ts); a bot never dies of it inside `deathCause`.
 
 import type { Exposure } from './nodes.ts'
 import type { Bot, DeathCause, Tuning } from './types.ts'
@@ -29,13 +32,13 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   bot.energy -= (t.baseDrain + sensing + (moved ? t.moveDrain : 0)) * bot.traits.metabolism * exposure.drainMult
   const thirstLoss = t.thirstDrain * Math.pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
-  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage)
+  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage - exposure.plague)
   bot.age += 1
   if (bot.cooldown > 0) bot.cooldown -= 1
 }
 
-export function deathCause(bot: Bot, tuning: Tuning): DeathCause | null {
-  if (bot.health <= 0) return 'danger'
+export function deathCause(bot: Bot, exposure: Exposure, tuning: Tuning): DeathCause | null {
+  if (bot.health <= 0) return exposure.plague > exposure.damage ? 'plague' : 'danger'
   if (bot.thirst <= 0) return 'thirst'
   if (bot.energy <= 0) return 'starve'
   if (bot.age >= tuning.bot.maxAge) return 'age'

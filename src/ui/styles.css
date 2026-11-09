@@ -22,6 +22,10 @@
   --shelter: #58a6ff;
   --ruin: #bc8cff;
   --water: #4dd0e1;
+  --plague: #ff7ab6;
+  --meteor: #ff9f43;
+  --drought: #e0a458;
+  --bounty: #7ee787;
   --bot: #f2cc60;
 }
 
@@ -155,6 +159,7 @@ button:disabled {
 }
 
 .map-frame {
+  position: relative; /* anchors the event banners */
   width: min(100%, calc(62vh * 1.5));
   margin: 0 auto;
   background: #0e1118;

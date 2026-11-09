@@ -6,13 +6,17 @@
 // not a swing). `final` is the population at the last tick. `traits` is the
 // mean of each trait over the bots alive at the last tick (null if none).
 // `eaten` is the food units eaten over the whole run, from resources and from
-// ruins; `ruin%` in the table is the ruins' share of it.
+// ruins; `ruin%` in the table is the ruins' share of it. A `script` (see script.ts)
+// applies player commands, such as world events, at their ticks; `refused` lists
+// the ones the sim refused.
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
 import type { DeathsByCause, Eaten, Preset, Rules, Traits } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
+import { makeScript } from './script.ts'
+import type { ScriptedCommand } from './script.ts'
 
 export type SeedSurvey = {
   seed: string
@@ -25,6 +29,8 @@ export type SeedSurvey = {
   traits: Traits | null
   eaten: Eaten
   hash: string
+  /** Scripted commands the sim refused. */
+  refused: string[]
 }
 
 /** The ruins' share of all food eaten, as a percentage with one decimal; a dash when nothing was eaten. */
@@ -38,11 +44,21 @@ export function traitCell(traits: Traits | null, name: keyof Traits): string {
   return traits === null ? '-' : traits[name].toFixed(2)
 }
 
-export function surveySeed(seed: string, preset: Preset, rules: Rules, ticks: number, warmup: number): SeedSurvey {
+export function surveySeed(
+  seed: string,
+  preset: Preset,
+  rules: Rules,
+  ticks: number,
+  warmup: number,
+  script: readonly ScriptedCommand[] = [],
+): SeedSurvey {
   const world = createWorld(seed, preset, rules)
+  const scripted = makeScript(script)
+  const refused: string[] = []
   let min = Infinity
   let max = -Infinity
   for (let i = 0; i < ticks; i += 1) {
+    refused.push(...scripted.due(world, rules))
     step(world, rules)
     if (world.tick > warmup) {
       min = Math.min(min, world.bots.length)
@@ -64,11 +80,12 @@ export function surveySeed(seed: string, preset: Preset, rules: Rules, ticks: nu
     traits: meanTraits(world.bots),
     eaten: { ...world.eaten },
     hash: stateHash(world),
+    refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -81,6 +98,8 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.deaths.starve,
       r.deaths.thirst,
       r.deaths.danger,
+      r.deaths.plague,
+      r.deaths.meteor,
       r.deaths.age,
       traitCell(r.traits, 'senseRadius'),
       traitCell(r.traits, 'caution'),

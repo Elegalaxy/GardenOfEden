@@ -149,13 +149,14 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
 }
 
 function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
+  const crater = node.expires > 0
   return (
     <>
       <h3>
-        {capital(KIND_LABEL[node.kind])} #{node.id}
+        {crater ? 'Meteor crater' : capital(KIND_LABEL[node.kind])} #{node.id}
       </h3>
       <dl className="kv">
-        <Row label="Kind">{KIND_LABEL[node.kind]}</Row>
+        <Row label="Kind">{crater ? 'danger (meteor crater)' : KIND_LABEL[node.kind]}</Row>
         <Row label="Position">{formatPoint(node.x, node.y)}</Row>
         <Row label="Radius">{fixed1(node.radius)} cells</Row>
         {node.kind === 'resource' && (
@@ -178,6 +179,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
           </>
         )}
         {node.kind === 'danger' && <Row label="Damage">{fixed1(node.damage)} health / tick</Row>}
+        {crater && <Row label="Time left">{Math.max(0, node.expires - world.tick).toLocaleString('en-US')} ticks</Row>}
         {node.kind === 'shelter' && (
           <>
             <Row label="Heal">+{fixed1(node.heal)} health / tick</Row>
@@ -201,6 +203,10 @@ function GoneNotice({ selection, world }: { selection: Selection; world: World }
     }
     if (selection.kind === 'node' && event.command === 'removeNode' && event.nodeId === selection.id) {
       detail = `Removed at tick ${event.tick}.`
+      break
+    }
+    if (selection.kind === 'node' && event.type === 'event' && event.nodeId === selection.id) {
+      detail = `Faded away at tick ${event.tick}.`
       break
     }
   }

@@ -7,7 +7,7 @@ const world = { width: 10, height: 8 }
 const layout = { scale: 20, offsetX: 10, offsetY: 5 }
 
 function node(id: number, kind: WorldNode['kind'], x: number, y: number, radius: number): WorldNode {
-  return { id, kind, x, y, radius, amount: 0, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0 }
+  return { id, kind, x, y, radius, amount: 0, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0 }
 }
 
 function bot(id: number, x: number, y: number, px = x, py = y): Bot {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { TOOLS, toolForKey, toolInfo } from './tools.ts'
+import { EVENT_TOOLS, TOOLS, toolForKey, toolInfo } from './tools.ts'
 
 describe('tools', () => {
   it('numbers the buttons 1 to 7 in order, with no key used twice', () => {
@@ -16,6 +16,21 @@ describe('tools', () => {
     for (const tool of TOOLS) expect(toolForKey(tool.key)).toBe(tool.id)
     expect(toolInfo('bot').key).toBe('6')
     expect(toolInfo('remove').key).toBe('7')
+  })
+
+  it('has plague and meteor tools on P and M that do not clash with the numbered tools', () => {
+    expect(EVENT_TOOLS.map((tool) => [tool.id, tool.key, tool.event])).toEqual([
+      ['plague', 'p', 'plague'],
+      ['meteor', 'm', 'meteor'],
+    ])
+    expect(toolForKey('p')).toBe('plague')
+    expect(toolForKey('m')).toBe('meteor')
+    expect(toolInfo('meteor').label).toBe('Meteor')
+    const keys = [...TOOLS, ...EVENT_TOOLS].map((tool) => tool.key)
+    expect(new Set(keys).size).toBe(keys.length)
+    // The global events (D, B) are not tools.
+    expect(toolForKey('d')).toBeNull()
+    expect(toolForKey('b')).toBeNull()
   })
 
   it('goes back to inspect on Esc and ignores other keys', () => {

@@ -5,7 +5,7 @@ import type { DeathCause } from '../sim/types.ts'
 import { CAUSE_LABEL } from './labels.ts'
 import { useWorldStore } from './store.ts'
 
-const CAUSES: readonly DeathCause[] = ['starve', 'thirst', 'danger', 'age']
+const CAUSES: readonly DeathCause[] = ['starve', 'thirst', 'danger', 'plague', 'meteor', 'age']
 const numberFormat = new Intl.NumberFormat('en-US')
 
 export function DeathCauses() {

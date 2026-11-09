@@ -39,6 +39,46 @@ describe('dispatch', () => {
   })
 })
 
+describe('world events', () => {
+  it('fires a global event at once, records it and says what it does', () => {
+    const before = getSnapshot().commandCount
+    const result = dispatch({ type: 'triggerEvent', event: 'drought' })
+    expect(result.ok).toBe(true)
+    const snap = getSnapshot()
+    expect(snap.commandCount).toBe(before + 1)
+    expect(snap.world.events).toHaveLength(1)
+    expect(snap.notice).toMatchObject({ ok: true })
+    expect(snap.notice?.text).toContain('Drought started')
+  })
+
+  it('refuses the same global event while it runs, without recording it', () => {
+    dispatch({ type: 'triggerEvent', event: 'bounty' })
+    const count = getSnapshot().commandCount
+    expect(dispatch({ type: 'triggerEvent', event: 'bounty' }).ok).toBe(false)
+    expect(getSnapshot().commandCount).toBe(count)
+    expect(getSnapshot().notice).toMatchObject({ ok: false })
+    expect(getSnapshot().notice?.text).toContain('already active')
+  })
+
+  it('starts a plague at the clicked cell with the plague tool', () => {
+    setTool('plague')
+    clickMap(20.4, 30.7, 1)
+    const plague = getSnapshot().world.events[0]
+    expect(plague).toMatchObject({ kind: 'plague', x: 20.5, y: 30.5 })
+    expect(getSnapshot().notice?.text).toContain('Plague started')
+  })
+
+  it('drops a meteor with the meteor tool and reports the bots it killed', () => {
+    setTool('meteor')
+    const bot = getSnapshot().world.bots[0]!
+    clickMap(bot.x, bot.y, 1)
+    const snap = getSnapshot()
+    expect(snap.world.nodes.some((node) => node.expires > 0)).toBe(true)
+    expect(snap.notice?.text).toContain('Meteor struck')
+    expect(snap.notice?.text).toMatch(/\d+ bots? killed/)
+  })
+})
+
 describe('clickMap', () => {
   it('places the active tool at the centre of the clicked cell', () => {
     setTool('shelter')

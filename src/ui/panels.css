@@ -109,8 +109,13 @@
   order: 3;
 }
 
-.side-inspector {
+.area-events {
+  min-width: 0;
   order: 4;
+}
+
+.side-inspector {
+  order: 5;
 }
 
 .area-chart {
@@ -118,15 +123,15 @@
   grid-template-columns: minmax(0, 1fr); /* a fixed-width chart must not stretch the column */
   gap: 16px;
   min-width: 0;
-  order: 5;
-}
-
-.side-deaths {
   order: 6;
 }
 
-.side-log {
+.side-deaths {
   order: 7;
+}
+
+.side-log {
+  order: 8;
 }
 
 @media (min-width: 901px) {
@@ -137,6 +142,7 @@
   .area-speed,
   .area-tools,
   .area-map,
+  .area-events,
   .area-chart {
     grid-column: 1;
   }
@@ -145,7 +151,7 @@
     display: grid;
     gap: 16px;
     grid-column: 2;
-    grid-row: 1 / span 4;
+    grid-row: 1 / span 5;
   }
 
   .side-inspector,
@@ -419,6 +425,14 @@ h4 {
   background: var(--shelter);
 }
 
+.cause-plague {
+  background: var(--plague);
+}
+
+.cause-meteor {
+  background: var(--meteor);
+}
+
 .death-causes .empty {
   margin-top: 6px;
   font-size: 0.85rem;
@@ -596,6 +610,40 @@ button.log-button[aria-pressed='true'] {
   stroke: var(--resource);
   stroke-width: 2;
   stroke-dasharray: 6 4;
+}
+
+/* Event bands: a pattern per event (lines, dots, crosshatch), a dashed left edge and a label. */
+.band-stroke {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-opacity: 0.5;
+  fill: none;
+}
+
+.band-dot {
+  fill: var(--text-muted);
+  fill-opacity: 0.6;
+}
+
+.band-edge {
+  stroke: var(--text-muted);
+  stroke-dasharray: 4 3;
+  stroke-opacity: 0.8;
+}
+
+.band-label {
+  fill: var(--text-strong);
+  font-size: 10px;
+  font-weight: 700;
+  stroke: var(--panel);
+  stroke-width: 3px;
+  paint-order: stroke;
+}
+
+.band-swatch {
+  fill: rgba(183, 190, 204, 0.22);
+  stroke: var(--text-muted);
+  stroke-dasharray: 3 2;
 }
 
 .marker-line {
@@ -900,5 +948,223 @@ button.log-button[aria-pressed='true'] {
 
   .legend-tick {
     margin-left: 0;
+  }
+}
+
+/* World events (M8): the Events panel, its active list and the map banners. */
+.event-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* four across only where the column is wide enough, see below */
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-card {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #2a3350;
+  border-radius: 6px;
+}
+
+.event-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding-inline: 8px;
+}
+
+.event-button .tool-key {
+  margin-left: auto;
+}
+
+.event-action {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.event-kv .kv-row {
+  grid-template-columns: minmax(0, 1fr); /* label above value: the cards are narrow */
+  gap: 0;
+  padding: 3px 0;
+}
+
+.event-kv .kv-row dd {
+  font-size: 0.85rem;
+  overflow-wrap: break-word;
+}
+
+.event-reason {
+  min-height: 2.6em; /* reserved so a reason appearing moves nothing */
+  margin: 0;
+  color: #ffb4a8;
+  font-size: 0.8rem;
+}
+
+.key-event {
+  flex: none;
+}
+
+.key-drought {
+  border-color: var(--drought);
+  border-style: dashed;
+}
+
+.key-bounty {
+  border-color: var(--bounty);
+  border-style: dotted;
+}
+
+.key-plague {
+  border-color: var(--plague);
+}
+
+.key-meteor {
+  border-color: var(--meteor);
+  border-radius: 4px;
+}
+
+.active-wrap {
+  min-height: 5.5rem; /* room for two rows, so the first event appearing barely moves the chart */
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.active-empty {
+  font-size: 0.9rem;
+}
+
+.active-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a3350;
+}
+
+.active-name {
+  display: grid;
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
+.active-where {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.active-effect {
+  flex: 2 1 11rem;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.active-left {
+  min-width: 11ch;
+  text-align: right;
+  color: var(--text-strong);
+}
+
+.active-bar {
+  flex: 1 0 100%;
+  height: 4px;
+  background: #0e1118;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.active-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--text-muted);
+}
+
+.map-banners {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  right: 6px;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none; /* clicks go through to the map */
+}
+
+.map-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  max-width: 100%;
+  padding: 3px 8px;
+  color: var(--text-strong);
+  font-size: 0.8rem;
+  background: rgba(14, 17, 24, 0.9);
+  border: 2px solid var(--text-muted);
+  border-radius: 6px;
+}
+
+.banner-drought {
+  border-color: var(--drought);
+  border-style: dashed;
+}
+
+.banner-bounty {
+  border-color: var(--bounty);
+  border-style: dotted;
+}
+
+.banner-letter {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.banner-effect {
+  color: var(--text-muted);
+}
+
+@media (min-width: 801px) and (max-width: 900px), (min-width: 1200px) {
+  .event-cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .event-card {
+    padding: 8px;
+  }
+
+  .map-banner {
+    font-size: 0.72rem;
+  }
+
+  .banner-effect {
+    display: none; /* the strip over a phone-sized map stays short; the Events panel has the effect */
   }
 }

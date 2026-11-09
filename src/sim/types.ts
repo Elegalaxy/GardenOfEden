@@ -54,6 +54,8 @@ export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water'
  *   eaten; the node is removed at 0. Made by the sim only (ruins.ts), never by a preset.
  * - water: a permanent spring. A bot within `radius` drinks `Tuning.bot.drinkRate` thirst per tick.
  *   It is never used up, so it has no amount: `amount` and `capacity` stay 0.
+ * Any node may be temporary: `expires` is the tick at the end of which it is removed (0 = permanent).
+ * Only the meteor event makes one (a danger crater, see worldEvents.ts).
  */
 export type WorldNode = {
   id: number
@@ -69,6 +71,8 @@ export type WorldNode = {
   drainMult: number
   /** Ruins only: amount lost per tick. */
   decay: number
+  /** Last tick the node exists (it is removed at the end of that tick); 0 for a permanent node. */
+  expires: number
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -120,11 +124,18 @@ export type Bot = {
   heading: number
 }
 
-export type DeathCause = 'starve' | 'thirst' | 'danger' | 'age'
+export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'age'
 
-export type SimEventType = 'birth' | 'death' | 'command'
+/** `event` is the sim announcing that a world event ended (its start is the player's `command`). */
+export type SimEventType = 'birth' | 'death' | 'command' | 'event'
 
-export type CommandType = 'placeNode' | 'removeNode' | 'placeBot'
+export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
+
+/** World events the player can trigger (M8). Drought, bounty and plague last a while; a meteor is instant. */
+export type EventKind = 'drought' | 'bounty' | 'plague' | 'meteor'
+
+/** The ones that last a while and sit in `World.events`. */
+export type TimedEventKind = 'drought' | 'bounty' | 'plague'
 
 export type SimEvent = {
   tick: number
@@ -135,6 +146,8 @@ export type SimEvent = {
   /** Command events only: which command, and for placeNode/removeNode the node's kind. */
   command?: CommandType
   nodeKind?: NodeKind
+  /** triggerEvent commands, and `event` entries: which world event. */
+  eventKind?: EventKind
   x: number
   y: number
 }
@@ -144,6 +157,8 @@ export type Command =
   | { type: 'placeNode'; kind: NodeKind; x: number; y: number }
   | { type: 'removeNode'; id: number }
   | { type: 'placeBot'; x: number; y: number }
+  /** `x` and `y` are needed for plague and meteor (the centre) and ignored for drought and bounty. */
+  | { type: 'triggerEvent'; event: EventKind; x?: number; y?: number }
 
 export type TraitName = keyof Traits
 
@@ -163,6 +178,23 @@ export type Sample = {
 export type DeathsByCause = Record<DeathCause, number>
 
 export type Eaten = { resource: number; ruin: number }
+
+/**
+ * A timed world event in progress (drought, bounty or plague). It is in effect for the ticks
+ * `startTick + 1` to `endTick` inclusive, then removed at the end of tick `endTick`.
+ * `magnitude` is what it does, copied from tuning when it starts so a running event never changes:
+ * the regrowth multiplier for drought and bounty, health damage per tick for plague.
+ * Drought and bounty are global (`x`, `y` and `radius` are 0); plague covers `radius` cells around (x, y).
+ */
+export type ActiveEvent = {
+  kind: TimedEventKind
+  startTick: number
+  endTick: number
+  x: number
+  y: number
+  radius: number
+  magnitude: number
+}
 
 export type World = {
   seed: string
@@ -185,6 +217,8 @@ export type World = {
   eaten: Eaten
   /** Running count of births, for the stats samples. */
   totalBirths: number
+  /** Timed world events in progress, oldest first. Empty unless the player triggered one. */
+  events: ActiveEvent[]
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -342,6 +376,43 @@ export type Tuning = {
     mergeRadius: number
     /** Most ruins the world may hold; past it a death adds to the nearest ruin, however far. */
     maxCount: number
+  }
+  /** World events the player can trigger (M8). Applied by the `triggerEvent` command (worldEvents.ts). */
+  events: {
+    /** Most timed events (drought, bounty, plague) in progress at once. */
+    maxActive: number
+    /** Most meteor craters standing at once. */
+    maxCraters: number
+    drought: {
+      /** Ticks it lasts. */
+      duration: number
+      /** Resource regrowth is multiplied by this (under 1 slows it). Springs and ruins are not affected. */
+      regrowMult: number
+    }
+    bounty: {
+      duration: number
+      /** Resource regrowth is multiplied by this (over 1 speeds it up). */
+      regrowMult: number
+    }
+    plague: {
+      duration: number
+      /** Cells around the clicked point. */
+      radius: number
+      /** Health lost per tick by every bot inside, on top of any danger. Shelter healing still applies. */
+      damage: number
+    }
+    meteor: {
+      /** Cells around the impact that take damage at once. */
+      radius: number
+      /** Health damage at the centre of the impact; it falls off in a straight line to 0 at `radius`. */
+      damage: number
+      /** The crater it leaves is a danger node of this radius... */
+      craterRadius: number
+      /** ...that does this much health damage per tick... */
+      craterDamage: number
+      /** ...and stays this many ticks. */
+      craterTicks: number
+    }
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

@@ -6,6 +6,8 @@
 // (final, min and max population after the warmup, births, deaths by cause).
 // Both print the mean of each trait over the living bots (sense, caution,
 // reproAt, metab), after a line with the founders' values.
+// `--event drought@3000` (repeatable) applies a world event at a tick in either
+// form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
 // Same arguments always print the same output.
 
 import { findPreset, presets, rules } from '../content/index.ts'
@@ -14,11 +16,14 @@ import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
 import { createWorld, totalDeaths, totalFood, totalRuinFood } from '../sim/world.ts'
 import type { World } from '../sim/types.ts'
+import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
+import type { ScriptedCommand } from './script.ts'
 import { formatSurvey, ruinShareCell, surveySeed, traitCell } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
   '       npm run sim -- --seeds <seed,seed,...> --ticks <1-1000000> [--preset <id>] [--warmup <0-1000000>]',
+  `       either form also takes ${EVENT_USAGE}`,
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
 ].join('\n')
 const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
@@ -27,7 +32,15 @@ const DEFAULT_PRESET = 'eden'
 const DEFAULT_EVERY = 500
 const DEFAULT_WARMUP = 1000
 
-type Options = { seeds: string[]; survey: boolean; ticks: number; preset: string; every: number; warmup: number }
+type Options = {
+  seeds: string[]
+  survey: boolean
+  ticks: number
+  preset: string
+  every: number
+  warmup: number
+  script: ScriptedCommand[]
+}
 
 function parseCount(name: string, text: string | undefined, min = 1): number {
   const value = Number(text)
@@ -44,6 +57,7 @@ function parseArgs(argv: string[]): Options {
   let ticks: number | undefined
   let preset = DEFAULT_PRESET
   let every = DEFAULT_EVERY
+  const script: ScriptedCommand[] = []
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i]
     const value = argv[i + 1]
@@ -65,6 +79,8 @@ function parseArgs(argv: string[]): Options {
       ticks = parseCount('--ticks', value)
     } else if (flag === '--every') {
       every = parseCount('--every', value)
+    } else if (flag === '--event') {
+      script.push(parseEventSpec(value))
     } else if (flag === '--preset') {
       if (value === undefined || findPreset(value) === undefined) {
         throw new Error(`--preset must be one of: ${presets.map((p) => p.id).join(', ')}`)
@@ -76,11 +92,11 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup }
+  return { seeds, survey, ticks, preset, every, warmup, script }
 }
 
 function row(world: World): string {
-  const { starve, thirst, danger, age } = world.deathsByCause
+  const { starve, thirst, danger, plague, meteor, age } = world.deathsByCause
   const traits = meanTraits(world.bots)
   const cells = [
     world.tick,
@@ -90,6 +106,8 @@ function row(world: World): string {
     starve,
     thirst,
     danger,
+    plague,
+    meteor,
     age,
     totalFood(world).toFixed(1),
     totalRuinFood(world).toFixed(1),
@@ -122,7 +140,9 @@ function main(argv: string[]): void {
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}`)
     console.log(foundersLine())
-    console.log(formatSurvey(options.seeds.map((seed) => surveySeed(seed, preset, rules, options.ticks, options.warmup))))
+    const rows = options.seeds.map((seed) => surveySeed(seed, preset, rules, options.ticks, options.warmup, options.script))
+    console.log(formatSurvey(rows))
+    for (const result of rows) for (const line of result.refused) console.log(`seed ${result.seed}: ${line}`)
     return
   }
   const seed = options.seeds[0]
@@ -130,12 +150,14 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
       .map((cell) => cell.padStart(8))
       .join(''),
   )
   console.log(row(world))
+  const script = makeScript(options.script)
   for (let i = 0; i < options.ticks; i += 1) {
+    for (const line of script.due(world, rules)) console.log(line)
     step(world, rules)
     if (world.tick % options.every === 0 || world.tick === options.ticks) console.log(row(world))
   }

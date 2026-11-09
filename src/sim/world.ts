@@ -45,6 +45,7 @@ export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: 
     heal: def.heal,
     drainMult: def.drainMult,
     decay: def.decay,
+    expires: 0,
   }
 }
 
@@ -89,11 +90,11 @@ export function totalRuinFood(world: World): number {
   return total
 }
 
-/** Nodes the player counts against `player.maxNodes`: everything except ruins. */
+/** Nodes the player counts against `player.maxNodes`: everything except ruins and meteor craters. */
 export function placedNodeCount(world: World): number {
   let count = 0
   for (const node of world.nodes) {
-    if (node.kind !== 'ruin') count += 1
+    if (node.kind !== 'ruin' && node.expires === 0) count += 1
   }
   return count
 }
@@ -106,7 +107,7 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
 
 export function totalDeaths(world: World): number {
   const d = world.deathsByCause
-  return d.starve + d.thirst + d.danger + d.age
+  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.age
 }
 
 /** One stats row for the world as it stands now. */
@@ -137,9 +138,10 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, thirst: 0, danger: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, age: 0 },
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
+    events: [],
   }
   const stream = world.rng.world
 

@@ -99,5 +99,21 @@ export const tuning: Tuning = {
     mergeRadius: 2,
     maxCount: 60,
   },
+  // World events the player triggers (M8). Drought and bounty scale resource regrowth (0.5 per tick per
+  // node) for a while. A plague drains health in a disc (a bot at full health dies in 100 / 0.8 = 125
+  // ticks if it stays; bots do not see it, they only wander out by chance). A meteor is lethal near its
+  // centre (100 health is gone within 6 x (1 - 100/200) = 3 cells) and leaves a 3-cell danger crater
+  // (2 damage per tick, like a danger node) that fades after 600 ticks. Sized with
+  // `npm run sim -- --event ...` so that each one clearly moves the population (aimed at the
+  // busiest spot at tick 3000, mean population over the next 1500 ticks: drought about -45%,
+  // plague about -23%, bounty about +85%) without wiping it out; see doc/GAME_DESIGN.md section 7.
+  events: {
+    maxActive: 3,
+    maxCraters: 6,
+    drought: { duration: 1500, regrowMult: 0.35 },
+    bounty: { duration: 1000, regrowMult: 3 },
+    plague: { duration: 800, radius: 14, damage: 0.8 },
+    meteor: { radius: 6, damage: 200, craterRadius: 3, craterDamage: 2, craterTicks: 600 },
+  },
   logCap: 500,
 }

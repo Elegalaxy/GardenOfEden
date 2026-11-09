@@ -3,7 +3,9 @@
 // but never regrow (they decay, see ruins.ts). A water node is a permanent
 // spring: `drink` raises a bot's thirst and takes nothing from the node. Danger nodes hurt and shelter
 // nodes heal everything standing inside their radius; `exposureAt` adds up
-// what one spot receives from the real nodes (not from any bot's memory).
+// what one spot receives from the real nodes (not from any bot's memory), and
+// from any plague zone covering it (a world event, see worldEvents.ts). A drought
+// or bounty scales how fast resources regrow (`regrowthMultiplier`).
 
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
 
@@ -11,6 +13,8 @@ import type { Bot, Tuning, World, WorldNode } from './types.ts'
 export type Exposure = {
   /** Total health damage from danger nodes covering the spot. */
   damage: number
+  /** Total health damage from active plague events covering the spot (kept apart so a death can be told apart). */
+  plague: number
   /** Total health healed by shelter nodes covering the spot. */
   heal: number
   /** Energy-loss multiplier: the lowest `drainMult` of any covering shelter, else 1. */
@@ -20,7 +24,7 @@ export type Exposure = {
 }
 
 export function exposureAt(world: World, x: number, y: number): Exposure {
-  const exposure: Exposure = { damage: 0, heal: 0, drainMult: 1, shelterId: null }
+  const exposure: Exposure = { damage: 0, plague: 0, heal: 0, drainMult: 1, shelterId: null }
   let shelterDistance = Infinity
   for (const node of world.nodes) {
     if (node.kind !== 'danger' && node.kind !== 'shelter') continue
@@ -36,6 +40,9 @@ export function exposureAt(world: World, x: number, y: number): Exposure {
         exposure.shelterId = node.id
       }
     }
+  }
+  for (const event of world.events) {
+    if (event.kind === 'plague' && Math.hypot(x - event.x, y - event.y) <= event.radius) exposure.plague += event.magnitude
   }
   return exposure
 }
@@ -60,8 +67,18 @@ export function drink(bot: Bot, tuning: Tuning): void {
   bot.thirst = Math.min(t.maxThirst, bot.thirst + t.drinkRate)
 }
 
+/** Regrowth is multiplied by every drought and bounty in progress (both at once multiply). 1 when there are none. */
+export function regrowthMultiplier(world: World): number {
+  let mult = 1
+  for (const event of world.events) {
+    if (event.kind === 'drought' || event.kind === 'bounty') mult *= event.magnitude
+  }
+  return mult
+}
+
 export function regrow(world: World): void {
+  const mult = regrowthMultiplier(world)
   for (const node of world.nodes) {
-    if (node.kind === 'resource') node.amount = Math.min(node.capacity, node.amount + node.regen)
+    if (node.kind === 'resource') node.amount = Math.min(node.capacity, node.amount + node.regen * mult)
   }
 }

@@ -5,7 +5,9 @@
 // the recorded list always reproduces the run.
 //
 // Ruins are made by the sim when a bot dies, so the player cannot place them
-// (they can remove one). Ruins do not count toward `player.maxNodes`.
+// (they can remove one). Ruins and meteor craters do not count toward `player.maxNodes`.
+// `triggerEvent` starts a world event (drought, bounty, plague, meteor); the rules
+// are in worldEvents.ts.
 //
 // A command is applied between two ticks: at world.tick = T, after step T and
 // before step T+1. Placed nodes use the numbers for their kind from
@@ -16,6 +18,7 @@
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
+import { checkEvent, startEvent } from './worldEvents.ts'
 
 export type CommandResult = { ok: true; id: number } | { ok: false; reason: string }
 
@@ -48,6 +51,8 @@ export function checkCommand(world: World, rules: Rules, cmd: Command): string |
         return `The population cap (${tuning.population.cap}) is reached.`
       }
       return null
+    case 'triggerEvent':
+      return checkEvent(world, rules, cmd)
   }
 }
 
@@ -103,6 +108,9 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       })
       break
     }
+    case 'triggerEvent':
+      id = startEvent(world, rules, cmd)
+      break
   }
   world.commands.push({ tick: world.tick, cmd: { ...cmd } })
   return { ok: true, id }

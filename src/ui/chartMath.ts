@@ -1,6 +1,9 @@
 // Arithmetic for the population chart, kept apart from the drawing so it can
 // be tested: round axis ends, thinning a long series to the pixels available,
-// and finding the point or marker nearest the pointer. All pure.
+// finding the point or marker nearest the pointer, and the shaded bands for timed
+// world events. All pure.
+
+import type { Command, TimedEventKind } from '../sim/types.ts'
 
 /** A "round" axis maximum at or above `value` that divides into `divisions` equal round steps (at least 1 step of 1). */
 export function niceMax(value: number, divisions: number): number {
@@ -45,4 +48,39 @@ export function nearestIndex(ticks: readonly number[], tick: number): number {
 export function compact(value: number): string {
   if (Math.abs(value) >= 10_000) return `${Math.round(value / 100) / 10}k`
   return String(Math.round(value))
+}
+
+/** The stretch of a run in which a timed world event (drought, bounty, plague) was in force. */
+export type EventBand = {
+  kind: TimedEventKind
+  /** Tick the player triggered it. */
+  start: number
+  /** Tick it ends (or `nowTick` if it is still running). */
+  end: number
+  /** Still in force at `nowTick`. */
+  ongoing: boolean
+  /** 0, 1, 2 ...: the row its label sits in, so overlapping bands do not write over each other. */
+  lane: number
+}
+
+/**
+ * One band per timed event command, from its tick to `tick + duration` (cut off at `nowTick` while it runs).
+ * Meteors are instant and have no band. Bands that overlap in time get different lanes.
+ */
+export function eventBands(
+  commands: readonly { tick: number; cmd: Command }[],
+  durations: Record<TimedEventKind, number>,
+  nowTick: number,
+): EventBand[] {
+  const bands: EventBand[] = []
+  const laneEnds: number[] = []
+  for (const { tick, cmd } of commands) {
+    if (cmd.type !== 'triggerEvent' || cmd.event === 'meteor') continue
+    const end = tick + durations[cmd.event]
+    let lane = laneEnds.findIndex((laneEnd) => laneEnd <= tick)
+    if (lane < 0) lane = laneEnds.length
+    laneEnds[lane] = end
+    bands.push({ kind: cmd.event, start: tick, end: Math.min(end, nowTick), ongoing: end > nowTick, lane })
+  }
+  return bands
 }

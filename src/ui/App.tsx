@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { DeathCauses } from './DeathCauses.tsx'
 import { EventLog } from './EventLog.tsx'
+import { EventsPanel } from './EventsPanel.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunPanel } from './RunPanel.tsx'
@@ -38,6 +39,14 @@ function Legend() {
       <li>
         <span className="key key-ruin" aria-hidden="true"><span>U</span></span> Ruin
         <span className="legend-note">diamond, left by a dead bot, decays</span>
+      </li>
+      <li>
+        <span className="key key-event key-plague" aria-hidden="true">P</span> Plague
+        <span className="legend-note">hatched disc, bots inside lose health</span>
+      </li>
+      <li>
+        <span className="key key-event key-meteor" aria-hidden="true">M</span> Meteor crater
+        <span className="legend-note">dashed orange danger, fades</span>
       </li>
       <li>
         <span className="key key-bot" aria-hidden="true" /> Bot
@@ -91,6 +100,9 @@ export default function App() {
             <EmptyWorld />
             <Legend />
           </section>
+          <div className="area-events">
+            <EventsPanel />
+          </div>
           <div className="area-chart">
             <PopulationChart />
             <TraitChart />

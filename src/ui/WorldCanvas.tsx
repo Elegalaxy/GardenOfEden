@@ -6,11 +6,16 @@
 // and handed to the store (`clickMap`); hovering shows a ghost of what a
 // placement tool would add. For keyboard users the canvas takes focus: arrow
 // keys move a cursor cell (Shift moves 4), Enter or Space acts like a click.
+//
+// Global world events in progress (drought, bounty) are listed as banners in the
+// top-left corner of the map: a letter badge, the name, the ticks left and what
+// they do, in text. Area events are drawn on the map itself (render.ts).
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { rules, tuning } from '../content/index.ts'
 import { checkCommand } from '../sim/commands.ts'
 import type { Command } from '../sim/types.ts'
+import { effectSummary, eventInfo, formatTicks } from './eventInfo.ts'
 import { cellAtPixel, cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
 import { toolInfo } from './tools.ts'
@@ -33,6 +38,9 @@ function placementAt(tool: Tool, cell: Cell): Command | null {
       return { type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x, y }
     case 'bot':
       return { type: 'placeBot', x, y }
+    case 'plague':
+    case 'meteor':
+      return { type: 'triggerEvent', event: tool, x, y }
     default:
       return null
   }
@@ -81,8 +89,12 @@ export function WorldCanvas() {
       const cmd = placementAt(tool, cell)
       if (cmd !== null) {
         const valid = checkCommand(world, rules, cmd) === null
-        const kind = cmd.type === 'placeNode' ? cmd.kind : 'bot'
-        ghost = { kind, x, y, radius: cmd.type === 'placeNode' ? rules.nodeDefs[cmd.kind].radius : 0, valid }
+        const kind = cmd.type === 'placeNode' ? cmd.kind : cmd.type === 'triggerEvent' ? cmd.event : 'bot'
+        let radius = 0
+        if (cmd.type === 'placeNode') radius = rules.nodeDefs[cmd.kind].radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'plague') radius = rules.tuning.events.plague.radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'meteor') radius = rules.tuning.events.meteor.radius
+        ghost = { kind: kind as Ghost['kind'], x, y, radius, valid }
       }
     }
   }
@@ -120,6 +132,7 @@ export function WorldCanvas() {
   }
 
   const info = toolInfo(tool)
+  const banners = world.events.filter((event) => event.kind === 'drought' || event.kind === 'bounty')
   return (
     <div className="map-frame" ref={wrapRef} style={{ aspectRatio: `${world.width} / ${world.height}` }}>
       <canvas
@@ -172,6 +185,20 @@ export function WorldCanvas() {
           event.preventDefault()
         }}
       />
+      {banners.length > 0 && (
+        <ul className="map-banners" aria-label="World events in progress">
+          {banners.map((event) => (
+            <li key={`${event.kind}-${event.startTick}`} className={`map-banner banner-${event.kind}`}>
+              <span className="banner-letter" aria-hidden="true">
+                {eventInfo(event.kind).letter}
+              </span>
+              <strong>{eventInfo(event.kind).label}</strong>
+              <span className="figure banner-left">{formatTicks(event.endTick - snapshot.tick)} left</span>
+              <span className="banner-effect">{effectSummary(event.kind, tuning)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }

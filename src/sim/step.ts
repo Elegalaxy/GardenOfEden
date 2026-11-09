@@ -6,13 +6,15 @@
 //
 // After the loop, in this order: dead bots are removed, children are added,
 // each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
-// the emptied ones are removed, then a stats row is recorded every
-// `stats.sampleEvery` ticks. A ruin made this tick is already decaying by its
+// the emptied ones are removed, world events and meteor craters whose time is up are
+// removed (logging each), then a stats row is recorded every
+// `stats.sampleEvery` ticks. A plague hurts inside the bot loop (metabolise); a drought or
+// bounty acts in the regrow phase; both are still in force on their last tick. A ruin made this tick is already decaying by its
 // end, and a ruin eaten empty this tick is gone before the next one; a bot
 // that was heading for it simply finds the node missing and wanders.
 //
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
-// reproduction.ts, ruins.ts and nodes.ts. `step` changes the world it is
+// reproduction.ts, ruins.ts, nodes.ts and worldEvents.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick) and
 // the `birth` stream (eleven per child). Ruins draw nothing.
 
@@ -26,6 +28,7 @@ import type { Conception } from './reproduction.ts'
 import { decayRuins, leaveRuin } from './ruins.ts'
 import type { Bot, Rules, World, WorldNode } from './types.ts'
 import { pushEvent, takeSample } from './world.ts'
+import { expireEvents } from './worldEvents.ts'
 
 export function step(world: World, rules: Rules): void {
   const { tuning } = rules
@@ -48,7 +51,7 @@ export function step(world: World, rules: Rules): void {
     const moved = act(world, bot, rules, nodesById)
     const exposure = exposureAt(world, bot.x, bot.y)
     metabolise(bot, moved, exposure, tuning)
-    const cause = deathCause(bot, tuning)
+    const cause = deathCause(bot, exposure, tuning)
     if (cause !== null) {
       dead.add(bot.id)
       fallen.push(bot)
@@ -67,6 +70,7 @@ export function step(world: World, rules: Rules): void {
 
   regrow(world)
   decayRuins(world)
+  expireEvents(world, tuning)
 
   if (world.tick % tuning.stats.sampleEvery === 0) {
     world.samples.push(takeSample(world))

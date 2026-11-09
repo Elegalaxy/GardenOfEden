@@ -2,10 +2,13 @@
 // with an underline bar, and the line below names it; not colour alone). Keys 1-7 pick a tool and Esc goes back to
 // inspect; the keys are ignored while typing in a field. The line under the
 // buttons says what the active tool does and what the last click did.
+// The world-event keys live here too: P and M arm the plague and meteor tools (like a
+// tool key), D and B fire a drought or a bounty at once (a refused one just says why).
 
 import { useEffect } from 'react'
 import { KIND_LETTER } from './labels.ts'
-import { setTool, useWorldStore } from './store.ts'
+import { globalEventForKey } from './eventInfo.ts'
+import { dispatch, setTool, useWorldStore } from './store.ts'
 import { TOOLS, toolForKey, toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 
@@ -54,6 +57,12 @@ export function Toolbar() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || isTypingTarget(event.target)) return
+      const global = globalEventForKey(event.key)
+      if (global !== null) {
+        event.preventDefault()
+        dispatch({ type: 'triggerEvent', event: global })
+        return
+      }
       const next = toolForKey(event.key)
       if (next === null) return
       event.preventDefault()

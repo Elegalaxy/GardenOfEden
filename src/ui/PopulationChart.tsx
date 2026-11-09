@@ -6,17 +6,23 @@
 // axis, so the two read apart without colour. Food here is resource food only
 // (food sitting in ruins is not added in). Every player command is a thin
 // vertical marker topped with a letter: R, D, S for a placed resource, danger
-// or shelter, B for a bot, X for a removed node. Hover (or touch, or the
+// or shelter, W for water, B for a bot, X for a removed node, H F P M for a world
+// event (drought, bounty, plague, meteor). A timed event (drought, bounty, plague)
+// also gets a shaded band over the ticks it was in force, labelled and patterned
+// (diagonal lines = drought, dots = bounty, crosshatch = plague), never colour
+// alone. Hover (or touch, or the
 // arrow keys when the chart has focus) shows a tooltip with the tick, both
 // values and any command at that marker. Long runs are thinned to about one
 // point per pixel.
 
 import { useMemo, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
-import type { Command, Sample, SimEvent, World } from '../sim/types.ts'
+import { tuning } from '../content/index.ts'
+import type { Command, Sample, SimEvent, TimedEventKind, World } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
-import { compact, nearestIndex, niceMax, thin } from './chartMath.ts'
-import { commandLetter, commandName, formatPoint } from './labels.ts'
+import { compact, eventBands, nearestIndex, niceMax, thin } from './chartMath.ts'
+import type { EventBand } from './chartMath.ts'
+import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
 import { useWorldStore } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
 
@@ -47,8 +53,24 @@ function toMarker(entry: { tick: number; cmd: Command }): Marker {
       return { tick: entry.tick, letter: 'B', text: `place bot at ${formatPoint(cmd.x, cmd.y)}` }
     case 'removeNode':
       return { tick: entry.tick, letter: 'X', text: `remove node #${cmd.id}` }
+    case 'triggerEvent': {
+      const name = commandName(cmd.type, undefined, cmd.event)
+      return {
+        tick: entry.tick,
+        letter: commandLetter(cmd.type, undefined, cmd.event),
+        text: cmd.x === undefined || cmd.y === undefined ? name : `${name} at ${formatPoint(cmd.x, cmd.y)}`,
+      }
+    }
   }
 }
+
+const BAND_DURATIONS: Record<TimedEventKind, number> = {
+  drought: tuning.events.drought.duration,
+  bounty: tuning.events.bounty.duration,
+  plague: tuning.events.plague.duration,
+}
+const BAND_LABEL_PX = 60
+const BAND_LANE_PX = 12
 
 /** The one event of `log` that says what a removed node was, for a nicer marker label. */
 function removedKinds(log: readonly SimEvent[]): Map<number, string> {
@@ -62,7 +84,11 @@ function removedKinds(log: readonly SimEvent[]): Map<number, string> {
 }
 
 /** Samples (thinned to the plot width, plus the live tick) and one marker per player command. */
-function buildChartData(world: World, plotWidth: number, _revision: string): { points: readonly Sample[]; markers: Marker[] } {
+function buildChartData(
+  world: World,
+  plotWidth: number,
+  _revision: string,
+): { points: readonly Sample[]; markers: Marker[]; bands: EventBand[] } {
   const samples: Sample[] = [...world.samples]
   const live = takeSample(world)
   const lastSample = samples[samples.length - 1]
@@ -77,7 +103,7 @@ function buildChartData(world: World, plotWidth: number, _revision: string): { p
     }
     return marker
   })
-  return { points, markers }
+  return { points, markers, bands: eventBands(world.commands, BAND_DURATIONS, world.tick) }
 }
 
 export function PopulationChart() {
@@ -92,7 +118,7 @@ export function PopulationChart() {
   const revision = `${tick}/${world.log.length}/${world.commands.length}`
   const data = useMemo(() => buildChartData(world, plotWidth, revision), [world, plotWidth, revision])
 
-  const { points, markers } = data
+  const { points, markers, bands } = data
   const first = points[0]
   const last = points[points.length - 1]
 
@@ -120,6 +146,7 @@ export function PopulationChart() {
   const foodLine = points.map((p) => `${px(p.tick).toFixed(1)},${foodY(p.food).toFixed(1)}`).join(' ')
 
   const visibleMarkers = markers.filter((marker) => marker.tick >= x0 && marker.tick <= x1)
+  const visibleBands = bands.filter((band) => band.end >= x0 && band.start <= x1)
 
   // Which markers get a letter: skip one that would sit on top of the previous letter.
   // The skipped ones are counted on the letter before them ("D+1").
@@ -144,6 +171,8 @@ export function PopulationChart() {
   const hoverX = hoverPoint === undefined ? null : px(hoverPoint.tick)
   const hoverMarkers =
     hoverX === null ? [] : visibleMarkers.filter((marker) => Math.abs(px(marker.tick) - hoverX) <= MARKER_SNAP_PX)
+  const hoverBands =
+    hoverPoint === undefined ? [] : visibleBands.filter((band) => band.start <= hoverPoint.tick && hoverPoint.tick <= band.end)
 
   const tickAt = (clientX: number, element: Element): number | null => {
     const rect = element.getBoundingClientRect()
@@ -209,7 +238,14 @@ export function PopulationChart() {
             <line x1="7" x2="7" y1="0" y2="14" className="marker-line" />
           </svg>
           Command marker
-          <span className="legend-note">R D S placed node · B bot · X removed</span>
+          <span className="legend-note">R D S W placed node · B bot · X removed · H F P M event</span>
+        </li>
+        <li>
+          <svg width="30" height="14" aria-hidden="true">
+            <rect x="1" y="1" width="28" height="12" className="band-swatch" />
+          </svg>
+          Event band
+          <span className="legend-note">hatched = drought, dotted = bounty, crossed = plague</span>
         </li>
         <li className="legend-tick figure">
           Tick {numberFormat.format(shown.tick)}
@@ -230,6 +266,17 @@ export function PopulationChart() {
             onBlur={() => setHoverTick(null)}
             onKeyDown={onKeyDown}
           >
+            <defs>
+              <pattern id="band-drought" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+                <line x1="0" y1="0" x2="0" y2="8" className="band-stroke" />
+              </pattern>
+              <pattern id="band-bounty" width="8" height="8" patternUnits="userSpaceOnUse">
+                <circle cx="4" cy="4" r="1.4" className="band-dot" />
+              </pattern>
+              <pattern id="band-plague" width="8" height="8" patternUnits="userSpaceOnUse">
+                <path d="M0 0 L8 8 M8 0 L0 8" className="band-stroke" />
+              </pattern>
+            </defs>
             {Array.from({ length: DIVISIONS + 1 }, (_, i) => {
               const y = MARGIN.top + (plotHeight * i) / DIVISIONS
               const popValue = popMax * (1 - i / DIVISIONS)
@@ -257,6 +304,23 @@ export function PopulationChart() {
                 {compact(t)}
               </text>
             ))}
+            {visibleBands.map((band, index) => {
+              const left = px(Math.max(band.start, x0))
+              const right = px(Math.min(band.end, x1))
+              const bandWidth = Math.max(1, right - left)
+              const label = `${EVENT_LETTER[band.kind]} ${EVENT_LABEL[band.kind]}${band.ongoing ? ' (now)' : ''}`
+              return (
+                <g key={`band-${index}`} className="event-band">
+                  <rect x={left} y={MARGIN.top} width={bandWidth} height={plotHeight} fill={`url(#band-${band.kind})`} className="band-fill" />
+                  <line x1={left} x2={left} y1={MARGIN.top} y2={MARGIN.top + plotHeight} className="band-edge" />
+                  {bandWidth >= 12 && (
+                    <text x={left + 4} y={MARGIN.top + 11 + band.lane * BAND_LANE_PX} className="band-label">
+                      {bandWidth >= BAND_LABEL_PX ? label : EVENT_LETTER[band.kind]}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
             {visibleMarkers.map((marker, index) => (
               <g key={index}>
                 <line
@@ -298,6 +362,12 @@ export function PopulationChart() {
               <dt>Food</dt>
               <dd className="figure">{numberFormat.format(Math.round(hoverPoint.food))}</dd>
             </dl>
+            {hoverBands.map((band, index) => (
+              <p key={`band-${index}`} className="tooltip-command">
+                <strong>{EVENT_LETTER[band.kind]}</strong> {EVENT_LABEL[band.kind]} in force (ticks {numberFormat.format(band.start)} to{' '}
+                {numberFormat.format(band.start + BAND_DURATIONS[band.kind])})
+              </p>
+            ))}
             {hoverMarkers.slice(0, 3).map((marker, index) => (
               <p key={index} className="tooltip-command">
                 <strong>{marker.letter}</strong> Tick {marker.tick}: {marker.text}

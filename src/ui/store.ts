@@ -7,7 +7,8 @@
 //
 // Player actions go through `dispatch`, which applies a Command to the live
 // world (between two ticks) and leaves a notice for the toolbar to show.
-// `clickCell` is what a click on the map means for the active tool.
+// `clickMap` is what a click on the map means for the active tool (the plague and
+// meteor tools trigger a world event where you click).
 
 import { useSyncExternalStore } from 'react'
 import { edenPreset, rules } from '../content/index.ts'
@@ -16,6 +17,7 @@ import type { CommandResult } from '../sim/commands.ts'
 import { step } from '../sim/step.ts'
 import type { Command, DeathsByCause, World } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
+import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import { formatPoint } from './labels.ts'
 import { toolInfo } from './tools.ts'
@@ -154,8 +156,10 @@ export function select(next: Selection | null): void {
   publish()
 }
 
-function describeApplied(cmd: Command, id: number): string {
+function describeApplied(cmd: Command, id: number, killed: number): string {
   switch (cmd.type) {
+    case 'triggerEvent':
+      return startedMessage(cmd, rules.tuning, killed)
     case 'placeNode':
       return `Placed ${cmd.kind} #${id} at ${formatPoint(cmd.x, cmd.y)}.`
     case 'placeBot':
@@ -167,8 +171,9 @@ function describeApplied(cmd: Command, id: number): string {
 
 /** Applies a player command to the live world and publishes. A rejected command changes nothing but the notice. */
 export function dispatch(cmd: Command): CommandResult {
+  const meteorDeaths = world.deathsByCause.meteor
   const result = applyCommand(world, rules, cmd)
-  say(result.ok, result.ok ? describeApplied(cmd, result.id) : result.reason)
+  say(result.ok, result.ok ? describeApplied(cmd, result.id, world.deathsByCause.meteor - meteorDeaths) : result.reason)
   publish()
   return result
 }
@@ -191,6 +196,10 @@ export function clickMap(x: number, y: number, reach: number): void {
       return
     case 'bot':
       dispatch({ type: 'placeBot', x: centre.x, y: centre.y })
+      return
+    case 'plague':
+    case 'meteor':
+      dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y })
       return
     case 'remove': {
       const target = nodeAt(world, x, y)

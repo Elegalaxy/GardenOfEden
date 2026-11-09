@@ -15,8 +15,14 @@
 // target), an outline on whatever the inspect or remove tool would hit, and a
 // ghost of what a placement tool would add (an X through it when it would be
 // refused).
+//
+// World events (M8): a plague zone is a hatched disc with a dashed ring and the
+// label "P PLAGUE" with the ticks left; a meteor crater is a danger zone drawn in
+// the meteor colour with an M instead of a D, and for its first moments an
+// expanding ring shows the impact. The global events (drought, bounty) are
+// banners over the map, in WorldCanvas.
 
-import type { NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
+import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { botPosition, findBot, findNode } from './geometry.ts'
 import type { Layout } from './geometry.ts'
 import type { Selection } from './tools.ts'
@@ -25,7 +31,7 @@ export type Size = { width: number; height: number }
 
 /** A placement preview: a node (with its radius) or a bot, centred at map position (x, y). */
 export type Ghost = {
-  kind: NodeKind | 'bot'
+  kind: NodeKind | 'bot' | 'plague' | 'meteor'
   x: number
   y: number
   radius: number
@@ -52,6 +58,8 @@ export const COLORS = {
   shelter: '#58a6ff',
   ruin: '#bc8cff',
   water: '#4dd0e1',
+  plague: '#ff7ab6',
+  meteor: '#ff9f43',
   bot: '#f2cc60',
   botEdge: '#0e1118',
   flee: '#ffffff',
@@ -68,6 +76,16 @@ const NODE_COLOR: Record<NodeKind, string> = {
   ruin: COLORS.ruin,
   water: COLORS.water,
 }
+
+const GHOST_LETTER = { plague: 'P', meteor: 'M' } as const
+
+/** A meteor crater is a temporary danger node (it has an end tick). */
+function isCrater(node: WorldNode): boolean {
+  return node.kind === 'danger' && node.expires > 0
+}
+
+/** How long (ticks) the impact ring takes to grow to the full impact radius and fade out. */
+const FLASH_TICKS = 24
 
 /** Largest scale that fits the whole map, centred. */
 export function computeLayout(size: Size, world: Pick<World, 'width' | 'height'>): Layout {
@@ -110,7 +128,7 @@ function drawZone(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   const cx = layout.offsetX + node.x * layout.scale
   const cy = layout.offsetY + node.y * layout.scale
   const r = node.radius * layout.scale
-  const color = NODE_COLOR[node.kind]
+  const color = isCrater(node) ? COLORS.meteor : NODE_COLOR[node.kind]
   ctx.beginPath()
   ctx.arc(cx, cy, r, 0, Math.PI * 2)
   ctx.globalAlpha = 0.16
@@ -222,6 +240,66 @@ function drawWater(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layou
   drawLetter(ctx, NODE_LETTER.water, cx, cy + reach * 0.25, layout.scale * 1.2)
 }
 
+/** Text with a dark outline so it stays readable over hatching and nodes. */
+function drawOutlinedLabel(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, px: number): void {
+  ctx.font = `700 ${Math.max(10, Math.round(px))}px "Segoe UI", system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.lineJoin = 'round'
+  ctx.lineWidth = 3
+  ctx.strokeStyle = COLORS.background
+  ctx.strokeText(text, cx, cy)
+  ctx.fillStyle = COLORS.label
+  ctx.fillText(text, cx, cy)
+}
+
+/** A plague zone: a hatched disc inside a dashed ring, labelled with its name and the ticks left. */
+function drawPlague(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: number, layout: Layout): void {
+  const cx = layout.offsetX + event.x * layout.scale
+  const cy = layout.offsetY + event.y * layout.scale
+  const r = event.radius * layout.scale
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.globalAlpha = 0.1
+  ctx.fillStyle = COLORS.plague
+  ctx.fill()
+  ctx.clip()
+  ctx.globalAlpha = 0.4
+  ctx.strokeStyle = COLORS.plague
+  ctx.lineWidth = 1.5
+  ctx.beginPath()
+  for (let d = -2 * r; d <= 2 * r; d += 10) {
+    ctx.moveTo(cx - r + d, cy + r)
+    ctx.lineTo(cx + r + d, cy - r)
+  }
+  ctx.stroke()
+  ctx.restore()
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.plague
+  ctx.setLineDash([3, 5])
+  ctx.stroke()
+  ctx.restore()
+  drawOutlinedLabel(ctx, `P PLAGUE ${Math.max(0, event.endTick - tick)}`, cx, cy - r + Math.max(12, layout.scale * 1.2), layout.scale * 1.15)
+}
+
+/** The impact of a fresh meteor: a ring that grows to the impact radius and fades. `age` is the crater's age in ticks. */
+function drawImpact(ctx: CanvasRenderingContext2D, node: WorldNode, age: number, impactRadius: number, layout: Layout): void {
+  if (age < 0 || age >= FLASH_TICKS) return
+  const progress = age / FLASH_TICKS
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(layout.offsetX + node.x * layout.scale, layout.offsetY + node.y * layout.scale, impactRadius * layout.scale * (0.2 + 0.8 * progress), 0, Math.PI * 2)
+  ctx.globalAlpha = 1 - progress
+  ctx.lineWidth = 4
+  ctx.strokeStyle = COLORS.meteor
+  ctx.stroke()
+  ctx.restore()
+}
+
 function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number, layout: Layout, overlay: Overlay): void {
   const { scale, offsetX, offsetY } = layout
   const px = (x: number): number => offsetX + x * scale
@@ -284,7 +362,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number,
     const cx = px(ghost.x)
     const cy = py(ghost.y)
     const r = ghost.kind === 'bot' ? Math.max(3, scale * 0.55) : ghost.radius * scale
-    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
+    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : ghost.kind === 'plague' || ghost.kind === 'meteor' ? COLORS[ghost.kind] : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
     ctx.save()
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -304,7 +382,8 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number,
         ctx.setLineDash([])
         ctx.stroke()
       }
-      if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
+      if (ghost.kind === 'plague' || ghost.kind === 'meteor') drawLetter(ctx, GHOST_LETTER[ghost.kind], cx, cy, scale * 1.4)
+      else if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
     } else {
       // An X through the ghost: "refused", not just a different colour.
       const arm = Math.max(5, Math.min(r, scale * 1.2) * 0.7)
@@ -339,13 +418,16 @@ export function drawWorld(
   drawGrid(ctx, world, layout)
 
   // Big zones first so smaller things sit on top of them.
+  for (const event of world.events) {
+    if (event.kind === 'plague') drawPlague(ctx, event, world.tick, layout)
+  }
   for (const node of world.nodes) {
     if (node.kind !== 'danger' && node.kind !== 'shelter') continue
     drawZone(ctx, node, layout)
     // Near the top of the zone, so a resource growing in its middle stays readable.
     drawLetter(
       ctx,
-      NODE_LETTER[node.kind],
+      isCrater(node) ? 'M' : NODE_LETTER[node.kind],
       offsetX + node.x * scale,
       offsetY + (node.y - node.radius * 0.62) * scale,
       scale * 1.5,
@@ -381,6 +463,11 @@ export function drawWorld(
       ctx.strokeStyle = COLORS.flee
       ctx.stroke()
     }
+  }
+
+  const meteor = tuning.events.meteor
+  for (const node of world.nodes) {
+    if (isCrater(node)) drawImpact(ctx, node, meteor.craterTicks - (node.expires - world.tick), meteor.radius, layout)
   }
 
   if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay)
