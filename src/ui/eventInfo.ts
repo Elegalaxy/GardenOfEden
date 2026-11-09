@@ -5,7 +5,8 @@
 // clicked onto the map (tools.ts).
 
 import { checkCommand } from '../sim/commands.ts'
-import type { Command, EventKind, Rules, Tuning, World } from '../sim/types.ts'
+import type { Command, EventKind, Rules, Tuning } from '../sim/types.ts'
+import type { CheckableWorld } from '../sim/worldEvents.ts'
 import { EVENT_LABEL, EVENT_LETTER, formatPoint } from './labels.ts'
 
 export type EventInfo = {
@@ -89,7 +90,7 @@ export function eventRows(kind: EventKind, tuning: Tuning): { label: string; val
 }
 
 /** Why the event cannot be started right now (a cap, or one is already running), or null. Area events are checked at the map centre. */
-export function blockedReason(world: World, rules: Rules, kind: EventKind): string | null {
+export function blockedReason(world: CheckableWorld, rules: Rules, kind: EventKind): string | null {
   return checkCommand(world, rules, { type: 'triggerEvent', event: kind, x: world.width / 2, y: world.height / 2 })
 }
 

@@ -13,13 +13,14 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
-import type { SimEvent, SimEventType, World } from '../sim/types.ts'
+import type { SimEvent, SimEventType } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
 import { EVENT_LABEL, KIND_LABEL, causeSentence, commandName, formatPoint } from './labels.ts'
 import { mergeLog } from './logMerge.ts'
 import type { LogEntry } from './logMerge.ts'
 import { select, useWorldStore } from './store.ts'
 import type { Selection } from './tools.ts'
+import type { ViewWorld } from './viewWorld.ts'
 
 const MAX_ROWS = 150
 const numberFormat = new Intl.NumberFormat('en-US')
@@ -40,7 +41,7 @@ function targetOf(event: SimEvent): Selection | null {
   return null
 }
 
-function exists(world: World, target: Selection): boolean {
+function exists(world: ViewWorld, target: Selection): boolean {
   return target.kind === 'bot' ? findBot(world, target.id) !== undefined : findNode(world, target.id) !== undefined
 }
 
@@ -75,13 +76,13 @@ function describe({ event, located }: LogEntry): string {
 }
 
 /** Everything the log lists, oldest first. `_revision` only says when the (mutated-in-place) log or commands changed. */
-function entriesOf(world: World, _revision: string): LogEntry[] {
+function entriesOf(world: ViewWorld, _revision: string): LogEntry[] {
   return mergeLog(world.log, world.commands)
 }
 
 /** The rows for the matching entries (oldest first in, newest first out). `_revision` only says when the (mutated-in-place) log changed. */
 function buildRows(
-  world: World,
+  world: ViewWorld,
   entries: readonly LogEntry[],
   active: Record<SimEventType, boolean>,
   selectedKey: string,

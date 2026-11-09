@@ -36,7 +36,7 @@ export function mutateTraits(parent: Traits, mutation: Tuning['mutation'], strea
 }
 
 /** Mean, min and max of each trait; null when there are no bots. */
-export function traitStats(bots: readonly Bot[]): Record<TraitName, TraitStat> | null {
+export function traitStats(bots: readonly Pick<Bot, 'traits'>[]): Record<TraitName, TraitStat> | null {
   if (bots.length === 0) return null
   const stats = {} as Record<TraitName, TraitStat>
   for (const name of TRAIT_NAMES) {
@@ -55,7 +55,7 @@ export function traitStats(bots: readonly Bot[]): Record<TraitName, TraitStat> |
 }
 
 /** The population mean of each trait; null when there are no bots. */
-export function meanTraits(bots: readonly Bot[]): Traits | null {
+export function meanTraits(bots: readonly Pick<Bot, 'traits'>[]): Traits | null {
   const stats = traitStats(bots)
   if (stats === null) return null
   return {

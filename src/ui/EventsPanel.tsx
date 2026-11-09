@@ -19,7 +19,7 @@ function EventCard({ info }: { info: EventInfo }) {
   const reason = blockedReason(world, rules, info.kind)
   const armed = !info.global && tool === info.kind
   const onClick = (): void => {
-    if (info.global) dispatch({ type: 'triggerEvent', event: info.kind })
+    if (info.global) void dispatch({ type: 'triggerEvent', event: info.kind })
     else setTool(armed ? 'inspect' : (info.kind as 'plague' | 'meteor'))
   }
   return (

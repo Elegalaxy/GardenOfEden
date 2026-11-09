@@ -7,6 +7,7 @@
 // run stays until the new one is complete. It lives in the header's Run & save menu
 // (RunMenu.tsx), which also shows results when it is closed. The row of buttons and the
 // progress row take the same height, so the menu does not jump while a load runs.
+// The save itself (and its hash) is made by the simulation worker, so Save and Copy share link finish a moment after the click.
 // Everything read from a file is untrusted: it goes through `decodeSave`, and the seed
 // and other text are only ever rendered as text.
 
@@ -55,14 +56,14 @@ export function SavePanel() {
     else void startLoad(save)
   }
 
+  // The simulation runs in a worker, which makes the save (and its hash), so these finish a moment later.
   const onSave = (): void => {
-    try {
-      const save = exportSave()
-      downloadText(saveFileName(save), encodeSave(save))
-      reportSave('ok', `Saved ${saveFileName(save)} (${plural(save.commands.length, 'command')}).`)
-    } catch {
-      reportSave('error', 'The save file could not be created.')
-    }
+    exportSave()
+      .then((save) => {
+        downloadText(saveFileName(save), encodeSave(save))
+        reportSave('ok', `Saved ${saveFileName(save)} (${plural(save.commands.length, 'command')}).`)
+      })
+      .catch(() => reportSave('error', 'The save file could not be created.'))
   }
 
   const onFile = (event: ChangeEvent<HTMLInputElement>): void => {
@@ -84,25 +85,29 @@ export function SavePanel() {
   }
 
   const onShare = (): void => {
-    const encoded = encodeShare(exportSave())
-    if (!encoded.ok) {
-      reportSave('error', encoded.message)
-      return
-    }
-    const url = shareUrl(encoded.fragment)
-    const done = (): void => {
-      setLinkText(null)
-      reportSave('ok', `Link copied. Opening it loads this run, paused at tick ${numberFormat.format(tick)}.`)
-    }
-    const manual = (): void => {
-      setLinkText(url)
-      reportSave('warn', 'The link could not be copied automatically. Select it below and copy it yourself.')
-    }
-    try {
-      navigator.clipboard.writeText(url).then(done, manual)
-    } catch {
-      manual()
-    }
+    exportSave()
+      .then((save) => {
+        const encoded = encodeShare(save)
+        if (!encoded.ok) {
+          reportSave('error', encoded.message)
+          return
+        }
+        const url = shareUrl(encoded.fragment)
+        const done = (): void => {
+          setLinkText(null)
+          reportSave('ok', `Link copied. Opening it loads this run, paused at tick ${numberFormat.format(save.tick)}.`)
+        }
+        const manual = (): void => {
+          setLinkText(url)
+          reportSave('warn', 'The link could not be copied automatically. Select it below and copy it yourself.')
+        }
+        try {
+          navigator.clipboard.writeText(url).then(done, manual)
+        } catch {
+          manual()
+        }
+      })
+      .catch(() => reportSave('error', 'The share link could not be created.'))
   }
 
   const onClearAutosave = (): void => {

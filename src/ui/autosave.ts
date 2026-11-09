@@ -8,6 +8,10 @@
 // `INTERVAL_MS` while the clock runs; a new command writes at once, and the page
 // flushes when it is hidden or closed. "Clear" removes the stored run and stops saving
 // this run until it changes again. Without storage everything here is a no-op.
+//
+// Since M13 the save (and its hash) is made by the simulation worker, so a write is a request
+// that finishes a moment later and never stalls the page. A flush as the page closes is therefore
+// best effort: if the page is gone before the answer arrives, the previous autosave stays.
 
 import { useSyncExternalStore } from 'react'
 import { clearAutosave, readAutosave, writeAutosave } from '../persist/autosave.ts'
@@ -66,9 +70,12 @@ export function useAutosave(): AutosaveInfo {
 }
 
 let suspended: { runId: number; commands: number } | null = null
+/** Bumped by "Clear", so a save requested before it is not written after it. */
+let clearGeneration = 0
 
 /** Removes the stored run and stops saving the current one until it changes. */
 export function clearStoredRun(): void {
+  clearGeneration += 1
   const ok = clearAutosave(getStorage())
   const snap = getSnapshot()
   suspended = { runId: snap.runId, commands: snap.commandCount }
@@ -95,9 +102,16 @@ export function startAutosave(): () => void {
     if (!force && !commandChanged && now - lastWriteAt < INTERVAL_MS) return
     lastKey = key
     lastWriteAt = now
-    const save = exportSave()
-    const ok = writeAutosave(getStorage(), save)
-    setInfo({ saved: ok ? save : (info?.saved ?? null), available: ok })
+    const generation = clearGeneration
+    exportSave()
+      .then((save) => {
+        if (generation !== clearGeneration) return
+        const ok = writeAutosave(getStorage(), save)
+        setInfo({ saved: ok ? save : (info?.saved ?? null), available: ok })
+      })
+      .catch(() => {
+        // The simulation could not make a save; the previous autosave stays.
+      })
   }
 
   const unsubscribe = subscribe(() => write(false))

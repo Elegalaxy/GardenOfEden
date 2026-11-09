@@ -20,15 +20,16 @@ import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
+import type { CheckableWorld } from './worldEvents.ts'
 
 export type CommandResult = { ok: true; id: number } | { ok: false; reason: string }
 
-function insideMap(world: World, x: number, y: number): boolean {
+function insideMap(world: Pick<World, 'width' | 'height'>, x: number, y: number): boolean {
   return Number.isFinite(x) && Number.isFinite(y) && x >= 0 && y >= 0 && x <= world.width && y <= world.height
 }
 
 /** null when the command would be accepted, otherwise a short reason a player can read. */
-export function checkCommand(world: World, rules: Rules, cmd: Command): string | null {
+export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command): string | null {
   const { tuning } = rules
   switch (cmd.type) {
     case 'placeNode': {

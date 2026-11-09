@@ -14,7 +14,7 @@ import { WorldCanvas } from './WorldCanvas.tsx'
 import { startAutosave } from './autosave.ts'
 import { startLoop } from './loop.ts'
 import { watchShareLinks } from './shareLink.ts'
-import { useWorldStore } from './store.ts'
+import { useEngine, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import './styles.css'
 import './panels.css'
@@ -83,8 +83,9 @@ export default function App() {
   useEffect(() => startLoop(), [])
   useEffect(() => watchShareLinks(), [])
   useEffect(() => startAutosave(), [])
+  const engine = useEngine()
   return (
-    <main className="app">
+    <main className="app" data-sim={engine}>
       <div className="layout">
         <header className="app-header">
           <h1>Garden of Eden</h1>

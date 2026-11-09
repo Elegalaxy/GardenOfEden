@@ -27,6 +27,7 @@ import { botPosition, findBot, findNode } from './geometry.ts'
 import type { Layout } from './geometry.ts'
 import { chordWidth, fitLabel } from './labels.ts'
 import type { Selection } from './tools.ts'
+import type { ViewWorld } from './viewWorld.ts'
 
 export type Size = { width: number; height: number }
 
@@ -99,7 +100,7 @@ export function computeLayout(size: Size, world: Pick<World, 'width' | 'height'>
   }
 }
 
-function drawGrid(ctx: CanvasRenderingContext2D, world: World, layout: Layout): void {
+function drawGrid(ctx: CanvasRenderingContext2D, world: ViewWorld, layout: Layout): void {
   const { scale, offsetX, offsetY } = layout
   const right = offsetX + world.width * scale
   const bottom = offsetY + world.height * scale
@@ -309,7 +310,7 @@ function drawImpact(ctx: CanvasRenderingContext2D, node: WorldNode, age: number,
   ctx.restore()
 }
 
-function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number, layout: Layout, overlay: Overlay): void {
+function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: number, layout: Layout, overlay: Overlay): void {
   const { scale, offsetX, offsetY } = layout
   const px = (x: number): number => offsetX + x * scale
   const py = (y: number): number => offsetY + y * scale
@@ -429,7 +430,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number,
 
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
-  world: World,
+  world: ViewWorld,
   alpha: number,
   size: Size,
   tuning: Tuning,

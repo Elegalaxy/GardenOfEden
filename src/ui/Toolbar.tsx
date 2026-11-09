@@ -61,7 +61,7 @@ export function Toolbar() {
       const global = globalEventForKey(event.key)
       if (global !== null) {
         event.preventDefault()
-        dispatch({ type: 'triggerEvent', event: global })
+        void dispatch({ type: 'triggerEvent', event: global })
         return
       }
       const next = toolForKey(event.key)

@@ -7,12 +7,14 @@ import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
 import { ruinDecayRate } from '../sim/ruins.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
-import type { Bot, TraitName, World, WorldNode } from '../sim/types.ts'
+import type { TraitName, WorldNode } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
 import { INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
+import type { ViewBot } from './protocol.ts'
 import type { Selection } from './tools.ts'
+import type { ViewWorld } from './viewWorld.ts'
 import { TREND_GLYPH, signedDelta, trendOf } from './traitMath.ts'
 
 const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(1)
@@ -55,7 +57,7 @@ function Meter({ label, value, max, low }: { label: string; value: number; max: 
 }
 
 /** A trait row: the bot's value, and how far it is from the average of the living population (the bot itself included). */
-function TraitRow({ name, bot, mean }: { name: TraitName; bot: Bot; mean: number }) {
+function TraitRow({ name, bot, mean }: { name: TraitName; bot: ViewBot; mean: number }) {
   const delta = bot.traits[name] - mean
   const trend = trendOf(name, delta)
   return (
@@ -72,7 +74,7 @@ function TraitRow({ name, bot, mean }: { name: TraitName; bot: Bot; mean: number
   )
 }
 
-function botsInside(world: World, node: WorldNode): number {
+function botsInside(world: Pick<ViewWorld, 'bots'>, node: WorldNode): number {
   let count = 0
   for (const bot of world.bots) {
     if (Math.hypot(bot.x - node.x, bot.y - node.y) <= node.radius) count += 1
@@ -97,13 +99,12 @@ function SelectButton({ target, children }: { target: Selection; children: React
 /** Most children named as links in the inspector; the rest are counted. */
 const MAX_CHILD_LINKS = 4
 
-function BotDetails({ bot, world }: { bot: Bot; world: World }) {
+function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   const { intent } = bot
   const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
   const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
   const adult = bot.age >= tuning.bot.adultAge
   const children = world.bots.filter((other) => other.parentId === bot.id)
-  const fromFamily = bot.memory.filter((entry) => entry.learnedFrom !== null).length
   // The bot is alive, so the population is never empty here.
   const mean = meanTraits(world.bots) ?? bot.traits
   return (
@@ -132,7 +133,7 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
         <Row label="Position">{formatPoint(bot.x, bot.y)}</Row>
         <Row label="Repro cooldown">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
         <Row label="Memory">
-          {bot.memory.length} / {tuning.memory.cap + tuning.memory.waterCap} nodes · {fromFamily} from family
+          {bot.memoryCount} / {tuning.memory.cap + tuning.memory.waterCap} nodes · {bot.learnedCount} from family
         </Row>
       </dl>
       <h4>Family</h4>
@@ -174,7 +175,7 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
   )
 }
 
-function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
+function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const crater = node.expires > 0
   return (
     <>
@@ -221,7 +222,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
   )
 }
 
-function GoneNotice({ selection, world }: { selection: Selection; world: World }) {
+function GoneNotice({ selection, world }: { selection: Selection; world: ViewWorld }) {
   // The newest event about this thing tells the player what happened to it.
   let detail = ''
   for (let i = world.log.length - 1; i >= 0; i -= 1) {

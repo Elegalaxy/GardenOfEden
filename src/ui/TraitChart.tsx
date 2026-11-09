@@ -13,13 +13,14 @@ import { useMemo } from 'react'
 import { tuning } from '../content/index.ts'
 import { traitDrift } from '../sim/stats.ts'
 import { TRAIT_NAMES } from '../sim/traits.ts'
-import type { Sample, TraitName, World } from '../sim/types.ts'
+import type { Sample, TraitName } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
 import { thin } from './chartMath.ts'
 import { TRAIT_HELP, TRAIT_LABEL } from './labels.ts'
 import { useWorldStore } from './store.ts'
 import { TREND_GLYPH, fractionOf, signedDelta, traitNumber, trendOf } from './traitMath.ts'
 import { useElementWidth } from './useElementWidth.ts'
+import type { ViewWorld } from './viewWorld.ts'
 
 const HEIGHT = 96
 const MARGIN = { left: 34, right: 12, top: 8, bottom: 8 }
@@ -49,7 +50,7 @@ function Marker({ shape, x, y }: { shape: Shape; x: number; y: number }) {
 }
 
 /** All samples plus the live tick, oldest first. */
-function buildSamples(world: World, _revision: string): Sample[] {
+function buildSamples(world: ViewWorld, _revision: string): Sample[] {
   const samples: Sample[] = [...world.samples]
   const live = takeSample(world)
   const last = samples[samples.length - 1]

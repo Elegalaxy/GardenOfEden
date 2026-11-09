@@ -4,6 +4,9 @@
 import type { Bot, World, WorldNode } from '../sim/types.ts'
 import type { Selection } from './tools.ts'
 
+/** What the picking helpers read of a bot, so they work on a World's bots and on the page's ViewBots alike. */
+type Located = Pick<Bot, 'id' | 'x' | 'y' | 'px' | 'py'>
+
 export type Layout = {
   /** CSS pixels per map cell. */
   scale: number
@@ -27,7 +30,7 @@ export function cellCenter(cell: Cell): { x: number; y: number } {
 }
 
 /** A bot's drawn position: blended from where its last turn started to where it is, by `alpha` (0 to 1). */
-export function botPosition(bot: Bot, alpha: number): { x: number; y: number } {
+export function botPosition(bot: Pick<Bot, 'x' | 'y' | 'px' | 'py'>, alpha: number): { x: number; y: number } {
   return { x: bot.px + (bot.x - bot.px) * alpha, y: bot.py + (bot.y - bot.py) * alpha }
 }
 
@@ -45,8 +48,8 @@ export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number): World
 }
 
 /** The bot nearest the point within `reach` cells, or undefined. */
-export function botAt(world: Pick<World, 'bots'>, x: number, y: number, alpha: number, reach: number): Bot | undefined {
-  let best: Bot | undefined
+export function botAt<B extends Located>(world: { bots: readonly B[] }, x: number, y: number, alpha: number, reach: number): B | undefined {
+  let best: B | undefined
   let bestDistance = reach
   for (const bot of world.bots) {
     const p = botPosition(bot, alpha)
@@ -60,7 +63,7 @@ export function botAt(world: Pick<World, 'bots'>, x: number, y: number, alpha: n
 }
 
 /** What a click at a map position selects: a bot if one is close, else the node under it, else nothing. */
-export function pickAt(world: Pick<World, 'bots' | 'nodes'>, x: number, y: number, alpha: number, reach: number): Selection | null {
+export function pickAt(world: { bots: readonly Located[] } & Pick<World, 'nodes'>, x: number, y: number, alpha: number, reach: number): Selection | null {
   const bot = botAt(world, x, y, alpha, reach)
   if (bot !== undefined) return { kind: 'bot', id: bot.id }
   const node = nodeAt(world, x, y)
@@ -68,7 +71,7 @@ export function pickAt(world: Pick<World, 'bots' | 'nodes'>, x: number, y: numbe
 }
 
 /** Bots are kept in ascending id order, so a binary search finds one. */
-export function findBot(world: Pick<World, 'bots'>, id: number): Bot | undefined {
+export function findBot<B extends Pick<Bot, 'id'>>(world: { bots: readonly B[] }, id: number): B | undefined {
   let low = 0
   let high = world.bots.length - 1
   while (low <= high) {

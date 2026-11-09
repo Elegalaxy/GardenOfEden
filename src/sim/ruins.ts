@@ -58,7 +58,7 @@ export function leaveRuin(world: World, bot: Bot, rules: Rules): void {
 }
 
 /** Is the point inside the radius of any danger node (zones, groves and meteor craters alike)? */
-export function insideAnyDanger(world: World, x: number, y: number): boolean {
+export function insideAnyDanger(world: Pick<World, 'nodes'>, x: number, y: number): boolean {
   for (const node of world.nodes) {
     if (node.kind === 'danger' && Math.hypot(x - node.x, y - node.y) <= node.radius) return true
   }
@@ -66,7 +66,7 @@ export function insideAnyDanger(world: World, x: number, y: number): boolean {
 }
 
 /** What a ruin loses this tick: its `decay`, times `ruin.dangerDecayMult` if its centre is inside a danger node. */
-export function ruinDecayRate(world: World, node: WorldNode, tuning: Tuning): number {
+export function ruinDecayRate(world: Pick<World, 'nodes'>, node: WorldNode, tuning: Tuning): number {
   return insideAnyDanger(world, node.x, node.y) ? node.decay * tuning.ruin.dangerDecayMult : node.decay
 }
 

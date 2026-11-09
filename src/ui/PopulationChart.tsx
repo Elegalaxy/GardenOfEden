@@ -18,13 +18,14 @@
 import { useMemo, useState } from 'react'
 import type { KeyboardEvent, PointerEvent } from 'react'
 import { tuning } from '../content/index.ts'
-import type { Command, Sample, SimEvent, TimedEventKind, World } from '../sim/types.ts'
+import type { Command, Sample, SimEvent, TimedEventKind } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
 import { compact, eventBands, nearestIndex, niceMax, thin, xAxisTicks } from './chartMath.ts'
 import type { EventBand } from './chartMath.ts'
 import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
 import { useWorldStore } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
+import type { ViewWorld } from './viewWorld.ts'
 
 const HEIGHT = 240
 const MARGIN = { left: 40, right: 48, top: 24, bottom: 26 }
@@ -85,7 +86,7 @@ function removedKinds(log: readonly SimEvent[]): Map<number, string> {
 
 /** Samples (thinned to the plot width, plus the live tick) and one marker per player command. */
 function buildChartData(
-  world: World,
+  world: ViewWorld,
   plotWidth: number,
   _revision: string,
 ): { points: readonly Sample[]; markers: Marker[]; bands: EventBand[] } {

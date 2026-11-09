@@ -1,5 +1,5 @@
-// A replay that can be run in slices, so loading a long save does not freeze the
-// page. It does exactly what `replayWorld` does (same calls in the same order, so
+// A replay that can be run in slices, so loading a long save can be cancelled and
+// report progress (the simulation host runs it, in the worker, since M13). It does exactly what `replayWorld` does (same calls in the same order, so
 // the same `stateHash`), but `run(maxTicks)` stops after a number of ticks and the
 // caller comes back later. The sim stays pure; only the slicing lives here.
 

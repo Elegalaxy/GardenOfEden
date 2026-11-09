@@ -74,7 +74,7 @@ export function makeBot(id: number, x: number, y: number, heading: number, rules
 }
 
 /** Sum of every resource node's current amount. */
-export function totalFood(world: World): number {
+export function totalFood(world: Pick<World, 'nodes'>): number {
   let total = 0
   for (const node of world.nodes) {
     if (node.kind === 'resource') total += node.amount
@@ -83,7 +83,7 @@ export function totalFood(world: World): number {
 }
 
 /** Sum of every ruin's current amount (kept apart from `totalFood`, which counts resources only). */
-export function totalRuinFood(world: World): number {
+export function totalRuinFood(world: Pick<World, 'nodes'>): number {
   let total = 0
   for (const node of world.nodes) {
     if (node.kind === 'ruin') total += node.amount
@@ -92,7 +92,7 @@ export function totalRuinFood(world: World): number {
 }
 
 /** Nodes the player counts against `player.maxNodes`: everything except ruins and meteor craters. */
-export function placedNodeCount(world: World): number {
+export function placedNodeCount(world: Pick<World, 'nodes'>): number {
   let count = 0
   for (const node of world.nodes) {
     if (node.kind !== 'ruin' && node.expires === 0) count += 1
@@ -106,13 +106,18 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
   if (world.log.length > tuning.logCap) world.log.splice(0, world.log.length - tuning.logCap)
 }
 
-export function totalDeaths(world: World): number {
+export function totalDeaths(world: Pick<World, 'deathsByCause'>): number {
   const d = world.deathsByCause
   return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.age
 }
 
 /** One stats row for the world as it stands now. */
-export function takeSample(world: World): Sample {
+/** What `takeSample` reads: a World, or the main thread's copy of one (bots without their memory). */
+export type Sampleable = Pick<World, 'tick' | 'nodes' | 'totalBirths' | 'deathsByCause'> & {
+  bots: readonly Pick<Bot, 'traits'>[]
+}
+
+export function takeSample(world: Sampleable): Sample {
   return {
     tick: world.tick,
     pop: world.bots.length,

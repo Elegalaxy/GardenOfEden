@@ -1,52 +1,60 @@
-// UI session: the live World plus speed, pause, the active tool and the
-// selection, shared through useSyncExternalStore (same pattern as
-// trading-sim's store). The World is advanced in place by `advance`, so the
-// snapshot copies the few numbers the panels need and hands out the World
-// itself for the canvas to draw. A new snapshot object is published on every
-// change, which is what wakes React.
+// UI session: the page's copy of the world plus speed, pause, the active tool and the
+// selection, shared through useSyncExternalStore (same pattern as trading-sim's store).
+// Since M13 the simulation itself runs in a Web Worker (sim.worker.ts, logic in simHost.ts);
+// this store talks to it through a SimClient (simClient.ts) with the messages in protocol.ts,
+// and keeps a `ViewWorld` built from the frames it sends back (viewWorld.ts). The mirror is
+// updated in place, a new snapshot object is published on every change, and that is what
+// wakes React.
 //
-// Player actions go through `dispatch`, which applies a Command to the live
-// world (between two ticks) and leaves a notice for the toolbar to show.
-// `clickMap` is what a click on the map means for the active tool (the plague and
-// meteor tools trigger a world event where you click).
+// The clock stays here (loop.ts): `advance(ticks, progress)` is called every frame with the
+// ticks that are due. At most one advance is in flight; ticks that fall due meanwhile pile up
+// (capped) and go out together, so a worker that cannot keep up slows the run instead of
+// flooding its queue. The picture's progress between ticks (`alpha`) is applied when the frame
+// that matches it arrives, so bots never jump backwards.
 //
-// Saving and loading (M9): `exportSave` turns the run into a Save (seed, preset,
-// commands, tick, hash). `startLoad` rebuilds a saved run in slices (replayJob.ts)
-// so the page stays alive, shows progress, can be cancelled, and only swaps the new
-// world in once it is complete and checked. The old run is untouched until then
-// and is kept if the load fails or is cancelled. While a load runs the clock and
-// the player's tools are stopped, so the old run cannot change under it.
+// Player actions go through `dispatch`, which asks the worker to apply a Command between two
+// ticks and resolves with its result (and leaves a notice for the toolbar to show). The hover
+// ghost's `checkCommand` runs on the mirror, here on the page. `clickMap` is what a click on
+// the map means for the active tool (the plague and meteor tools trigger a world event where
+// you click).
+//
+// Saving and loading (M9): `exportSave` asks the worker for the run as a Save (the state hash
+// is computed there). `startLoad` hands a Save to the worker, which rebuilds the run in slices,
+// reports progress, can be cancelled, and only swaps the new world in once it is complete and
+// checked; the old run is untouched until then and is kept if the load fails or is cancelled.
+// While a load runs the clock and the player's tools are stopped.
+//
+// Everything that changes the run is a message, so it is answered later: tests use
+// `settled()` to wait until every earlier message has been answered.
 
 import { useSyncExternalStore } from 'react'
-import { edenPreset, findPreset, rules } from '../content/index.ts'
-import { makeSave } from '../persist/save.ts'
+import { edenPreset, rules } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
-import { applyCommand } from '../sim/commands.ts'
 import type { CommandResult } from '../sim/commands.ts'
-import { stateHash } from '../sim/hash.ts'
-import { step } from '../sim/step.ts'
-import type { Command, DeathsByCause, World } from '../sim/types.ts'
+import type { FamilyView, FounderLine } from '../sim/lineage.ts'
+import type { Command, DeathsByCause } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import { formatPoint } from './labels.ts'
-import { createReplayJob } from './replayJob.ts'
-import type { ReplayJob } from './replayJob.ts'
+import type { FromWorker, Frame, ToWorker } from './protocol.ts'
+import { DEFAULT_SEED, LOADING_REASON, checkLoad, isValidSeed } from './simHost.ts'
+import { createInlineClient, createWorkerClient } from './simClient.ts'
+import type { SimClient } from './simClient.ts'
 import { toolInfo } from './tools.ts'
 import type { Selection, Tool } from './tools.ts'
+import { applyFrame, toViewWorld } from './viewWorld.ts'
+import type { ViewWorld } from './viewWorld.ts'
+
+export { DEFAULT_SEED, isValidSeed }
 
 export const SPEEDS = [1, 4, 16, 64] as const
 export type Speed = (typeof SPEEDS)[number]
 
-export const DEFAULT_SEED = 'a'
 const DEFAULT_SPEED: Speed = 1
 
-const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
-
-/** The same rule the CLI uses: 1 to 32 letters, digits or dashes. */
-export function isValidSeed(seed: string): boolean {
-  return SEED_PATTERN.test(seed)
-}
+/** Most ticks that may pile up while an advance is in flight. The same cap as the loop's per-frame cap (loop.test.ts checks they match). */
+export const MAX_PENDING_TICKS = 200
 
 /** The last thing a tool did, for the toolbar to say out loud. `seq` changes on every notice. */
 export type Notice = { seq: number; ok: boolean; text: string }
@@ -65,7 +73,8 @@ export type LoadOutcome =
 export const MISMATCH_WARNING = 'This save was made by a different version of the simulation; the run may differ.'
 
 export type WorldSnapshot = {
-  world: World
+  /** The page's copy of the world (see viewWorld.ts); updated in place. */
+  world: ViewWorld
   seed: string
   presetId: string
   /** Changes whenever a different run replaces the current one (new world, or a load). */
@@ -88,12 +97,14 @@ export type WorldSnapshot = {
   load: LoadProgress | null
   /** How far between the last two ticks the picture is, 0 to 1. Always 1 while paused. */
   alpha: number
+  /** Where the simulation runs: a real Worker, or the page's own thread (tests, or no Worker available). */
+  engine: 'worker' | 'inline'
 }
 
 type Listener = () => void
 
 const listeners = new Set<Listener>()
-let world: World = createWorld(DEFAULT_SEED, edenPreset, rules)
+let view: ViewWorld = toViewWorld(createWorld(DEFAULT_SEED, edenPreset, rules), edenPreset.id)
 let speed: Speed = DEFAULT_SPEED
 let paused = false
 let alpha = 1
@@ -101,39 +112,48 @@ let tool: Tool = 'inspect'
 let selection: Selection | null = null
 let notice: Notice | null = null
 let noticeSeq = 0
-let presetId: string = edenPreset.id
-let runId = 0
 let saveNotice: SaveNotice | null = null
 let saveNoticeSeq = 0
-let load: {
-  job: ReplayJob
-  save: Save
-  timer: ReturnType<typeof setTimeout> | null
-  done: (outcome: LoadOutcome) => void
-} | null = null
+let load: (LoadProgress & { done: (outcome: LoadOutcome) => void }) | null = null
+
+// The clock's side of the conversation with the worker.
+/** Ticks that fell due while an advance was in flight. */
+let due = 0
+/** The picture progress of the latest frame the loop planned. */
+let latestAlpha = 1
+/** One entry per advance message not yet answered: the progress to show with its frame (null: leave it alone). */
+const sentAlphas: (number | null)[] = []
+const idleWaiters: (() => void)[] = []
+
+type Pending = { resolve: (msg: FromWorker) => void; reject: (error: Error) => void }
+const pending = new Map<number, Pending>()
+let requestSeq = 0
+
+let client: SimClient
 let snapshot: WorldSnapshot = makeSnapshot()
 
 function makeSnapshot(): WorldSnapshot {
   return {
-    world,
-    seed: world.seed,
-    presetId,
-    runId,
-    tick: world.tick,
-    population: world.bots.length,
-    births: world.totalBirths,
-    deaths: totalDeaths(world),
-    deathsByCause: { ...world.deathsByCause },
-    food: totalFood(world),
-    commandCount: world.commands.length,
+    world: view,
+    seed: view.seed,
+    presetId: view.presetId,
+    runId: view.runId,
+    tick: view.tick,
+    population: view.bots.length,
+    births: view.totalBirths,
+    deaths: totalDeaths(view),
+    deathsByCause: { ...view.deathsByCause },
+    food: totalFood(view),
+    commandCount: view.commandCount,
     speed,
     paused,
     tool,
     selection,
     notice,
     saveNotice,
-    load: load === null ? null : { tick: load.job.tick, target: load.job.target },
+    load: load === null ? null : { tick: load.tick, target: load.target },
     alpha,
+    engine: client === undefined ? 'inline' : client.kind,
   }
 }
 
@@ -162,12 +182,163 @@ export function useWorldStore(): WorldSnapshot {
   return useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
 }
 
-/** Runs `ticks` ticks (the loop passes none on a frame with no tick due) and shows the picture `progress` of the way to the next one. */
-export function advance(ticks: number, progress: number): void {
-  if (load !== null) return
-  for (let i = 0; i < ticks; i += 1) step(world, rules)
-  alpha = progress
+/** Where the simulation runs. Only changes if a worker had to fall back, so using it does not re-render every frame. */
+export function useEngine(): WorldSnapshot['engine'] {
+  return useSyncExternalStore(subscribe, () => getSnapshot().engine, () => getSnapshot().engine)
+}
+
+// ---- Talking to the worker ----
+
+/** Sends a message that is answered by one carrying the same `reqId`. */
+function ask(make: (reqId: number) => ToWorker): Promise<FromWorker> {
+  return new Promise((resolve, reject) => {
+    requestSeq += 1
+    pending.set(requestSeq, { resolve, reject })
+    client.post(make(requestSeq))
+  })
+}
+
+function settleIdle(): void {
+  if (due !== 0 || sentAlphas.length !== 0) return
+  for (const resolve of idleWaiters.splice(0)) resolve()
+}
+
+/** Sends the ticks that piled up, if nothing is in flight. */
+function pumpAdvance(): void {
+  if (load !== null || due === 0 || sentAlphas.length > 0) return
+  const ticks = due
+  due = 0
+  sentAlphas.push(latestAlpha)
+  client.post({ type: 'advance', ticks, slow: paused })
+}
+
+function onFrame(frame: Frame, acksAdvance: boolean): void {
+  view = applyFrame(view, frame)
+  if (acksAdvance) {
+    const sent = sentAlphas.shift()
+    if (paused) alpha = 1
+    else if (sent !== undefined && sent !== null) alpha = sent
+  }
   publish()
+  if (acksAdvance) {
+    pumpAdvance()
+    settleIdle()
+  }
+}
+
+function onLoadDone(outcome: Extract<FromWorker, { type: 'loadDone' }>['outcome']): void {
+  const current = load
+  if (current === null) return
+  load = null
+  switch (outcome.status) {
+    case 'loaded': {
+      // The new run's frame arrived just before this message. It starts paused at the saved tick.
+      paused = true
+      selection = null
+      alpha = 1
+      due = 0
+      const commands = `${outcome.commandCount} command${outcome.commandCount === 1 ? '' : 's'}`
+      const loaded = `Loaded seed "${outcome.seed}" at tick ${outcome.tick} with ${commands}. The run is paused.`
+      reportSave(outcome.hashMatches ? 'ok' : 'warn', outcome.hashMatches ? loaded : `${loaded} ${MISMATCH_WARNING}`)
+      current.done({ status: 'loaded', hashMatches: outcome.hashMatches })
+      return
+    }
+    case 'cancelled':
+      reportSave('ok', 'Loading cancelled. Your current run was kept.')
+      current.done({ status: 'cancelled' })
+      return
+    case 'failed':
+      reportSave('error', outcome.message)
+      current.done({ status: 'failed', message: outcome.message })
+      return
+  }
+}
+
+/** The worker could not carry on (it threw, or died): stop the clock and fail whatever waits on it. */
+function onWorkerError(message: string): void {
+  const error = new Error(message)
+  for (const request of pending.values()) request.reject(error)
+  pending.clear()
+  due = 0
+  sentAlphas.length = 0
+  paused = true
+  alpha = 1
+  settleIdle()
+  say(false, 'The simulation stopped. Reload the page to start again.')
+  const current = load
+  if (current !== null) {
+    load = null
+    current.done({ status: 'failed', message })
+  }
+  reportSave('error', `The simulation stopped unexpectedly (${message}). Reload the page.`)
+}
+
+function onMessage(msg: FromWorker): void {
+  switch (msg.type) {
+    case 'ready':
+      return
+    case 'frame':
+      onFrame(msg.frame, msg.ack === 'advance')
+      return
+    case 'commandResult':
+    case 'save':
+    case 'queryResult':
+    case 'synced': {
+      const request = pending.get(msg.reqId)
+      pending.delete(msg.reqId)
+      request?.resolve(msg)
+      return
+    }
+    case 'loadProgress':
+      if (load !== null) {
+        load.tick = msg.tick
+        load.target = msg.target
+        publish()
+      }
+      return
+    case 'loadDone':
+      onLoadDone(msg.outcome)
+      return
+    case 'error':
+      onWorkerError(msg.message)
+      return
+  }
+}
+
+function connect(next: SimClient): void {
+  client = next
+  client.listen(onMessage)
+  client.onFallback((reason) => {
+    reportSave('warn', `${reason} The simulation runs on the page itself instead, so the page may stutter while a long run loads.`)
+  })
+}
+
+/** Resolves once every message sent before this call has been answered and applied. */
+export function settled(): Promise<void> {
+  return ask((reqId) => ({ type: 'sync', reqId })).then(() => undefined)
+}
+
+// ---- The clock ----
+
+/**
+ * Runs `ticks` ticks (the loop passes none on a frame with no tick due) and shows the picture `progress`
+ * of the way to the next one. Resolves when every tick asked for so far has been run and shown.
+ */
+export function advance(ticks: number, progress: number): Promise<void> {
+  if (load !== null) return Promise.resolve()
+  if (ticks > 0) due = Math.min(MAX_PENDING_TICKS, due + ticks)
+  latestAlpha = progress
+  if (due === 0 && sentAlphas.length === 0) {
+    // Nothing to run and nothing on the way: only the progress between ticks changes.
+    if (alpha !== progress) {
+      alpha = progress
+      publish()
+    }
+    return Promise.resolve()
+  }
+  const finished = new Promise<void>((resolve) => idleWaiters.push(resolve))
+  pumpAdvance()
+  return finished
 }
 
 export function setSpeed(next: Speed): void {
@@ -179,14 +350,20 @@ export function setSpeed(next: Speed): void {
 export function setPaused(next: boolean): void {
   if (next === paused) return
   paused = next
-  if (paused) alpha = 1
+  if (paused) {
+    alpha = 1
+    due = 0
+    // Pausing asks for a full refresh, so the lists and charts are as fresh as the picture.
+    sentAlphas.push(null)
+    client.post({ type: 'advance', ticks: 0, slow: true })
+  }
   publish()
 }
 
 /** One tick, only while paused. */
-export function stepOnce(): void {
-  if (!paused) return
-  advance(1, 1)
+export function stepOnce(): Promise<void> {
+  if (!paused) return Promise.resolve()
+  return advance(1, 1)
 }
 
 export function setTool(next: Tool): void {
@@ -199,10 +376,9 @@ export function setTool(next: Tool): void {
 export function select(next: Selection | null): void {
   if (next?.kind === selection?.kind && next?.id === selection?.id) return
   selection = next
+  client.post({ type: 'select', id: next?.kind === 'bot' ? next.id : null })
   publish()
 }
-
-const LOADING_REASON = 'A saved run is loading. Wait for it or cancel it first.'
 
 function describeApplied(cmd: Command, id: number, killed: number): string {
   switch (cmd.type) {
@@ -217,18 +393,23 @@ function describeApplied(cmd: Command, id: number, killed: number): string {
   }
 }
 
-/** Applies a player command to the live world and publishes. A rejected command changes nothing but the notice. */
-export function dispatch(cmd: Command): CommandResult {
+/**
+ * Asks the worker to apply a player command between two ticks, in the order sent. Resolves with its result once the
+ * page's copy shows the effect. A rejected command changes nothing but the notice.
+ */
+export function dispatch(cmd: Command): Promise<CommandResult> {
   if (load !== null) {
     say(false, LOADING_REASON)
     publish()
-    return { ok: false, reason: LOADING_REASON }
+    return Promise.resolve({ ok: false, reason: LOADING_REASON })
   }
-  const meteorDeaths = world.deathsByCause.meteor
-  const result = applyCommand(world, rules, cmd)
-  say(result.ok, result.ok ? describeApplied(cmd, result.id, world.deathsByCause.meteor - meteorDeaths) : result.reason)
-  publish()
-  return result
+  return ask((reqId) => ({ type: 'command', reqId, cmd })).then((msg) => {
+    if (msg.type !== 'commandResult') return { ok: false, reason: 'No answer.' }
+    const { result } = msg
+    say(result.ok, result.ok ? describeApplied(cmd, result.id, msg.meteorKills) : result.reason)
+    publish()
+    return result
+  })
 }
 
 /**
@@ -244,51 +425,72 @@ export function clickMap(x: number, y: number, reach: number): void {
   const centre = cellCenter({ cx: Math.floor(x), cy: Math.floor(y) })
   switch (tool) {
     case 'inspect':
-      select(pickAt(world, x, y, paused ? 1 : alpha, reach))
+      select(pickAt(view, x, y, paused ? 1 : alpha, reach))
       return
     case 'resource':
     case 'water':
     case 'danger':
     case 'shelter':
-      dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })
+      void dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })
       return
     case 'bot':
-      dispatch({ type: 'placeBot', x: centre.x, y: centre.y })
+      void dispatch({ type: 'placeBot', x: centre.x, y: centre.y })
       return
     case 'plague':
     case 'meteor':
-      dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y })
+      void dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y })
       return
     case 'remove': {
-      const target = nodeAt(world, x, y)
+      const target = nodeAt(view, x, y)
       if (target === undefined) {
         say(false, 'No node here to remove. Click inside a node.')
         publish()
         return
       }
-      dispatch({ type: 'removeNode', id: target.id })
+      void dispatch({ type: 'removeNode', id: target.id })
       return
     }
   }
 }
 
-/** Starts a fresh eden world for `seed`. Returns false (and changes nothing) for an invalid seed. */
+/**
+ * Starts a fresh eden world for `seed`. Returns false (and changes nothing) for an invalid seed or while a load runs.
+ * The new world appears when the worker's first frame for it arrives (use `settled()` to wait for it).
+ */
 export function resetWorld(seed: string): boolean {
   if (!isValidSeed(seed) || load !== null) return false
-  world = createWorld(seed, edenPreset, rules)
-  presetId = edenPreset.id
-  runId += 1
+  due = 0
   saveNotice = null
   selection = null
   alpha = 1
   say(true, `Started a new world with seed "${seed}".`)
+  client.post({ type: 'reset', seed })
   publish()
   return true
 }
 
-/** The current run as a Save. Hashes the whole world, so call it on a click or a timer, not every frame. */
-export function exportSave(): Save {
-  return makeSave(world, presetId, stateHash(world))
+/** The current run as a Save. The worker hashes the whole world, so this never stalls the page, but do not ask every frame. */
+export function exportSave(): Promise<Save> {
+  return ask((reqId) => ({ type: 'exportSave', reqId })).then((msg) => {
+    if (msg.type !== 'save') throw new Error('The simulation sent no save.')
+    return msg.save
+  })
+}
+
+/** The family around one bot, from the worker's lineage records (see familyView in sim/lineage.ts). The tree view (M14) reads this. */
+export function queryFamily(id: number, up: number, down: number, maxNodes: number, maxChildren?: number): Promise<FamilyView | null> {
+  return ask((reqId) => ({ type: 'query', reqId, kind: 'family', id, up, down, maxNodes, maxChildren })).then((msg) => {
+    if (msg.type !== 'queryResult' || msg.kind !== 'family') throw new Error('The simulation sent no family.')
+    return msg.view
+  })
+}
+
+/** The roots of the family forest (see founderLines in sim/lineage.ts). */
+export function queryFounders(): Promise<FounderLine[]> {
+  return ask((reqId) => ({ type: 'query', reqId, kind: 'founders' })).then((msg) => {
+    if (msg.type !== 'queryResult' || msg.kind !== 'founders') throw new Error('The simulation sent no founders.')
+    return msg.lines
+  })
 }
 
 /** Posts a save or load result for the save panel. */
@@ -298,51 +500,9 @@ export function reportSave(level: SaveNotice['level'], text: string): void {
   publish()
 }
 
-/** Replay ticks per slice, and how long a slice may run before the page gets control back. */
-const SLICE_TICKS = 200
-const SLICE_MS = 30
-
-function pumpLoad(): void {
-  const current = load
-  if (current === null) return
-  current.timer = null
-  const { job, save } = current
-  try {
-    const started = performance.now()
-    do {
-      job.run(SLICE_TICKS)
-    } while (!job.finished && performance.now() - started < SLICE_MS)
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : 'unknown error'
-    const message = `This save could not be replayed (${reason}). Your current run was kept.`
-    load = null
-    reportSave('error', message)
-    current.done({ status: 'failed', message })
-    return
-  }
-  if (!job.finished) {
-    current.timer = setTimeout(pumpLoad, 0)
-    publish()
-    return
-  }
-  // Complete: only now does the new world replace the old one.
-  const hashMatches = stateHash(job.world) === save.hash
-  world = job.world
-  presetId = save.presetId
-  runId += 1
-  selection = null
-  alpha = 1
-  paused = true
-  load = null
-  const commands = `${save.commands.length} command${save.commands.length === 1 ? '' : 's'}`
-  const loaded = `Loaded seed "${save.seed}" at tick ${save.tick} with ${commands}. The run is paused.`
-  reportSave(hashMatches ? 'ok' : 'warn', hashMatches ? loaded : `${loaded} ${MISMATCH_WARNING}`)
-  current.done({ status: 'loaded', hashMatches })
-}
-
 /**
- * Rebuilds a saved run in slices and swaps it in when complete. Resolves when the load ends: loaded
- * (paused at the saved tick; `hashMatches` false means the simulation differs from the one that saved it),
+ * Hands a saved run to the worker, which rebuilds it in slices and swaps it in when complete. Resolves when the load
+ * ends: loaded (paused at the saved tick; `hashMatches` false means the simulation differs from the one that saved it),
  * cancelled, or failed. A failed or cancelled load leaves the current run exactly as it was.
  */
 export function startLoad(save: Save): Promise<LoadOutcome> {
@@ -351,28 +511,49 @@ export function startLoad(save: Save): Promise<LoadOutcome> {
     return Promise.resolve({ status: 'failed', message })
   }
   if (load !== null) return refuse('Another saved run is still loading.')
-  const preset = findPreset(save.presetId)
-  if (preset === undefined) return refuse(`This save needs the "${save.presetId}" preset, which this version does not have.`)
-  if (!isValidSeed(save.seed)) return refuse('This save has an invalid seed.')
+  const problem = checkLoad(save)
+  if (problem !== null) return refuse(problem)
   return new Promise<LoadOutcome>((resolve) => {
     saveNotice = null
-    load = {
-      job: createReplayJob(save.seed, preset, rules, save.commands, save.tick),
-      save,
-      timer: null,
-      done: resolve,
-    }
-    load.timer = setTimeout(pumpLoad, 0)
+    due = 0
+    load = { tick: 0, target: save.tick, done: resolve }
+    client.post({ type: 'load', save })
     publish()
   })
 }
 
-/** Stops a load in progress. The current run is kept. */
+/** Stops a load in progress. The current run is kept. The load resolves as cancelled when the worker confirms. */
 export function cancelLoad(): void {
-  const current = load
-  if (current === null) return
-  if (current.timer !== null) clearTimeout(current.timer)
-  load = null
-  reportSave('ok', 'Loading cancelled. Your current run was kept.')
-  current.done({ status: 'cancelled' })
+  if (load === null) return
+  client.post({ type: 'cancelLoad' })
 }
+
+/**
+ * Swaps the simulation client and starts over from the default world. For tests (a spy around an inline client,
+ * a host with a fake clock); the app never calls it.
+ */
+export function setSimClient(next: SimClient): void {
+  client.terminate()
+  const error = new Error('The simulation client was replaced.')
+  for (const request of pending.values()) request.reject(error)
+  pending.clear()
+  due = 0
+  latestAlpha = 1
+  sentAlphas.length = 0
+  load = null
+  view = toViewWorld(createWorld(DEFAULT_SEED, edenPreset, rules), edenPreset.id)
+  paused = false
+  alpha = 1
+  selection = null
+  notice = null
+  saveNotice = null
+  settleIdle()
+  connect(next)
+  publish()
+}
+
+connect(typeof window === 'undefined' ? createInlineClient() : createWorkerClient())
+snapshot = makeSnapshot()
+
+// Hot reload replaces this module; the old worker would otherwise keep running beside the new one.
+import.meta.hot?.dispose(() => client.terminate())

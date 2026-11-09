@@ -50,7 +50,7 @@ export function startLoop(): () => void {
     } else {
       const plan = planFrame(accumulatorMs, frameMs, state.speed)
       accumulatorMs = plan.accumulatorMs
-      advance(plan.ticks, plan.alpha)
+      void advance(plan.ticks, plan.alpha)
     }
     handle = requestAnimationFrame(frame)
   }

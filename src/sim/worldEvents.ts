@@ -33,6 +33,9 @@ import { leaveRuin } from './ruins.ts'
 import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, Tuning, World } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
 
+/** The part of a World that `checkCommand` and `checkEvent` read (bots only by count), so the main thread can check against its copy. */
+export type CheckableWorld = Pick<World, 'width' | 'height' | 'nodes' | 'events' | 'tick'> & { bots: { length: number } }
+
 export type TriggerCommand = { type: 'triggerEvent'; event: EventKind; x?: number; y?: number }
 
 export const EVENT_KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor']
@@ -43,7 +46,7 @@ export function eventDuration(tuning: Tuning, kind: 'drought' | 'bounty' | 'plag
 }
 
 /** The craters (temporary danger nodes) standing now. */
-function craterCount(world: World): number {
+function craterCount(world: Pick<World, 'nodes'>): number {
   let count = 0
   for (const node of world.nodes) {
     if (node.expires > 0) count += 1
@@ -51,7 +54,7 @@ function craterCount(world: World): number {
   return count
 }
 
-function insideMap(world: World, x: number | undefined, y: number | undefined): boolean {
+function insideMap(world: Pick<World, 'width' | 'height'>, x: number | undefined, y: number | undefined): boolean {
   return (
     typeof x === 'number' &&
     typeof y === 'number' &&
@@ -67,7 +70,7 @@ function insideMap(world: World, x: number | undefined, y: number | undefined): 
 const NAME: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor' }
 
 /** null when the event could start now, otherwise a short reason a player can read. */
-export function checkEvent(world: World, rules: Rules, cmd: TriggerCommand): string | null {
+export function checkEvent(world: CheckableWorld, rules: Rules, cmd: TriggerCommand): string | null {
   const { events } = rules.tuning
   if (!EVENT_KINDS.includes(cmd.event)) return 'That event does not exist.'
   if (cmd.event === 'meteor') {
@@ -200,7 +203,7 @@ export type ActiveEntry = {
 }
 
 /** Everything in progress, soonest to end first (ties keep the order they started in). */
-export function activeEntries(world: World, tuning: Tuning): ActiveEntry[] {
+export function activeEntries(world: Pick<World, 'events' | 'nodes'>, tuning: Tuning): ActiveEntry[] {
   const entries: ActiveEntry[] = world.events.map((event) => ({ ...event }))
   for (const node of world.nodes) {
     if (node.expires === 0) continue

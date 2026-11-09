@@ -1,18 +1,16 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer)
-- **Current Goal:** Garden of Eden MVP plus M6-M12 are built. M12 (long-run tuning) is done and awaits the lead's verification and commit. Next planned work: web worker, family-tree view, heatmaps (not started).
-- **Recent Changes (M12, long-run tuning):**
-  - Problem: over 60,000 ticks mean caution fell to 0.22-0.37 (founders 0.5) and danger deaths rose (seeds c, e, i about 190-200). Ruins inside danger lured starving bots, and caution cost nothing.
-  - `src/sim/ruins.ts`: `insideAnyDanger`, `ruinDecayRate`; `decayRuins(world, tuning)` now takes the tuning; a ruin whose centre is inside any danger node (zone, grove, crater) decays `ruin.dangerDecayMult` (5) times as fast.
-  - `src/sim/brain.ts`: `desperateFraction(bot, tuning)` = `desperateBelow x (1 + cautionDesperate x (founder caution - caution))` clamped to `[minDesperate, maxDesperate]`; used by `decide` (food and water) and `isDesperate` (movement).
-  - `src/sim/types.ts` + `src/content/tuning.ts`: `ruin.dangerDecayMult` 5; `brain.cautionDesperate` 4, `minDesperate` 0.05, `maxDesperate` 0.4. `src/ui/Inspector.tsx`: ruin Decay and Time left use `ruinDecayRate` (shows "(in danger)").
-  - Result (seeds a..j, 60,000 ticks): mean caution 0.34 to 0.60 (every seed 0.46+), danger deaths 789 to 287, lowest/highest population 19/97 to 21/91, swings kept (lowest max/min 1.83). Decay alone: 0.41 and 563. 20,000 ticks: 0.48 to 0.52, danger 118 to 83.
-  - Tests: `tests/desperate.test.ts` (new), `tests/ruins.test.ts` (decay in danger, crater), `tests/lineage.test.ts` (one test uses cap 150/100; seed c breeds slightly less early). Docs: `doc/GAME_DESIGN.md` (items 3, 8, 9, ruin item 6, M12 row, changelog), `../docs/ideas/garden-of-eden.md`, `CLAUDE.md`.
+- **Last Updated By:** Claude (implementer, M13)
+- **Current Goal:** M0 to M13 are built. M13 moved the simulation into a Web Worker; the family tree view (M14) and heatmaps (M15) are next and not started. Not committed or pushed: the lead verifies and commits.
+- **Recent Changes (M13, worker):**
+  - New in `src/ui`: `protocol.ts` (messages), `simHost.ts` (pure host: world, load job, hash, queries, `createHostRunner`), `sim.worker.ts` (adapter), `simClient.ts` (worker client with inline fallback, inline client), `viewWorld.ts` (`ViewWorld`, `applyFrame`, `toViewWorld`). Tests: `simHost.test.ts`, `simClient.test.ts`, `viewWorld.test.ts`; `store.test.ts` and `loadRun.test.ts` rewritten async (same coverage plus clock, mirror, query tests).
+  - `store.ts` rewritten around a client: `dispatch`, `exportSave`, `advance`, `stepOnce` are async; `settled()` waits for all earlier answers; `setSimClient` is for tests; `queryFamily`/`queryFounders` wrap the `query` message (no UI yet). `autosave.ts`, `SavePanel.tsx` use the async `exportSave`. Panels, `render.ts`, `geometry.ts`, `eventInfo.ts` take `ViewWorld`. `App.tsx` sets `data-sim="worker|inline"` on `<main>`.
+  - `src/sim` only had types narrowed (`Pick`s in `commands.ts`, `world.ts`, `worldEvents.ts`, `ruins.ts`, `traits.ts`); `vite.config.ts` has `worker: { format: 'es' }`. No behaviour or hash changed (survey rows identical).
+  - Docs: `CLAUDE.md` (Worker section), `doc/GAME_DESIGN.md` (section 8 item 5, M13 row, open questions, changelog), idea brief changelog.
 - **Active Decisions / Constraints:**
-  - With `dangerDecayMult` 1 and `cautionDesperate` 0 the run equals the post-M11 run (same hashes). Both new rules are `[PROVISIONAL]`.
-  - Starvation deaths are up about 6% (cautious bots no longer dive into groves); births up 3%. Groves in the eden preset are rarely fatal now on seeds d, f, g (0 to 1 danger deaths per 60,000 ticks).
-  - `tests/sim.test.ts` "same state hash ... 5000 ticks" times out (5 s default) when the whole suite runs at once on this machine; it fails the same way on the pre-M12 code and passes alone. Not changed.
+  - The page never holds a `World`, only a `ViewWorld`; new UI that needs more data adds a frame field or a `query`, not the whole world. Frames: per-tick data every frame, slow data (samples, log, commands, selected bot memory) about 4 Hz, when paused, and after commands/selects/resets/loads.
+  - One `advance` in flight, ticks pile up (cap 200 = `MAX_TICKS_PER_FRAME`); `alpha` is applied with the matching frame. Frames are plain objects (about 35 KB and 0.4 ms at 64 bots; about 12 ms at the 2,000-bot cap, so typed arrays are an option only if populations ever get that large).
+  - The `heat` message is reserved (accepted, ignored) for M15. Autosave flush on page close is best effort (async).
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** Are groves too safe now (a feel check in the browser)? Eden preset numbers still await a feel check; `depleted`-style log crowding is solved, but old births and deaths still scroll out of the 500-event log.
-- **Exact Next Step:** Lead verifies (`npm test`, `npm run lint`, `npm run typecheck`, `npm run build`), then commits M12. After that, pick the next stage (worker, tree view or heatmaps) with the user.
+- **Open Questions for the user:** A save hashed in Node (CLI) and in Chrome differ for the same 60,000-tick run (same warning in the pre-M13 app), so cross-engine saves warn "different version"; cause not investigated (see GAME_DESIGN section 10). Eden preset numbers still await a feel check.
+- **Exact Next Step:** M14 (family tree view) on top of `queryFamily`/`queryFounders`, then M15 (heatmaps using the reserved `heat` message). Before that, the lead should check the deployed site after pushing (worker URL under `/GardenOfEden/`).
