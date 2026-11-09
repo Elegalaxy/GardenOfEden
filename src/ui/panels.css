@@ -1168,3 +1168,95 @@ button.log-button[aria-pressed='true'] {
     display: none; /* the strip over a phone-sized map stays short; the Events panel has the effect */
   }
 }
+
+/* Save and load (M9): one row of buttons (or, while loading, the progress bar and
+   Cancel, the same height), then a status line that reserves two lines. */
+.save-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+  min-height: 44px;
+}
+
+.save-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.save-autosave {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.save-progress {
+  flex-wrap: nowrap;
+  gap: 12px;
+}
+
+.save-progress progress {
+  flex: 1 1 8rem;
+  min-width: 0;
+  height: 14px;
+  accent-color: var(--primary);
+}
+
+.save-progress-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.save-status {
+  min-height: 2.9em; /* two lines, reserved so a notice appearing never moves the page */
+  margin: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.save-ok {
+  color: #7ee787;
+}
+
+.save-warn {
+  color: #ffd479;
+}
+
+.save-error {
+  color: #ffb4a8;
+}
+
+.save-link {
+  display: grid;
+  gap: 4px;
+}
+
+.save-link-input {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .save-status {
+    min-height: 5.8em; /* four lines on a phone */
+  }
+
+  .save-progress {
+    flex-wrap: wrap;
+  }
+
+  .save-progress progress {
+    flex-basis: 100%;
+  }
+}

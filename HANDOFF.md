@@ -1,19 +1,18 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer)
-- **Current Goal:** Garden of Eden M0 to M8 are built (MVP, traits, ruins, water, world events). M8 is built and verified but NOT committed or pushed (the lead does that). No milestone after M8 is planned.
-- **Recent Changes (M8, world events):**
-  - Sim: `src/sim/worldEvents.ts` (new: `checkEvent`, `startEvent`, meteor `strike`, `expireEvents`, `activeEntries`), `commands.ts` (`triggerEvent`), `step.ts` (`expireEvents` after `decayRuins`), `nodes.ts` (`Exposure.plague`, `regrowthMultiplier`), `metabolism.ts` (plague damage; `deathCause(bot, exposure, tuning)`), `world.ts`, `types.ts` (`World.events`, `WorldNode.expires`, causes `plague` and `meteor`, `Tuning.events`, log type `event`).
-  - Content: `tuning.events` (drought x0.35 for 1500, bounty x3 for 1000, plague 0.8/tick radius 14 for 800, meteor radius 6 damage 200, crater radius 3 damage 2 for 600, caps 3 timed and 6 craters).
-  - UI: `EventsPanel.tsx` + `eventInfo.ts` (cards, keys D B P M, in-progress list), `tools.ts` (`EVENT_TOOLS`), `store.ts`, `WorldCanvas.tsx` (banners, ghost radius), `render.ts` (plague hatch, crater, impact ring), `PopulationChart.tsx` + `chartMath.ts` (`eventBands`, markers H F P M), `EventLog.tsx` (World filter), `DeathCauses.tsx`, `Inspector.tsx`, `labels.ts`, CSS.
-  - Harness: `src/harness/script.ts` (`--event drought@3000`, `plague@6000:48,32`, repeatable), `survey.ts`, `cli.ts` (plague and meteor columns).
-  - Tests: `tests/events.test.ts` (effects, refusals, replay, scripted survival a..e), `tests/script.test.ts`, `src/ui/eventInfo.test.ts`, plus additions to nodes, tools, labels, chartMath, store tests.
-  - Docs: `CLAUDE.md`, `doc/GAME_DESIGN.md` (section 7 item 3, milestone M8, changelog, open questions), `../docs/ideas/garden-of-eden.md` changelog.
+- **Last Updated By:** Claude (implementer, M9)
+- **Current Goal:** Garden of Eden M0 to M9 are built (MVP plus trait inheritance, ruins, water and thirst, world events, save and load). M9 is implemented and verified but not committed (the lead commits and pushes).
+- **Recent Changes (M9, save and load):**
+  - `src/persist/save.ts` (+ test): versioned save `{version, seed, presetId, tick, hash, commands}`, `encodeSave`, `decodeSave` / `validateSave` (strict, typed `SaveError`, never throws), `makeSave`, `saveFileName`. `share.ts` (+ test): base64url link in `#run=`, cap 12,000 chars. `autosave.ts` (+ test): read/write/clear through an injected storage.
+  - `src/ui/replayJob.ts`: replay in slices (same result as `replayWorld`). `store.ts`: `presetId`, `runId`, `saveNotice`, `load` progress in the snapshot; `exportSave`, `startLoad` (promise; swaps the world in only when complete, paused, hash check with warning), `cancelLoad`, `reportSave`. While loading, `advance`, `dispatch`, tools and `resetWorld` are blocked.
+  - `src/ui/SavePanel.tsx` (save file, load file with confirm if the run has commands, copy link with manual-copy fallback, resume and clear autosave, progress and cancel), `autosave.ts` (throttled writer), `shareLink.ts` (loads `#run=` at start and on `hashchange`, then strips the fragment), `download.ts`; `App.tsx`, `RunPanel.tsx` (restart disabled while loading), `panels.css`.
+  - Tests: `tests/save.test.ts` (replay hash equals live run with events and placements, chunked equals one-shot, link roundtrip, kind lists match content), `src/ui/loadRun.test.ts` (load success, hash warning, failure keeps old run, cancel, blocked while loading).
+  - Docs: `doc/GAME_DESIGN.md` (section 8 item 4 save format, M9 row, changelog, open question), `CLAUDE.md`, `../docs/ideas/garden-of-eden.md`.
 - **Active Decisions / Constraints:**
-  - Events are commands applied between ticks, recorded, replay-safe, no RNG draws. Event-free runs behave exactly as before (same survey numbers a..j); only the state hash changed (new fields).
-  - Bots do not perceive a plague (deliberate, documented). A meteor kills at command time with cause `meteor`; its crater is a `danger` node with `expires`, avoided through the normal danger paths.
-  - Death cause when health runs out: `plague` if plague damage that tick was larger than danger damage, else `danger`.
-  - Effect sizes (tick 3000, 1500-tick window, aimed at the busiest spot): drought -45%, bounty +85%, plague -23%, meteor -5% (about 3 bots). Drought lowest value on any seed 10.
+  - A save is seed + preset + commands + tick + hash; no sim code changed, so no run hash changed. A bigger `version` is refused; add an `upgradeSave` step when the format changes. Command key order is part of the hash, so the decoder rebuilds commands in the sim's order.
+  - Share links are capped (12,000 chars, about 150 commands); longer runs use the file. A link loads without confirmation; file and resume loads confirm only when the current run has commands.
+  - Autosave only runs for a run with a command or one started on purpose (restart or load), so opening the page never overwrites the last real run. Clear suspends autosave until the run changes.
+  - Replay speed is about 4,000 ticks per second; a 60,000-tick load takes about 15 s with a cancel button.
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** Are the event sizes right (the meteor is a small local strike)? Should bots perceive plagues? Should a drought and a bounty exclude each other (today they multiply)? Plus the older ones: eden swings about 2x; trait costs; whether the M5 observer UI is enough.
-- **Exact Next Step:** The lead reviews and commits M8. Then the user decides what comes next (further events, saves in `src/persist`, or retuning). The built-in browser pane was used for the M8 check; frame timing and smooth bot motion were still not judged by eye.
+- **Open Questions for the user:** Compressed share links (async `CompressionStream`)? Keep pause or speed in a save? Simulation version in a save so the hash warning can say which side is newer? Earlier: `depleted` events no longer logged (done in M7a); eden numbers still await a feel check.
+- **Exact Next Step:** The lead verifies and commits M9. The frame loop and the live autosave throttle were not seen running (the built-in browser pane does not fire animation frames), so open the app in a visible browser, play a minute, reload and try Resume last run. Then pick the next milestone with the user.

@@ -7,7 +7,7 @@ import { useId, useState } from 'react'
 import { DEFAULT_SEED, isValidSeed, resetWorld, useWorldStore } from './store.ts'
 
 export function RunPanel() {
-  const { seed, commandCount, tick } = useWorldStore()
+  const { seed, commandCount, tick, load } = useWorldStore()
   const [draft, setDraft] = useState(seed || DEFAULT_SEED)
   const [confirming, setConfirming] = useState(false)
   const inputId = useId()
@@ -50,7 +50,7 @@ export function RunPanel() {
             setConfirming(false)
           }}
         />
-        <button type="submit" className="secondary" disabled={!valid} title={valid ? undefined : 'Fix the seed first: 1 to 32 letters, digits or dashes'}>
+        <button type="submit" className="secondary" disabled={!valid || load !== null} title={load !== null ? 'A saved run is loading' : valid ? undefined : 'Fix the seed first: 1 to 32 letters, digits or dashes'}>
           {same ? 'Restart this seed' : 'Start new world'}
         </button>
       </form>

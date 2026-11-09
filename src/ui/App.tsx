@@ -5,13 +5,16 @@ import { EventsPanel } from './EventsPanel.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunPanel } from './RunPanel.tsx'
+import { SavePanel } from './SavePanel.tsx'
 import { SpeedControls } from './SpeedControls.tsx'
 import { StatsStrip } from './StatsStrip.tsx'
 import { Toolbar } from './Toolbar.tsx'
 import { TraitChart } from './TraitChart.tsx'
 import { TraitSummary } from './TraitSummary.tsx'
 import { WorldCanvas } from './WorldCanvas.tsx'
+import { startAutosave } from './autosave.ts'
 import { startLoop } from './loop.ts'
+import { watchShareLinks } from './shareLink.ts'
 import { useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import './styles.css'
@@ -80,6 +83,8 @@ function EmptyWorld() {
 
 export default function App() {
   useEffect(() => startLoop(), [])
+  useEffect(() => watchShareLinks(), [])
+  useEffect(() => startAutosave(), [])
   return (
     <main className="app">
       <div className="layout">
@@ -87,6 +92,7 @@ export default function App() {
           <h1>Garden of Eden</h1>
           <RunPanel />
         </header>
+        <SavePanel />
         <StatsStrip />
         <div className="workspace">
           <div className="area-speed">
