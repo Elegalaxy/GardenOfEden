@@ -68,7 +68,7 @@ export function surveySeed(seed: string, preset: Preset, rules: Rules, ticks: nu
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'danger', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -79,6 +79,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.max,
       r.births,
       r.deaths.starve,
+      r.deaths.thirst,
       r.deaths.danger,
       r.deaths.age,
       traitCell(r.traits, 'senseRadius'),

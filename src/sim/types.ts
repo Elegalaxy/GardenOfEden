@@ -42,7 +42,7 @@ export type Weighted<T> = {
   weight: number
 }
 
-export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin'
+export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water'
 
 /**
  * One purposeful spot on the map. Only the fields a kind uses matter; the
@@ -52,6 +52,8 @@ export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin'
  * - shelter: `heal` health per tick, and `drainMult` scales energy loss.
  * - ruin: food left by a dead bot. `amount` (0..capacity) falls by `decay` per tick and by being
  *   eaten; the node is removed at 0. Made by the sim only (ruins.ts), never by a preset.
+ * - water: a permanent spring. A bot within `radius` drinks `Tuning.bot.drinkRate` thirst per tick.
+ *   It is never used up, so it has no amount: `amount` and `capacity` stay 0.
  */
 export type WorldNode = {
   id: number
@@ -77,7 +79,7 @@ export type Traits = {
   metabolism: number
 }
 
-export type IntentKind = 'wander' | 'seekFood' | 'flee' | 'rest' | 'reproduce'
+export type IntentKind = 'wander' | 'seekFood' | 'seekWater' | 'flee' | 'rest' | 'reproduce'
 
 export type Intent = {
   kind: IntentKind
@@ -104,6 +106,8 @@ export type Bot = {
   py: number
   energy: number
   health: number
+  /** Water level, 0..`Tuning.bot.maxThirst`. Falls every tick, refills at a water node, 0 is death by thirst. */
+  thirst: number
   age: number
   /** Ticks left before the bot may reproduce again. */
   cooldown: number
@@ -116,7 +120,7 @@ export type Bot = {
   heading: number
 }
 
-export type DeathCause = 'starve' | 'danger' | 'age'
+export type DeathCause = 'starve' | 'thirst' | 'danger' | 'age'
 
 export type SimEventType = 'birth' | 'death' | 'command'
 
@@ -202,6 +206,8 @@ export type Tuning = {
     maxEnergy: number
     startEnergy: number
     maxHealth: number
+    /** Full water level. Every founder, placed bot and newborn starts here. */
+    maxThirst: number
     /** Cells per tick. */
     speed: number
     /** Largest random turn per tick while wandering, in radians. */
@@ -225,6 +231,16 @@ export type Tuning = {
     hungryBelow: number
     /** ...and keeps eating until it reaches this fraction. */
     satedAbove: number
+    /** Thirst lost per tick by a bot with metabolism 1 (shelter does not slow it). At 0 the bot dies of thirst. */
+    thirstDrain: number
+    /** The drain is multiplied by `max(1, traits.metabolism)` to this power: a hot bot dries out much faster, a cool one no slower. */
+    thirstMetabolismPower: number
+    /** A bot starts looking for water below this fraction of `maxThirst`... */
+    thirstyBelow: number
+    /** ...and keeps drinking until it reaches this fraction. */
+    quenchedAbove: number
+    /** Thirst regained per tick while standing at a water node. */
+    drinkRate: number
     /** Resource units taken per tick while eating. */
     eatRate: number
     /** Energy gained per resource unit eaten. */
@@ -251,6 +267,8 @@ export type Tuning = {
   brain: {
     /** Utility of seeking food is this times the missing energy fraction. */
     seekWeight: number
+    /** Utility of seeking water is this times the missing thirst fraction. */
+    thirstWeight: number
     /** Utility of resting is this times the missing health fraction. */
     restWeight: number
     /** Utility of walking to a shelter to reproduce. */
@@ -267,7 +285,7 @@ export type Tuning = {
     fleeMargin: number
     /** Walking and wandering keep this far (cells) outside a remembered danger's edge. */
     avoidMargin: number
-    /** Below this energy fraction a seeking bot ignores danger avoidance. */
+    /** Below this energy (or thirst) fraction a bot seeking food (or water) ignores danger avoidance. */
     desperateBelow: number
     /** A bot looks for a shelter to heal in below this health fraction... */
     restBelow: number
@@ -293,8 +311,10 @@ export type Tuning = {
     bounds: Record<TraitName, { min: number; max: number }>
   }
   memory: {
-    /** Most entries a bot keeps. */
+    /** Most entries a bot keeps, water not counted. */
     cap: number
+    /** Extra entries kept for water only, so a crowd of food and ruins cannot push the springs out. */
+    waterCap: number
     /** A remembered-empty resource is worth another look after this many ticks. */
     retryTicks: number
   }

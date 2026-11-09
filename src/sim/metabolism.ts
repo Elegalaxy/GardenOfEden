@@ -2,8 +2,17 @@
 // (more on a tick it moved, more or less for a sense radius above or below the
 // default, all scaled by its metabolism trait and by the shelter it stands
 // in), takes danger damage, heals, ages and counts its reproduction
-// cooldown down. A bot dies of danger (health <= 0), starvation (energy <= 0)
-// or old age (age >= maxAge), checked in that order.
+// cooldown down. Thirst falls by `thirstDrain` per tick, times the metabolism
+// trait raised to `thirstMetabolismPower` for a bot hotter than 1 (a cooler bot
+// pays the plain `thirstDrain`, it does not thirst less), and shelter does not
+// slow it (drinking at a spring, in movement.ts, comes first in the tick). The
+// steep power is deliberate: a fast bot is cheaper per cell walked and finds the
+// rare springs sooner, so with a gentler cost it simply out-breeds everyone
+// (see tuning.ts). A bot dies of danger (health <= 0), thirst (thirst <= 0),
+// starvation (energy <= 0) or old age (age >= maxAge). When more than one is true on
+// the same tick the first in that order is the recorded cause: the acute ones
+// come first, and danger before everything because it is the only one that is
+// done to the bot.
 
 import type { Exposure } from './nodes.ts'
 import type { Bot, DeathCause, Tuning } from './types.ts'
@@ -18,6 +27,8 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   const t = tuning.bot
   const sensing = t.senseDrain * (bot.traits.senseRadius - tuning.traits.senseRadius)
   bot.energy -= (t.baseDrain + sensing + (moved ? t.moveDrain : 0)) * bot.traits.metabolism * exposure.drainMult
+  const thirstLoss = t.thirstDrain * Math.pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
+  bot.thirst = Math.max(0, bot.thirst - thirstLoss)
   bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage)
   bot.age += 1
   if (bot.cooldown > 0) bot.cooldown -= 1
@@ -25,6 +36,7 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
 
 export function deathCause(bot: Bot, tuning: Tuning): DeathCause | null {
   if (bot.health <= 0) return 'danger'
+  if (bot.thirst <= 0) return 'thirst'
   if (bot.energy <= 0) return 'starve'
   if (bot.age >= tuning.bot.maxAge) return 'age'
   return null

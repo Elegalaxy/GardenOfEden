@@ -10,6 +10,7 @@ import type { Bot, TraitName, World, WorldNode } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
 import { CAUSE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
+import { toolInfo } from './tools.ts'
 import type { Selection } from './tools.ts'
 import { TREND_GLYPH, signedDelta, trendOf } from './traitMath.ts'
 
@@ -104,6 +105,7 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
       <h3>Bot #{bot.id}</h3>
       <dl className="kv">
         <Meter label="Energy" value={bot.energy} max={tuning.bot.maxEnergy} low={bot.energy < 0.2 * tuning.bot.maxEnergy} />
+        <Meter label="Thirst" value={bot.thirst} max={tuning.bot.maxThirst} low={bot.thirst < 0.2 * tuning.bot.maxThirst} />
         <Meter label="Health" value={bot.health} max={tuning.bot.maxHealth} low={bot.health < 0.3 * tuning.bot.maxHealth} />
         <Row label="Age">
           {bot.age} ticks · {adult ? 'adult' : 'child'}
@@ -133,7 +135,7 @@ function BotDetails({ bot, world }: { bot: Bot; world: World }) {
         <Row label="Position">{formatPoint(bot.x, bot.y)}</Row>
         <Row label="Repro cooldown">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
         <Row label="Memory">
-          {bot.memory.length} / {tuning.memory.cap} nodes
+          {bot.memory.length} / {tuning.memory.cap + tuning.memory.waterCap} nodes
         </Row>
       </dl>
       <h4>Traits</h4>
@@ -167,6 +169,12 @@ function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
             <Meter label="Amount" value={node.amount} max={node.capacity} low={false} />
             <Row label="Decay">&minus;{fixed2(node.decay)} / tick</Row>
             <Row label="Time left">{ruinTimeLeft(node)}</Row>
+          </>
+        )}
+        {node.kind === 'water' && (
+          <>
+            <Row label="Drink rate">+{fixed1(tuning.bot.drinkRate)} thirst / tick</Row>
+            <Row label="Supply">never runs dry</Row>
           </>
         )}
         {node.kind === 'danger' && <Row label="Damage">{fixed1(node.damage)} health / tick</Row>}
@@ -217,7 +225,7 @@ export function Inspector() {
   if (selection === null) {
     body = (
       <p className="empty">
-        Nothing selected. Pick <strong>Inspect (1)</strong> and click a bot or node on the map, or pick an entry in the event
+        Nothing selected. Pick <strong>Inspect ({toolInfo('inspect').key})</strong> and click a bot or node on the map, or pick an entry in the event
         log.
       </p>
     )

@@ -21,7 +21,7 @@ function worldWith(nodes: WorldNode[]): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, danger: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, age: 0 },
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
   }

@@ -48,6 +48,7 @@ describe('danger', () => {
       let closest = Infinity
       for (let i = 0; i < 400; i += 1) {
         world.bots[0].energy = 100 // keep it from starving or seeking food
+        world.bots[0].thirst = 100 // and from dying of thirst
         step(world, rules)
         const bot = world.bots[0]
         closest = Math.min(closest, Math.hypot(bot.x - 20, bot.y - 20))

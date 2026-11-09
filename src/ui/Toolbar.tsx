@@ -1,5 +1,5 @@
 // The player's tools. One is active at a time (aria-pressed, a filled background
-// with an underline bar, and the line below names it; not colour alone). Keys 1-6 pick a tool and Esc goes back to
+// with an underline bar, and the line below names it; not colour alone). Keys 1-7 pick a tool and Esc goes back to
 // inspect; the keys are ignored while typing in a field. The line under the
 // buttons says what the active tool does and what the last click did.
 
@@ -14,9 +14,15 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-/** The little round badge on a tool button: the same R/D/S keys as the map legend. */
+/** The little badge on a tool button: the same R/W/D/S keys as the map legend (water is a droplet shape). */
 function ToolBadge({ id }: { id: Tool }) {
   switch (id) {
+    case 'water':
+      return (
+        <span className="key key-water" aria-hidden="true">
+          <span>{KIND_LETTER.water}</span>
+        </span>
+      )
     case 'resource':
     case 'danger':
     case 'shelter':

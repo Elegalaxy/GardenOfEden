@@ -1,6 +1,7 @@
 // How nodes act on bots and on themselves. Resources are eaten down and regrow
 // by `regen` per tick up to `capacity`; ruins are eaten the same way (`eat`)
-// but never regrow (they decay, see ruins.ts). Danger nodes hurt and shelter
+// but never regrow (they decay, see ruins.ts). A water node is a permanent
+// spring: `drink` raises a bot's thirst and takes nothing from the node. Danger nodes hurt and shelter
 // nodes heal everything standing inside their radius; `exposureAt` adds up
 // what one spot receives from the real nodes (not from any bot's memory).
 
@@ -51,6 +52,12 @@ export function eat(world: World, bot: Bot, node: WorldNode, tuning: Tuning): vo
   node.amount = Math.max(0, node.amount - take)
   bot.energy = Math.min(t.maxEnergy, bot.energy + take * t.energyPerUnit)
   world.eaten[node.kind === 'ruin' ? 'ruin' : 'resource'] += take
+}
+
+/** The bot drinks `drinkRate` at a water node it stands in (up to full). The spring is not used up. */
+export function drink(bot: Bot, tuning: Tuning): void {
+  const t = tuning.bot
+  bot.thirst = Math.min(t.maxThirst, bot.thirst + t.drinkRate)
 }
 
 export function regrow(world: World): void {

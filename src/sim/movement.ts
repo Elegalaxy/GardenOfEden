@@ -7,6 +7,10 @@
 // that moves away from a danger is always allowed, so a bot already inside the
 // margin can leave. A desperate seeker (see brain.ts) skips avoidance.
 //
+// Seeking water works like seeking food: walk to the spring (steering around
+// remembered danger unless desperate) and drink once inside its radius. Drinking
+// does not move the bot, so it costs no move energy.
+//
 // Fleeing walks straight away from every remembered danger the bot is at or
 // near. Wandering is a random walk with small turns and one `ai` draw per
 // tick, taken even when avoidance changes the step, so the draw order never
@@ -19,7 +23,7 @@
 
 import { isDesperate } from './brain.ts'
 import { speedOf } from './metabolism.ts'
-import { eat } from './nodes.ts'
+import { drink, eat } from './nodes.ts'
 import { distance, knownDangers } from './perception.ts'
 import { nextFloat } from './rng.ts'
 import type { Bot, MemoryEntry, Rules, World, WorldNode } from './types.ts'
@@ -133,6 +137,15 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
       if (target) {
         if (distance(bot.x, bot.y, target.x, target.y) <= target.radius) {
           eat(world, bot, target, tuning)
+          return false
+        }
+        return walkToward(world, bot, target.x, target.y, dangers, rules)
+      }
+      break
+    case 'seekWater':
+      if (target) {
+        if (distance(bot.x, bot.y, target.x, target.y) <= target.radius) {
+          drink(bot, tuning)
           return false
         }
         return walkToward(world, bot, target.x, target.y, dangers, rules)

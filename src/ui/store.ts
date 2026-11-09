@@ -18,6 +18,7 @@ import type { Command, DeathsByCause, World } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import { formatPoint } from './labels.ts'
+import { toolInfo } from './tools.ts'
 import type { Selection, Tool } from './tools.ts'
 
 export const SPEEDS = [1, 4, 16, 64] as const
@@ -183,9 +184,10 @@ export function clickMap(x: number, y: number, reach: number): void {
       select(pickAt(world, x, y, paused ? 1 : alpha, reach))
       return
     case 'resource':
+    case 'water':
     case 'danger':
     case 'shelter':
-      dispatch({ type: 'placeNode', kind: tool, x: centre.x, y: centre.y })
+      dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })
       return
     case 'bot':
       dispatch({ type: 'placeBot', x: centre.x, y: centre.y })

@@ -1,6 +1,6 @@
 // Choosing what to do. Each option gets a utility score from the bot's state
 // and what it remembers; the highest score wins. Ties go to the earlier option
-// in this order: flee, seek food, rest, reproduce, wander.
+// in this order: flee, seek food, seek water, rest, reproduce, wander.
 //
 //   flee       rises with how close the bot is to a remembered danger, scaled by
 //              its caution trait and by how hurt it is. Full strength inside.
@@ -8,6 +8,13 @@
 //              until sated) and a worthwhile remembered resource. Scales with
 //              missing energy, so a starving bot can out-score fleeing and walk
 //              into danger for food.
+//   seekWater  the same shape as seekFood for thirst: needs the bot to be thirsty
+//              (with hysteresis, until nearly full) and a remembered spring that
+//              is not inside a remembered danger. Scales with missing thirst, so
+//              a parched bot is as urgent as a starving one, and a bot that is
+//              both goes for whichever is lower. A desperate bot (thirst under
+//              `desperateBelow`) accepts a spring inside danger and ignores
+//              avoidance on the way, the same bargain as food in a grove.
 //   rest       needs a remembered shelter and low health (with hysteresis).
 //   reproduce  needs the reproduction conditions and a remembered shelter.
 //   wander     the fallback, with a small constant score.
@@ -15,13 +22,16 @@
 // `decide` only sets `bot.intent`; movement.ts carries it out. It makes no
 // random draws.
 
-import { chooseFood, distance, knownDangers, nearestKnown } from './perception.ts'
+import { chooseFood, chooseWater, distance, knownDangers, nearestKnown } from './perception.ts'
 import { meetsReproductionNeeds } from './reproduction.ts'
 import type { Bot, Intent, IntentKind, Tuning, World } from './types.ts'
 
 /** A seeking bot this hungry ignores danger avoidance (see `brain.desperateBelow`). */
 export function isDesperate(bot: Bot, tuning: Tuning): boolean {
-  return bot.intent.kind === 'seekFood' && bot.energy < tuning.brain.desperateBelow * tuning.bot.maxEnergy
+  const { desperateBelow } = tuning.brain
+  if (bot.intent.kind === 'seekFood') return bot.energy < desperateBelow * tuning.bot.maxEnergy
+  if (bot.intent.kind === 'seekWater') return bot.thirst < desperateBelow * tuning.bot.maxThirst
+  return false
 }
 
 /** 0 outside the flee margin, rising to 1 at a danger's edge and inside it; plus the danger it comes from. */
@@ -44,6 +54,7 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
   const b = tuning.brain
   const energyFraction = bot.energy / t.maxEnergy
   const healthFraction = bot.health / t.maxHealth
+  const thirstFraction = bot.thirst / t.maxThirst
 
   let best: Intent = { kind: 'wander', targetId: null }
   let bestScore = b.wanderScore
@@ -68,6 +79,14 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
     const brave = energyFraction < b.desperateBelow
     const food = chooseFood(world, bot, tuning, brave)
     if (food) consider('seekFood', food.nodeId, b.seekWeight * (1 - energyFraction))
+  }
+
+  const thirsty =
+    bot.thirst < t.thirstyBelow * t.maxThirst ||
+    (bot.intent.kind === 'seekWater' && bot.thirst < t.quenchedAbove * t.maxThirst)
+  if (thirsty) {
+    const water = chooseWater(bot, tuning, thirstFraction < b.desperateBelow)
+    if (water) consider('seekWater', water.nodeId, b.thirstWeight * (1 - thirstFraction))
   }
 
   const shelter = nearestKnown(bot, 'shelter')

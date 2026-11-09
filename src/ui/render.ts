@@ -4,7 +4,8 @@
 //
 // The map is letterboxed to fit. Nodes are tinted shapes with a letter, so
 // kind never relies on colour alone: R resource, D danger (dashed edge),
-// S shelter, U ruin (a diamond, not a circle). A resource also has a ring that
+// S shelter, U ruin (a diamond, not a circle), W water (a droplet with a point
+// at the top). A water node is a permanent spring, so it has no fill level. A resource also has a ring that
 // fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring.
 // Bot positions blend from where the bot was at the start of its last turn
 // (px, py) to where it is now (x, y), by `alpha`.
@@ -39,7 +40,7 @@ export type Overlay = {
   ghost: Ghost | null
 }
 
-export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U' }
+export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
 
 export const COLORS = {
   background: '#0e1118',
@@ -50,6 +51,7 @@ export const COLORS = {
   danger: '#f85149',
   shelter: '#58a6ff',
   ruin: '#bc8cff',
+  water: '#4dd0e1',
   bot: '#f2cc60',
   botEdge: '#0e1118',
   flee: '#ffffff',
@@ -64,6 +66,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
   danger: COLORS.danger,
   shelter: COLORS.shelter,
   ruin: COLORS.ruin,
+  water: COLORS.water,
 }
 
 /** Largest scale that fits the whole map, centred. */
@@ -178,6 +181,47 @@ function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
 }
 
+/**
+ * A droplet: round at the bottom with the circle's radius, a point 1.5 radii above the centre.
+ * The path only; the caller fills and strokes it.
+ */
+function dropletPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number): void {
+  const tip = cy - r * 1.55
+  ctx.beginPath()
+  ctx.moveTo(cx, tip)
+  ctx.bezierCurveTo(cx + r * 0.25, cy - r * 0.95, cx + r, cy - r * 0.55, cx + r, cy)
+  ctx.arc(cx, cy, r, 0, Math.PI, false)
+  ctx.bezierCurveTo(cx - r, cy - r * 0.55, cx - r * 0.25, cy - r * 0.95, cx, tip)
+  ctx.closePath()
+}
+
+/**
+ * Water is a droplet in the water colour with a W, over a faint disc that shows where a bot can drink
+ * (the node's radius). The droplet never changes, since a spring never runs dry.
+ */
+function drawWater(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
+  const cx = layout.offsetX + node.x * layout.scale
+  const cy = layout.offsetY + node.y * layout.scale
+  const reach = node.radius * layout.scale
+  ctx.beginPath()
+  ctx.arc(cx, cy, reach, 0, Math.PI * 2)
+  ctx.globalAlpha = 0.08
+  ctx.fillStyle = COLORS.water
+  ctx.fill()
+  ctx.globalAlpha = 1
+  // Shrunk and nudged down so the whole droplet stays inside the node's circle.
+  const r = reach * 0.75
+  dropletPath(ctx, cx, cy + reach * 0.25, r)
+  ctx.globalAlpha = 0.3
+  ctx.fillStyle = COLORS.water
+  ctx.fill()
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.water
+  ctx.stroke()
+  drawLetter(ctx, NODE_LETTER.water, cx, cy + reach * 0.25, layout.scale * 1.2)
+}
+
 function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number, layout: Layout, overlay: Overlay): void {
   const { scale, offsetX, offsetY } = layout
   const px = (x: number): number => offsetX + x * scale
@@ -254,6 +298,12 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: World, alpha: number,
     ctx.stroke()
     ctx.setLineDash([])
     if (ghost.valid) {
+      if (ghost.kind === 'water') {
+        // The droplet inside the drinking disc, as on the map.
+        dropletPath(ctx, cx, cy + r * 0.25, r * 0.75)
+        ctx.setLineDash([])
+        ctx.stroke()
+      }
       if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
     } else {
       // An X through the ghost: "refused", not just a different colour.
@@ -300,6 +350,9 @@ export function drawWorld(
       offsetY + (node.y - node.radius * 0.62) * scale,
       scale * 1.5,
     )
+  }
+  for (const node of world.nodes) {
+    if (node.kind === 'water') drawWater(ctx, node, layout)
   }
   for (const node of world.nodes) {
     if (node.kind === 'resource') drawResource(ctx, node, layout)

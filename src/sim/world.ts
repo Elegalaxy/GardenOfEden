@@ -30,7 +30,7 @@ function assertInside(preset: Preset, x: number, y: number, label: string): void
   }
 }
 
-/** A node from its kind's numbers. A resource starts full; other kinds carry no amount. */
+/** A node from its kind's numbers. A resource starts full; other kinds (water included) carry no amount. */
 export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: NodeDef): WorldNode {
   return {
     id,
@@ -48,7 +48,7 @@ export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: 
   }
 }
 
-/** A bot with the default traits and an empty memory. */
+/** A bot with the default traits, full health and thirst, and an empty memory. */
 export function makeBot(id: number, x: number, y: number, heading: number, rules: Rules): Bot {
   const { bot, traits } = rules.tuning
   return {
@@ -59,6 +59,7 @@ export function makeBot(id: number, x: number, y: number, heading: number, rules
     py: y,
     energy: bot.startEnergy,
     health: bot.maxHealth,
+    thirst: bot.maxThirst,
     age: 0,
     cooldown: 0,
     generation: 0,
@@ -104,7 +105,8 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
 }
 
 export function totalDeaths(world: World): number {
-  return world.deathsByCause.starve + world.deathsByCause.danger + world.deathsByCause.age
+  const d = world.deathsByCause
+  return d.starve + d.thirst + d.danger + d.age
 }
 
 /** One stats row for the world as it stands now. */
@@ -135,7 +137,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, danger: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, age: 0 },
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
   }

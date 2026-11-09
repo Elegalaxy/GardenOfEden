@@ -27,9 +27,10 @@ function placementAt(tool: Tool, cell: Cell): Command | null {
   const { x, y } = cellCenter(cell)
   switch (tool) {
     case 'resource':
+    case 'water':
     case 'danger':
     case 'shelter':
-      return { type: 'placeNode', kind: tool, x, y }
+      return { type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x, y }
     case 'bot':
       return { type: 'placeBot', x, y }
     default:

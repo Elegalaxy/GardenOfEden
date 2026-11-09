@@ -1,7 +1,8 @@
 // Every behaviour number the sim reads. Change numbers here, not in src/sim.
 // Energy figures are chosen to be exact in binary (0.25, 0.5), so the starve
 // tick of a lone bot is a whole number and a test can state it exactly:
-// 70 energy / (0.25 base + 0.25 move) per tick = 140 ticks.
+// 70 energy / (0.25 base + 0.25 move) per tick = 140 ticks. Thirst is the same
+// kind of exact: 100 thirst / 0.25 per tick = 400 ticks from full to dead.
 
 import type { Tuning } from '../sim/types.ts'
 
@@ -10,12 +11,24 @@ export const tuning: Tuning = {
     maxEnergy: 100,
     startEnergy: 70,
     maxHealth: 100,
+    maxThirst: 100,
     speed: 0.6,
     turnRate: 0.5,
     baseDrain: 0.25,
     moveDrain: 0.25,
     senseDrain: 0.02,
     metabolismSpeed: 2,
+    thirstDrain: 0.25,
+    // Why a steep power, and why only above 1: speed is `1 + 2 x (metabolism - 1)` times the base, so a
+    // hot bot covers ground (and finds the few springs) faster than it burns energy, which is cheaper
+    // per cell walked. With thirst scaled by metabolism x 1, or not at all, metabolism 1.6 out-bred 0.9
+    // in the selection test (tests/traits.test.ts) once water existed. At 3 a hot bot's thirst (x4.1 at
+    // 1.6) cancels that. Scaling a cool bot's thirst down too (so below 1 it thirsts less) pinned the
+    // population mean at the 0.7 lower bound over 60,000 ticks, so below 1 the drain stays the plain one.
+    thirstMetabolismPower: 3,
+    thirstyBelow: 0.5,
+    quenchedAbove: 0.95,
+    drinkRate: 5,
     hungryBelow: 0.6,
     satedAbove: 0.9,
     eatRate: 5,
@@ -30,6 +43,7 @@ export const tuning: Tuning = {
   },
   brain: {
     seekWeight: 1.25,
+    thirstWeight: 1.25,
     restWeight: 1.4,
     reproduceScore: 0.5,
     wanderScore: 0.15,
@@ -67,6 +81,7 @@ export const tuning: Tuning = {
   },
   memory: {
     cap: 8,
+    waterCap: 2,
     retryTicks: 300,
   },
   stats: {

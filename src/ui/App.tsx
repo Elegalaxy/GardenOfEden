@@ -12,6 +12,7 @@ import { TraitSummary } from './TraitSummary.tsx'
 import { WorldCanvas } from './WorldCanvas.tsx'
 import { startLoop } from './loop.ts'
 import { useWorldStore } from './store.ts'
+import { toolInfo } from './tools.ts'
 import './styles.css'
 import './panels.css'
 
@@ -21,6 +22,10 @@ function Legend() {
       <li>
         <span className="key key-resource" aria-hidden="true">R</span> Resource
         <span className="legend-note">ring shows what is left</span>
+      </li>
+      <li>
+        <span className="key key-water" aria-hidden="true"><span>W</span></span> Water
+        <span className="legend-note">droplet, bots drink, never runs dry</span>
       </li>
       <li>
         <span className="key key-danger" aria-hidden="true">D</span> Danger
@@ -46,17 +51,18 @@ function Legend() {
 function EmptyWorld() {
   const { population, births, deaths, tick } = useWorldStore()
   if (population > 0) return null
+  const addBot = toolInfo('bot')
   const fresh = births === 0 && deaths === 0
   return (
     <p className="empty banner" role="status">
       {fresh ? (
         <>
-          No bots yet. Pick <strong>Add bot (5)</strong> and click the map.
+          No bots yet. Pick <strong>{addBot.label} ({addBot.key})</strong> and click the map.
         </>
       ) : (
         <>
-          Everyone is gone (tick {tick}). Pick <strong>Add bot (5)</strong> and click the map to start a new line, or start a
-          new world above.
+          Everyone is gone (tick {tick}). Pick <strong>{addBot.label} ({addBot.key})</strong> and click the map to start a new
+          line, or start a new world above.
         </>
       )}
     </p>

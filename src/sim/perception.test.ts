@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { chooseFood, insideDanger, nearestKnown, perceive, remember } from './perception.ts'
+import { chooseFood, chooseWater, insideDanger, nearestKnown, perceive, remember } from './perception.ts'
 import { createRng } from './rng.ts'
 import type { Bot, MemoryEntry, Tuning, World, WorldNode } from './types.ts'
 
 // Only the numbers perception reads are filled in.
 const tuning = {
   bot: { eatRate: 5 },
-  memory: { cap: 3, retryTicks: 300 },
+  memory: { cap: 3, waterCap: 2, retryTicks: 300 },
   brain: { avoidMargin: 0.75 },
 } as unknown as Tuning
 
@@ -28,7 +28,7 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, danger: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, age: 0 },
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
   }
@@ -43,6 +43,7 @@ function botAt(x: number, memory: MemoryEntry[] = []): Bot {
     py: 10,
     energy: 50,
     health: 100,
+    thirst: 100,
     age: 0,
     cooldown: 0,
     generation: 0,
@@ -73,6 +74,20 @@ describe('remember', () => {
     remember(world, bot, [nodes[1], nodes[2], nodes[3]], tuning, new Set([1, 2, 3, 4, 9]))
     expect(bot.memory).toHaveLength(3)
     expect(bot.memory.map((e) => e.nodeId).sort()).toEqual([2, 3, 4])
+  })
+
+  it('keeps water in its own slots, so food cannot push a spring out and springs cannot push food out', () => {
+    const food = [node(1, 'resource', 10), node(2, 'resource', 11), node(3, 'resource', 12), node(4, 'resource', 13)]
+    const springs = [node(5, 'water', 9), node(6, 'water', 8), node(7, 'water', 7)]
+    const world = worldWith([...food, ...springs], 10)
+    // The springs were seen long ago; the food is fresh. Plain "oldest first" would drop the springs.
+    const bot = botAt(10, [entry(5, 'water', 9, { seenTick: 1 }), entry(6, 'water', 8, { seenTick: 2 })])
+    remember(world, bot, [...food, springs[2]], tuning, new Set([1, 2, 3, 4, 5, 6, 7]))
+    const water = bot.memory.filter((e) => e.kind === 'water').map((e) => e.nodeId)
+    const others = bot.memory.filter((e) => e.kind !== 'water')
+    expect(others).toHaveLength(3) // the food cap, with the oldest food (id 1, same tick: lowest id) forgotten
+    expect(others.map((e) => e.nodeId).sort()).toEqual([2, 3, 4])
+    expect(water.sort()).toEqual([6, 7]) // the water cap of 2 forgets the oldest spring (id 5)
   })
 
   it('refreshes a known entry and drops removed nodes', () => {
@@ -108,6 +123,30 @@ describe('chooseFood', () => {
     const bot = botAt(10, [entry(1, 'resource', 16), entry(2, 'danger', 16, { radius: 4 }), entry(3, 'resource', 40)])
     expect(chooseFood(worldWith([], 2), bot, tuning, false)?.nodeId).toBe(3)
     expect(chooseFood(worldWith([], 2), bot, tuning, true)?.nodeId).toBe(1)
+  })
+})
+
+describe('chooseWater', () => {
+  it('picks the nearest remembered spring and breaks ties by node id', () => {
+    const bot = botAt(10, [entry(5, 'water', 24), entry(3, 'water', 17), entry(4, 'resource', 11), entry(2, 'water', 1)])
+    expect(chooseWater(bot, tuning, false)?.nodeId).toBe(3)
+    const tied = botAt(10, [entry(9, 'water', 16), entry(8, 'water', 4)])
+    expect(chooseWater(tied, tuning, false)?.nodeId).toBe(8)
+  })
+
+  it('is null when no spring is remembered', () => {
+    expect(chooseWater(botAt(10, [entry(1, 'resource', 12)]), tuning, false)).toBeNull()
+  })
+
+  it('skips a spring inside a remembered danger unless the bot is brave', () => {
+    const bot = botAt(10, [entry(1, 'water', 16), entry(2, 'danger', 16, { radius: 4 }), entry(3, 'water', 40)])
+    expect(chooseWater(bot, tuning, false)?.nodeId).toBe(3)
+    expect(chooseWater(bot, tuning, true)?.nodeId).toBe(1)
+  })
+
+  it('does not care how much a spring holds, since it never runs dry', () => {
+    const bot = botAt(10, [entry(1, 'water', 16, { amount: 0 })])
+    expect(chooseWater(bot, tuning, false)?.nodeId).toBe(1)
   })
 })
 

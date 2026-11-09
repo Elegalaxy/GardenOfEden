@@ -4,21 +4,33 @@
 import type { CommandType, DeathCause, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
 
-export const KIND_LABEL: Record<NodeKind, string> = { resource: 'resource', danger: 'danger', shelter: 'shelter', ruin: 'ruin' }
+export const KIND_LABEL: Record<NodeKind, string> = {
+  resource: 'resource',
+  danger: 'danger',
+  shelter: 'shelter',
+  ruin: 'ruin',
+  water: 'water',
+}
 
-export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U' }
+export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
 
-export const CAUSE_LABEL: Record<DeathCause, string> = { starve: 'Starved', danger: 'Danger', age: 'Old age' }
+export const CAUSE_LABEL: Record<DeathCause, string> = {
+  starve: 'Starved',
+  thirst: 'Thirst',
+  danger: 'Danger',
+  age: 'Old age',
+}
 
 export const INTENT_LABEL: Record<IntentKind, string> = {
   wander: 'Wandering',
   seekFood: 'Seeking food',
+  seekWater: 'Seeking water',
   flee: 'Fleeing danger',
   rest: 'Resting in shelter',
   reproduce: 'Heading to shelter to reproduce',
 }
 
-/** One letter for a chart marker: R, D, S for a placed node of that kind, B for a bot, X for a removal. */
+/** One letter for a chart marker: R, D, S, W for a placed node of that kind, B for a bot, X for a removal. */
 export function commandLetter(command: CommandType, nodeKind?: NodeKind): string {
   if (command === 'placeBot') return 'B'
   if (command === 'removeNode') return 'X'
@@ -57,7 +69,7 @@ export const TRAIT_HELP: Record<TraitName, string> = {
   senseRadius: 'How far a bot sees nodes. Seeing further costs energy every tick.',
   caution: 'How strongly a bot flees danger instead of seeking food.',
   reproThreshold: 'Energy a bot needs before it reproduces. Low is early but risky for the parent.',
-  metabolism: 'Scales energy loss and walking speed. Higher burns more but moves faster.',
+  metabolism: 'Scales energy loss, thirst and walking speed. Higher burns more and thirsts much more, but moves faster.',
 }
 
 /** A trait value with its unit: "6.4 cells", "0.45", "62.0 energy", "×1.05". */

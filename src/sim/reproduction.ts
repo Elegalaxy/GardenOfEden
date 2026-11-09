@@ -2,6 +2,9 @@
 // energy at or above its `reproThreshold` trait, age of at least `adultAge`,
 // cooldown over, standing in a shelter, and room under the population cap.
 //
+// A newborn starts with full health and full thirst (water, unlike energy, is not
+// handed down: a child costs the parent no thirst).
+//
 // A birth happens in two parts. `conceive` runs in the bot loop and moves
 // `childEnergyShare` of the parent's energy into a `Conception`, so the
 // parent's energy is already lower when the loop moves on. `spawnChildren`
@@ -59,6 +62,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       py: y,
       energy: c.energy,
       health: tuning.bot.maxHealth,
+      thirst: tuning.bot.maxThirst,
       age: 0,
       cooldown: tuning.bot.reproCooldown,
       generation: c.generation + 1,

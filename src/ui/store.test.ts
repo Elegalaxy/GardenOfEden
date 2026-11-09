@@ -47,6 +47,18 @@ describe('clickMap', () => {
     expect(node).toMatchObject({ kind: 'shelter', x: 10.5, y: 20.5 })
   })
 
+  it('places water with the water tool, and the Remove tool takes it away again', () => {
+    setTool('water')
+    clickMap(30.2, 40.8, 1)
+    const node = getSnapshot().world.nodes.at(-1)
+    expect(node).toMatchObject({ kind: 'water', x: 30.5, y: 40.5 })
+    expect(getSnapshot().notice?.text).toContain('water')
+
+    setTool('remove')
+    clickMap(30.5, 40.5, 1)
+    expect(getSnapshot().world.nodes.some((n) => n.id === node!.id)).toBe(false)
+  })
+
   it('places a bot with the bot tool', () => {
     const bots = getSnapshot().population
     setTool('bot')

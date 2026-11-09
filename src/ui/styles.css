@@ -21,6 +21,7 @@
   --danger: #f85149;
   --shelter: #58a6ff;
   --ruin: #bc8cff;
+  --water: #4dd0e1;
   --bot: #f2cc60;
 }
 
@@ -222,6 +223,16 @@ button:disabled {
 
 .key-ruin > span {
   transform: rotate(-45deg); /* keeps the letter upright inside the diamond */
+}
+
+.key-water {
+  border-color: var(--water);
+  border-radius: 0 50% 50% 50%; /* a droplet: one sharp corner, turned to point up */
+  transform: rotate(45deg);
+}
+
+.key-water > span {
+  transform: rotate(-45deg); /* keeps the letter upright inside the droplet */
 }
 
 .key-bot {
