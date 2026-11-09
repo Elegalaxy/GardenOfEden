@@ -28,10 +28,10 @@ export const edenPreset: Preset = {
     { kind: 'water', x: 78, y: 48 },
   ],
   scatter: [
-    { kind: 'resource', count: 28 },
+    { kind: 'resource', count: 34 },
     { kind: 'danger', count: 4 },
-    { kind: 'shelter', count: 7 },
-    { kind: 'water', count: 2 },
+    { kind: 'shelter', count: 12 },
+    { kind: 'water', count: 4 },
   ],
   bots: [],
   scatterBots: 40,
