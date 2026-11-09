@@ -23,6 +23,21 @@ export const CAUSE_LABEL: Record<DeathCause, string> = {
   age: 'Old age',
 }
 
+/** How a death is said in a sentence, capitalised: "Died of hunger", "Killed by a meteor". One scheme everywhere. */
+export const CAUSE_SENTENCE: Record<DeathCause, string> = {
+  starve: 'Died of hunger',
+  thirst: 'Died of thirst',
+  danger: 'Killed by danger',
+  plague: 'Killed by plague',
+  meteor: 'Killed by a meteor',
+  age: 'Died of old age',
+}
+
+/** The inspector's and the event log's wording for a death. A missing cause reads as hunger. */
+export function causeSentence(cause: DeathCause | undefined): string {
+  return CAUSE_SENTENCE[cause ?? 'starve']
+}
+
 export const EVENT_LABEL: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor' }
 
 /**

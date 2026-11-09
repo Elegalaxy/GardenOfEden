@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, chordWidth, commandLetter, commandName, eventSubject, fitLabel } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fitLabel } from './labels.ts'
 import { NODE_LETTER } from './render.ts'
 
 const KINDS: NodeKind[] = ['resource', 'danger', 'shelter', 'ruin', 'water']
@@ -34,6 +34,20 @@ describe('labels', () => {
   it('names the plague and meteor death causes', () => {
     expect(CAUSE_LABEL.plague).toBe('Plague')
     expect(CAUSE_LABEL.meteor).toBe('Meteor')
+  })
+
+  it('words every death cause as one grammatical sentence', () => {
+    const expected: Record<DeathCause, string> = {
+      starve: 'Died of hunger',
+      thirst: 'Died of thirst',
+      danger: 'Killed by danger',
+      plague: 'Killed by plague',
+      meteor: 'Killed by a meteor',
+      age: 'Died of old age',
+    }
+    for (const cause of Object.keys(expected) as DeathCause[]) expect(causeSentence(cause)).toBe(expected[cause])
+    expect(causeSentence(undefined)).toBe('Died of hunger')
+    for (const cause of Object.keys(CAUSE_LABEL) as DeathCause[]) expect(CAUSE_SENTENCE[cause]).toMatch(/^(Died of|Killed by) /)
   })
 
   it('gives each world event a marker letter that clashes with no other marker (R D S W B X)', () => {

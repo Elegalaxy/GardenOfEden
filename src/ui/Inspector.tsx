@@ -8,7 +8,7 @@ import { tuning } from '../content/index.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { Bot, TraitName, World, WorldNode } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
-import { CAUSE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, formatPoint, formatTrait } from './labels.ts'
+import { INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { Selection } from './tools.ts'
@@ -198,7 +198,7 @@ function GoneNotice({ selection, world }: { selection: Selection; world: World }
   for (let i = world.log.length - 1; i >= 0; i -= 1) {
     const event = world.log[i]!
     if (selection.kind === 'bot' && event.type === 'death' && event.botId === selection.id) {
-      detail = `Died of ${CAUSE_LABEL[event.cause ?? 'starve'].toLowerCase()} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
+      detail = `${causeSentence(event.cause)} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
       break
     }
     if (selection.kind === 'node' && event.command === 'removeNode' && event.nodeId === selection.id) {

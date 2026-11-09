@@ -5,16 +5,19 @@
 // inspector. If that thing no longer exists (every death entry, a removed
 // node) the entry is marked "gone" and cannot be selected.
 //
-// The sim keeps the newest `logCap` events (500); at most `MAX_ROWS` of the
-// matching ones are drawn. The list is rebuilt only when the log, the filters
-// or the selection change, not on every frame.
+// The sim keeps the newest `logCap` events (500), but every command you gave is kept in
+// `world.commands`; `mergeLog` (logMerge.ts) lists the older commands too, so none scroll
+// out. At most `MAX_ROWS` of the matching entries are drawn. The list is rebuilt only when
+// the log, the filters or the selection change, not on every frame.
 
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
 import type { SimEvent, SimEventType, World } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
-import { CAUSE_LABEL, EVENT_LABEL, KIND_LABEL, commandName, formatPoint } from './labels.ts'
+import { EVENT_LABEL, KIND_LABEL, causeSentence, commandName, formatPoint } from './labels.ts'
+import { mergeLog } from './logMerge.ts'
+import type { LogEntry } from './logMerge.ts'
 import { select, useWorldStore } from './store.ts'
 import type { Selection } from './tools.ts'
 
@@ -41,13 +44,13 @@ function exists(world: World, target: Selection): boolean {
   return target.kind === 'bot' ? findBot(world, target.id) !== undefined : findNode(world, target.id) !== undefined
 }
 
-function describe(event: SimEvent): string {
+function describe({ event, located }: LogEntry): string {
   const where = formatPoint(event.x, event.y)
   switch (event.type) {
     case 'birth':
       return `Bot #${event.botId} born at ${where}`
     case 'death':
-      return `Bot #${event.botId} died: ${CAUSE_LABEL[event.cause ?? 'starve'].toLowerCase()}, at ${where}`
+      return `${causeSentence(event.cause)} (bot #${event.botId}) at ${where}`
     case 'event': {
       const kind = event.eventKind ?? 'drought'
       return kind === 'meteor' ? `Meteor crater faded at ${where}` : `${EVENT_LABEL[kind]} ended`
@@ -59,23 +62,36 @@ function describe(event: SimEvent): string {
         return `You: ${commandName('triggerEvent', undefined, kind)}${global ? '' : ` at ${where}`}`
       }
       const name = commandName(event.command ?? 'placeNode', event.nodeKind)
-      const subject = event.botId !== undefined ? `bot #${event.botId}` : `${event.nodeKind === undefined ? 'node' : KIND_LABEL[event.nodeKind]} #${event.nodeId}`
-      return `You: ${name} (${subject}) at ${where}`
+      // Commands older than the sim's log are rebuilt without the id of what they placed.
+      const subject =
+        event.botId !== undefined
+          ? ` (bot #${event.botId})`
+          : event.nodeId !== undefined
+            ? ` (${event.nodeKind === undefined ? 'node' : KIND_LABEL[event.nodeKind]} #${event.nodeId})`
+            : ''
+      return `You: ${name}${subject}${located ? ` at ${where}` : ''}`
     }
   }
 }
 
-/** The rows for the matching events, newest first. `_revision` only says when the (mutated-in-place) log changed. */
+/** Everything the log lists, oldest first. `_revision` only says when the (mutated-in-place) log or commands changed. */
+function entriesOf(world: World, _revision: string): LogEntry[] {
+  return mergeLog(world.log, world.commands)
+}
+
+/** The rows for the matching entries (oldest first in, newest first out). `_revision` only says when the (mutated-in-place) log changed. */
 function buildRows(
   world: World,
+  entries: readonly LogEntry[],
   active: Record<SimEventType, boolean>,
   selectedKey: string,
   _revision: string,
 ): { rows: ReactNode[]; matching: number } {
   const rows: ReactNode[] = []
   let matching = 0
-  for (let i = world.log.length - 1; i >= 0; i -= 1) {
-    const event = world.log[i]!
+  for (let i = entries.length - 1; i >= 0; i -= 1) {
+    const entry = entries[i]!
+    const { event } = entry
     if (!active[event.type]) continue
     matching += 1
     if (rows.length >= MAX_ROWS) continue
@@ -88,7 +104,7 @@ function buildRows(
         <span className="log-type">
           <span aria-hidden="true">{GLYPH[event.type]}</span> {TYPE_LABEL[event.type]}
         </span>
-        <span className="log-text">{describe(event)}</span>
+        <span className="log-text">{describe(entry)}</span>
         <span className="log-status">{target === null ? '' : alive ? 'select' : 'gone'}</span>
       </>
     )
@@ -124,14 +140,15 @@ export function EventLog() {
     event: true,
   })
 
+  const revision = `${world.tick}/${world.log.length}/${world.commands.length}`
+  const entries = useMemo(() => entriesOf(world, revision), [world, revision])
   const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0, event: 0 }
-  for (const event of world.log) counts[event.type] += 1
+  for (const entry of entries) counts[entry.event.type] += 1
 
   const selectedKey = selection === null ? '' : `${selection.kind}:${selection.id}`
   // A bot or node can only vanish through a logged event (a death or a remove command), so
-  // the log's length and newest tick are enough to know when row states may have changed.
-  const revision = `${world.tick}/${world.log.length}/${world.commands.length}`
-  const list = useMemo(() => buildRows(world, active, selectedKey, revision), [world, active, selectedKey, revision])
+  // the tick and the log and command counts are enough to know when row states may have changed.
+  const list = useMemo(() => buildRows(world, entries, active, selectedKey, revision), [world, entries, active, selectedKey, revision])
 
   return (
     <section className="panel event-log" aria-label="Event log">
@@ -150,7 +167,7 @@ export function EventLog() {
           </button>
         ))}
       </div>
-      {world.log.length === 0 ? (
+      {entries.length === 0 ? (
         <p className="empty">No events yet. Births, deaths, your commands and world events appear here.</p>
       ) : list.matching === 0 ? (
         <p className="empty">No events match these filters. Turn a filter back on above.</p>
@@ -161,7 +178,7 @@ export function EventLog() {
           </ol>
           <p className="log-foot">
             Showing {numberFormat.format(Math.min(list.matching, MAX_ROWS))} of {numberFormat.format(list.matching)} matching
-            events (the log keeps the newest {numberFormat.format(tuning.logCap)}).
+            events (the sim keeps the newest {numberFormat.format(tuning.logCap)}; every command you gave is kept).
           </p>
         </>
       )}
