@@ -367,7 +367,7 @@ describe('over a long run', () => {
   }, SLOW)
 
   it('does not change anything the bots do: only the lineage fields differ between tunings', () => {
-    const tight = withLineage(200, 150)
+    const tight = withLineage(150, 100)
     const a = createWorld('c', edenPreset, rules)
     const b = createWorld('c', edenPreset, tight)
     for (let i = 0; i < 6000; i += 1) {

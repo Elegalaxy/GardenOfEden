@@ -346,8 +346,14 @@ export type Tuning = {
     fleeMargin: number
     /** Walking and wandering keep this far (cells) outside a remembered danger's edge. */
     avoidMargin: number
-    /** Below this energy (or thirst) fraction a bot seeking food (or water) ignores danger avoidance. */
+    /** Below this energy (or thirst) fraction a bot of founder caution seeking food (or water) ignores danger avoidance. */
     desperateBelow: number
+    /** The threshold is `desperateBelow x (1 + this x (founder caution - bot caution))`: more for a reckless bot, less for a cautious one. 0 turns it off. */
+    cautionDesperate: number
+    /** ...clamped to at least this fraction... */
+    minDesperate: number
+    /** ...and at most this fraction. */
+    maxDesperate: number
     /** A bot looks for a shelter to heal in below this health fraction... */
     restBelow: number
     /** ...and stays until it reaches this fraction. */
@@ -421,6 +427,8 @@ export type Tuning = {
     mergeRadius: number
     /** Most ruins the world may hold; past it a death adds to the nearest ruin, however far. */
     maxCount: number
+    /** A ruin whose centre is inside any danger node's radius (zone, grove or crater) decays this many times as fast. 1 turns it off. */
+    dangerDecayMult: number
   }
   /** World events the player can trigger (M8). Applied by the `triggerEvent` command (worldEvents.ts). */
   events: {

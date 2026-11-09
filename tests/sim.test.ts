@@ -23,7 +23,7 @@ describe('determinism', () => {
     const second = stateHash(run('a', edenPreset, TICKS))
     expect(second).toBe(first)
     expect(first).toMatch(/^[0-9a-f]{16}$/)
-  })
+  }, 60_000)
 
   it('gives a different state for a different seed', () => {
     expect(stateHash(run('a', edenPreset, 200))).not.toBe(stateHash(run('b', edenPreset, 200)))

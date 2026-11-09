@@ -9,7 +9,9 @@
 // ruin's capacity; the excess is lost) instead of making another, and at
 // `ruin.maxCount` ruins a death adds to the nearest one however far it is.
 // Ruins are eaten like resources (`eat` in nodes.ts), never regrow, lose
-// `decay` per tick, and are removed when they reach 0.
+// `decay` per tick, and are removed when they reach 0. A ruin whose centre lies inside any danger
+// node (a danger zone, a grove's zone, a meteor crater) loses `ruin.dangerDecayMult` times that,
+// so the trace stays but the lure fades fast (M12).
 //
 // No random draws, and no events: a ruin per death would flood the log. The
 // number of ruins is separate from `player.maxNodes`; the player's cap counts
@@ -55,12 +57,25 @@ export function leaveRuin(world: World, bot: Bot, rules: Rules): void {
   world.nodes.push(ruin)
 }
 
-/** Every ruin loses its decay, and the emptied ones (eaten or fully decayed) are removed. */
-export function decayRuins(world: World): void {
+/** Is the point inside the radius of any danger node (zones, groves and meteor craters alike)? */
+export function insideAnyDanger(world: World, x: number, y: number): boolean {
+  for (const node of world.nodes) {
+    if (node.kind === 'danger' && Math.hypot(x - node.x, y - node.y) <= node.radius) return true
+  }
+  return false
+}
+
+/** What a ruin loses this tick: its `decay`, times `ruin.dangerDecayMult` if its centre is inside a danger node. */
+export function ruinDecayRate(world: World, node: WorldNode, tuning: Tuning): number {
+  return insideAnyDanger(world, node.x, node.y) ? node.decay * tuning.ruin.dangerDecayMult : node.decay
+}
+
+/** Every ruin loses its decay rate, and the emptied ones (eaten or fully decayed) are removed. */
+export function decayRuins(world: World, tuning: Tuning): void {
   let anyGone = false
   for (const node of world.nodes) {
     if (node.kind !== 'ruin') continue
-    node.amount = Math.max(0, node.amount - node.decay)
+    node.amount = Math.max(0, node.amount - ruinDecayRate(world, node, tuning))
     if (node.amount <= 0) anyGone = true
   }
   if (anyGone) world.nodes = world.nodes.filter((node) => node.kind !== 'ruin' || node.amount > 0)

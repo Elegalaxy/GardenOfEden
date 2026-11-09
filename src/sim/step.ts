@@ -75,7 +75,7 @@ export function step(world: World, rules: Rules): void {
   for (const bot of fallen) leaveRuin(world, bot, rules)
 
   regrow(world)
-  decayRuins(world)
+  decayRuins(world, tuning)
   expireEvents(world, tuning)
   shareFamilyKnowledge(world, tuning)
 

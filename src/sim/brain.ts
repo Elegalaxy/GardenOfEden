@@ -13,11 +13,14 @@
 //              is not inside a remembered danger. Scales with missing thirst, so
 //              a parched bot is as urgent as a starving one, and a bot that is
 //              both goes for whichever is lower. A desperate bot (thirst under
-//              `desperateBelow`) accepts a spring inside danger and ignores
+//              `desperateFraction`) accepts a spring inside danger and ignores
 //              avoidance on the way, the same bargain as food in a grove.
 //   rest       needs a remembered shelter and low health (with hysteresis).
 //   reproduce  needs the reproduction conditions and a remembered shelter.
 //   wander     the fallback, with a small constant score.
+//
+// How low is "desperate" depends on the bot's caution trait (`desperateFraction`, M12): `desperateBelow`
+// for a founder-caution bot, higher for a reckless one, lower for a cautious one.
 //
 // `decide` only sets `bot.intent`; movement.ts carries it out. It makes no
 // random draws.
@@ -26,11 +29,23 @@ import { chooseFood, chooseWater, distance, knownDangers, nearestKnown } from '.
 import { meetsReproductionNeeds } from './reproduction.ts'
 import type { Bot, Intent, IntentKind, Tuning, World } from './types.ts'
 
-/** A seeking bot this hungry ignores danger avoidance (see `brain.desperateBelow`). */
+/**
+ * The energy (or thirst) fraction below which this bot is desperate: `desperateBelow` shifted by how
+ * far its caution is from the founders' (`traits.caution`), `cautionDesperate` per point, then clamped
+ * into `[minDesperate, maxDesperate]`. A reckless bot gets desperate sooner, a cautious one later (or
+ * barely at all). Hunger and thirst share it. Pure: no state, no draws.
+ */
+export function desperateFraction(bot: Bot, tuning: Tuning): number {
+  const { desperateBelow, cautionDesperate, minDesperate, maxDesperate } = tuning.brain
+  const raw = desperateBelow * (1 + cautionDesperate * (tuning.traits.caution - bot.traits.caution))
+  return Math.min(maxDesperate, Math.max(minDesperate, raw))
+}
+
+/** A seeking bot this hungry (or parched) ignores danger avoidance (see `desperateFraction`). */
 export function isDesperate(bot: Bot, tuning: Tuning): boolean {
-  const { desperateBelow } = tuning.brain
-  if (bot.intent.kind === 'seekFood') return bot.energy < desperateBelow * tuning.bot.maxEnergy
-  if (bot.intent.kind === 'seekWater') return bot.thirst < desperateBelow * tuning.bot.maxThirst
+  const fraction = desperateFraction(bot, tuning)
+  if (bot.intent.kind === 'seekFood') return bot.energy < fraction * tuning.bot.maxEnergy
+  if (bot.intent.kind === 'seekWater') return bot.thirst < fraction * tuning.bot.maxThirst
   return false
 }
 
@@ -55,6 +70,7 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
   const energyFraction = bot.energy / t.maxEnergy
   const healthFraction = bot.health / t.maxHealth
   const thirstFraction = bot.thirst / t.maxThirst
+  const desperateBelow = desperateFraction(bot, tuning)
 
   let best: Intent = { kind: 'wander', targetId: null }
   let bestScore = b.wanderScore
@@ -76,7 +92,7 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
     bot.energy < t.hungryBelow * t.maxEnergy ||
     (bot.intent.kind === 'seekFood' && bot.energy < t.satedAbove * t.maxEnergy)
   if (hungry) {
-    const brave = energyFraction < b.desperateBelow
+    const brave = energyFraction < desperateBelow
     const food = chooseFood(world, bot, tuning, brave)
     if (food) consider('seekFood', food.nodeId, b.seekWeight * (1 - energyFraction))
   }
@@ -85,7 +101,7 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
     bot.thirst < t.thirstyBelow * t.maxThirst ||
     (bot.intent.kind === 'seekWater' && bot.thirst < t.quenchedAbove * t.maxThirst)
   if (thirsty) {
-    const water = chooseWater(bot, tuning, thirstFraction < b.desperateBelow)
+    const water = chooseWater(bot, tuning, thirstFraction < desperateBelow)
     if (water) consider('seekWater', water.nodeId, b.thirstWeight * (1 - thirstFraction))
   }
 

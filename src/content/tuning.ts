@@ -53,6 +53,16 @@ export const tuning: Tuning = {
     fleeMargin: 0.5,
     avoidMargin: 0.75,
     desperateBelow: 0.2,
+    // How early a bot gets desperate depends on its caution (M12): the threshold is
+    // `desperateBelow x (1 + cautionDesperate x (0.5 - caution))`, clamped to [minDesperate, maxDesperate].
+    // At 4, caution 0.3 gives 36% (hungry bots dive into danger early), 0.5 gives 20%, 0.7 gives 4%
+    // (clamped to 5%: a cautious bot starves before it walks into danger). Without it caution cost
+    // nothing and mean caution drifted from 0.5 to about 0.3 over 60,000 ticks. 1 and 2 left the
+    // drift mostly in place (seeds above 0.4: 5 and 7 of 10); 4 held 10 of 10; 6 and 10 cut danger
+    // deaths a little more but pushed the lowest population down to 18 and 11.
+    cautionDesperate: 4,
+    minDesperate: 0.05,
+    maxDesperate: 0.4,
     restBelow: 0.7,
     restUntil: 0.95,
     steerStep: 0.5,
@@ -116,6 +126,11 @@ export const tuning: Tuning = {
     energyShare: 0.5,
     mergeRadius: 2,
     maxCount: 60,
+    // A ruin whose centre is inside any danger radius (zone, grove, crater) decays this many times as
+    // fast (M12), so it is gone in about 100 ticks instead of 500 and lures fewer starving bots into
+    // danger. 3, 5 and 10 gave similar 60,000-tick results (seeds above 0.4 caution: 3, 3, 5 of 10);
+    // 20 was worse (3 of 10, lowest population 15).
+    dangerDecayMult: 5,
   },
   // World events the player triggers (M8). Drought and bounty scale resource regrowth (0.5 per tick per
   // node) for a while. A plague drains health in a disc (a bot at full health dies in 100 / 0.8 = 125

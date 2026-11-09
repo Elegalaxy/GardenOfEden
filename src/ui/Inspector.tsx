@@ -5,6 +5,7 @@
 
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
+import { ruinDecayRate } from '../sim/ruins.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { Bot, TraitName, World, WorldNode } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
@@ -80,9 +81,9 @@ function botsInside(world: World, node: WorldNode): number {
 }
 
 /** Ticks until a ruin has decayed away if nobody eats it. */
-function ruinTimeLeft(node: WorldNode): string {
-  if (node.decay <= 0) return 'does not decay'
-  return `about ${Math.ceil(node.amount / node.decay).toLocaleString('en-US')} ticks`
+function ruinTimeLeft(node: WorldNode, rate: number): string {
+  if (rate <= 0) return 'does not decay'
+  return `about ${Math.ceil(node.amount / rate).toLocaleString('en-US')} ticks`
 }
 
 function SelectButton({ target, children }: { target: Selection; children: ReactNode }) {
@@ -193,8 +194,11 @@ function NodeDetails({ node, world }: { node: WorldNode; world: World }) {
         {node.kind === 'ruin' && (
           <>
             <Meter label="Amount" value={node.amount} max={node.capacity} low={false} />
-            <Row label="Decay">&minus;{fixed2(node.decay)} / tick</Row>
-            <Row label="Time left">{ruinTimeLeft(node)}</Row>
+            <Row label="Decay">
+              &minus;{fixed2(ruinDecayRate(world, node, tuning))} / tick
+              {ruinDecayRate(world, node, tuning) > node.decay ? ' (in danger)' : ''}
+            </Row>
+            <Row label="Time left">{ruinTimeLeft(node, ruinDecayRate(world, node, tuning))}</Row>
           </>
         )}
         {node.kind === 'water' && (

@@ -59,7 +59,9 @@ describe('a death leaves a ruin', () => {
       else bot.health = 1
       step(world, rules)
       expect(world.deathsByCause[cause]).toBe(1)
-      const expected = ruinAmount(bot, tuning) - nodeDefs.ruin.decay
+      // A ruin made inside a danger zone decays dangerDecayMult times as fast, from its first tick.
+      const decay = nodeDefs.ruin.decay * (cause === 'danger' ? tuning.ruin.dangerDecayMult : 1)
+      const expected = ruinAmount(bot, tuning) - decay
       expect(expected).toBeGreaterThan(tuning.ruin.baseAmount + 20)
       expect(ruinsOf(world)[0].amount).toBeCloseTo(expected, 9)
     }
@@ -124,6 +126,51 @@ describe('decay', () => {
     step(world, rules)
     step(world, rules)
     expect(world.nodes.find((n) => n.id === id)).toBeUndefined()
+  })
+
+  it('is faster inside a danger zone, by the danger decay multiplier', () => {
+    const mult = tuning.ruin.dangerDecayMult
+    expect(mult).toBeGreaterThan(1)
+    const world = createWorld('a', scene({ nodes: [{ kind: 'danger', x: 10, y: 10 }] }), rules)
+    const inside = addRuin(world, 12, 10, 20)
+    const edge = addRuin(world, 10 + nodeDefs.danger.radius, 10, 20)
+    const outside = addRuin(world, 10 + nodeDefs.danger.radius + 0.5, 10, 20)
+    const far = addRuin(world, 30, 30, 20)
+    for (let i = 0; i < 10; i += 1) step(world, rules)
+    const amountOf = (id: number) => world.nodes.find((n) => n.id === id)?.amount
+    expect(amountOf(inside)).toBeCloseTo(20 - 10 * mult * nodeDefs.ruin.decay, 9)
+    expect(amountOf(edge)).toBeCloseTo(20 - 10 * mult * nodeDefs.ruin.decay, 9)
+    expect(amountOf(outside)).toBeCloseTo(20 - 10 * nodeDefs.ruin.decay, 9)
+    expect(amountOf(far)).toBeCloseTo(20 - 10 * nodeDefs.ruin.decay, 9)
+  })
+
+  it('removes a ruin in a danger zone sooner than one outside', () => {
+    const world = createWorld('a', scene({ nodes: [{ kind: 'danger', x: 10, y: 10 }] }), rules)
+    const inside = addRuin(world, 10, 10, 2)
+    const outside = addRuin(world, 30, 30, 2)
+    const gone = (id: number) => !world.nodes.some((n) => n.id === id)
+    let insideGone = 0
+    while (!gone(outside)) {
+      step(world, rules)
+      if (insideGone === 0 && gone(inside)) insideGone = world.tick
+    }
+    expect(insideGone).toBeGreaterThan(0)
+    expect(world.tick / insideGone).toBeCloseTo(tuning.ruin.dangerDecayMult, 0)
+  })
+
+  it('counts a meteor crater as danger, and stops when the crater fades', () => {
+    const world = createWorld('a', scene({}), rules)
+    expect(applyCommand(world, rules, { type: 'triggerEvent', event: 'meteor', x: 20, y: 20 }).ok).toBe(true)
+    const inCrater = addRuin(world, 21, 20, 20)
+    const away = addRuin(world, 5, 5, 20)
+    step(world, rules)
+    const lost = (id: number) => 20 - (world.nodes.find((n) => n.id === id)?.amount ?? 0)
+    expect(lost(inCrater)).toBeCloseTo(tuning.ruin.dangerDecayMult * nodeDefs.ruin.decay, 9)
+    expect(lost(away)).toBeCloseTo(nodeDefs.ruin.decay, 9)
+    while (world.nodes.some((n) => n.kind === 'danger')) step(world, rules)
+    const later = addRuin(world, 21, 20, 20)
+    step(world, rules)
+    expect(lost(later)).toBeCloseTo(nodeDefs.ruin.decay, 9)
   })
 
   it('never regrows', () => {
