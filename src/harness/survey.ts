@@ -9,7 +9,8 @@
 // ruins; `ruin%` in the table is the ruins' share of it. A `script` (see script.ts)
 // applies player commands, such as world events, at their ticks; `refused` lists
 // the ones the sim refused. `learned` is how many memory entries bots took from a
-// parent or child over the run (M10); `withoutFamily` gives the rules with that
+// parent or child over the run (M10); `lineage` and `pruned` are the lineage records kept at the end and
+// dropped over the run (M11). `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`).
 
 import { stateHash } from '../sim/hash.ts'
@@ -32,6 +33,9 @@ export type SeedSurvey = {
   eaten: Eaten
   /** Memory entries learned from a parent or child (birth and exchange). */
   learned: number
+  /** Lineage records kept at the end, and records pruned over the run (M11). */
+  lineage: number
+  pruned: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -89,13 +93,15 @@ export function surveySeed(
     traits: meanTraits(world.bots),
     eaten: { ...world.eaten },
     learned: world.familyLearned,
+    lineage: world.lineage.length,
+    pruned: world.lineagePruned,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -117,6 +123,8 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       traitCell(r.traits, 'metabolism'),
       ruinShareCell(r.eaten),
       r.learned,
+      r.lineage,
+      r.pruned,
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

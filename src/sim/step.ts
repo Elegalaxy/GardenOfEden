@@ -5,8 +5,8 @@
 // Otherwise they only share nodes, so the order matters only when two bots reach
 // the same food in one tick (the lower id eats first).
 //
-// After the loop, in this order: dead bots are removed, children are added,
-// each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
+// After the loop, in this order: dead bots are removed, children are added, the lineage store is
+// pruned if it holds more than `lineage.maxRecords` records (lineage.ts), each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
 // the emptied ones are removed, world events and meteor craters whose time is up are
 // removed (logging each), then family knowledge is shared (a living parent and child close
 // together swap memory on every `family.shareEvery`-th tick), then a stats row is recorded every
@@ -16,12 +16,13 @@
 // that was heading for it simply finds the node missing and wanders.
 //
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
-// reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts and family.ts. `step` changes the world it is
+// reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick) and
-// the `birth` stream (eleven per child). Ruins and family sharing draw nothing.
+// the `birth` stream (eleven per child). Ruins, family sharing and lineage records draw nothing.
 
 import { decide } from './brain.ts'
 import { shareFamilyKnowledge } from './family.ts'
+import { pruneLineage, recordDeath } from './lineage.ts'
 import { deathCause, metabolise } from './metabolism.ts'
 import { act } from './movement.ts'
 import { exposureAt, regrow } from './nodes.ts'
@@ -59,6 +60,7 @@ export function step(world: World, rules: Rules): void {
       dead.add(bot.id)
       fallen.push(bot)
       world.deathsByCause[cause] += 1
+      recordDeath(world, bot.id, cause)
       pushEvent(world, tuning, { tick: world.tick, type: 'death', botId: bot.id, cause, x: bot.x, y: bot.y })
       continue
     }
@@ -69,6 +71,7 @@ export function step(world: World, rules: Rules): void {
   }
   if (dead.size > 0) world.bots = world.bots.filter((bot) => !dead.has(bot.id))
   spawnChildren(world, conceptions, tuning)
+  pruneLineage(world, tuning)
   for (const bot of fallen) leaveRuin(world, bot, rules)
 
   regrow(world)

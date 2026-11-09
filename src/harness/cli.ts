@@ -6,7 +6,8 @@
 // (final, min and max population after the warmup, births, deaths by cause).
 // Both print the mean of each trait over the living bots (sense, caution,
 // reproAt, metab), after a line with the founders' values.
-// The last column, `learned`, counts memory entries bots took from a parent or child (M10).
+// `learned` counts memory entries bots took from a parent or child (M10); the last two columns are the
+// lineage records kept and the ones pruned so far (M11).
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
 // form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
@@ -125,6 +126,8 @@ function row(world: World): string {
     traitCell(traits, 'metabolism'),
     ruinShareCell(world.eaten),
     world.familyLearned,
+    world.lineage.length,
+    world.lineagePruned,
   ]
   return cells.map((cell) => String(cell).padStart(8)).join('')
 }
@@ -160,7 +163,7 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${options.noFamily ? ' no-family' : ''}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned']
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned']
       .map((cell) => cell.padStart(8))
       .join(''),
   )

@@ -28,6 +28,7 @@
 // phase (drought and bounty). `expireEvents` runs last in `step`, after the ruins decay: an event
 // started after tick T with duration D affects ticks T+1 to T+D and is removed at the end of tick T+D.
 
+import { recordDeath } from './lineage.ts'
 import { leaveRuin } from './ruins.ts'
 import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, Tuning, World } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
@@ -154,6 +155,7 @@ function strike(world: World, rules: Rules, x: number, y: number): number {
     world.bots = world.bots.filter((bot) => !gone.has(bot.id))
     for (const bot of killed) {
       world.deathsByCause.meteor += 1
+      recordDeath(world, bot.id, 'meteor')
       pushEvent(world, tuning, { tick: world.tick, type: 'death', botId: bot.id, cause: 'meteor', x: bot.x, y: bot.y })
     }
     for (const bot of killed) leaveRuin(world, bot, rules)

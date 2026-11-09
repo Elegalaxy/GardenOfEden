@@ -1,8 +1,9 @@
 // World creation and small read helpers. A new world is built from a seed, a
 // preset (the starting scene) and the rules (numbers from src/content). Fixed
 // items are placed first, then scattered ones, so a preset's layout does not
-// depend on how many things are scattered after it.
+// depend on how many things are scattered after it. Every founder gets a lineage record.
 
+import { addRecord } from './lineage.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, SimEvent, Tuning, World, WorldNode } from './types.ts'
@@ -143,6 +144,8 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     totalBirths: 0,
     events: [],
     familyLearned: 0,
+    lineage: [],
+    lineagePruned: 0,
   }
   const stream = world.rng.world
 
@@ -165,14 +168,18 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   for (const spec of preset.bots) {
     assertInside(preset, spec.x, spec.y, 'preset bot')
     const heading = nextFloat(stream) * TWO_PI
-    world.bots.push(makeBot(world.nextId, spec.x, spec.y, heading, rules))
+    const bot = makeBot(world.nextId, spec.x, spec.y, heading, rules)
+    world.bots.push(bot)
+    addRecord(world, bot.id, null, bot.generation, bot.traits)
     world.nextId += 1
   }
   for (let i = 0; i < preset.scatterBots; i += 1) {
     const x = nextFloat(stream) * preset.width
     const y = nextFloat(stream) * preset.height
     const heading = nextFloat(stream) * TWO_PI
-    world.bots.push(makeBot(world.nextId, x, y, heading, rules))
+    const bot = makeBot(world.nextId, x, y, heading, rules)
+    world.bots.push(bot)
+    addRecord(world, bot.id, null, bot.generation, bot.traits)
     world.nextId += 1
   }
 

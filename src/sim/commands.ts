@@ -13,8 +13,9 @@
 // before step T+1. Placed nodes use the numbers for their kind from
 // `rules.nodeDefs`. A placed bot gets the default traits, full health and a
 // heading drawn from the `world` stream (never `ai`, so a placement does not
-// shift the random draws bots make while wandering).
+// shift the random draws bots make while wandering). It also gets a lineage record (no parent, born now).
 
+import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
@@ -97,7 +98,9 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       world.nextId += 1
       const heading = nextFloat(world.rng.world) * Math.PI * 2
       // New ids are the largest so far, so pushing keeps `bots` in ascending id order.
-      world.bots.push(makeBot(id, cmd.x, cmd.y, heading, rules))
+      const bot = makeBot(id, cmd.x, cmd.y, heading, rules)
+      world.bots.push(bot)
+      addRecord(world, id, null, bot.generation, bot.traits)
       pushEvent(world, tuning, {
         tick: world.tick,
         type: 'command',

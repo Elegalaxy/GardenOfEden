@@ -94,6 +94,14 @@ export const tuning: Tuning = {
     shareEvery: 10,
     shareKinds: ['resource', 'water', 'shelter', 'danger'],
   },
+  // Lineage records (M11): a small record per bot that ever lived, for the family tree. At about
+  // 130 bytes of JSON each, 3000 records add roughly 0.4 MB to a save hash. A 60,000-tick eden run has
+  // about 3,700 births, so a long run prunes: extinct branches go first, then the oldest dead
+  // ancestors; a living bot's record is never dropped. Pruning down to 2400 means it runs in batches.
+  lineage: {
+    maxRecords: 3000,
+    pruneTo: 2400,
+  },
   stats: {
     sampleEvery: 50,
     maxSamples: 2000,

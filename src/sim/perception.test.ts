@@ -33,6 +33,8 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
     familyLearned: 0,
+    lineage: [],
+    lineagePruned: 0,
   }
 }
 

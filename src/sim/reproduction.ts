@@ -13,9 +13,11 @@
 // traits, two per trait, see traits.ts). A child inherits the parent's traits
 // with a small seeded mutation, clamped into the bounds in `tuning.mutation`.
 // It also starts with the shareable part of the parent's memory as it was at conception
-// (`family.inherit`, see family.ts); that draws no random numbers.
+// (`family.inherit`, see family.ts); that draws no random numbers. Each child also gets a lineage
+// record, and its parent's record counts one more child (lineage.ts).
 
 import { inheritMemory } from './family.ts'
+import { addRecord, findRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import { mutateTraits } from './traits.ts'
 import type { Bot, MemoryEntry, Tuning, Traits, World } from './types.ts'
@@ -88,6 +90,9 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
     world.familyLearned += child.memory.length
     world.nextId += 1
     world.bots.push(child)
+    addRecord(world, child.id, child.parentId, child.generation, child.traits)
+    const parentRecord = c.parentId === null ? undefined : findRecord(world, c.parentId)
+    if (parentRecord !== undefined) parentRecord.children += 1
     world.totalBirths += 1
     pushEvent(world, tuning, { tick: world.tick, type: 'birth', botId: child.id, x, y })
   }

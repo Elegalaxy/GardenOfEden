@@ -200,6 +200,23 @@ export type ActiveEvent = {
   magnitude: number
 }
 
+/**
+ * One bot's place in the family tree, kept after it dies (M11, see lineage.ts). `died` and `cause` are
+ * null while it lives. `children` counts the children it ever had, even if their records were pruned.
+ * `traits` are the ones it was born with.
+ */
+export type LineageRecord = {
+  id: number
+  parentId: number | null
+  generation: number
+  /** Tick it appeared (0 for a preset founder). */
+  born: number
+  died: number | null
+  cause: DeathCause | null
+  children: number
+  traits: Traits
+}
+
 export type World = {
   seed: string
   /** Ticks completed. The first step turns 0 into 1. */
@@ -225,6 +242,10 @@ export type World = {
   events: ActiveEvent[]
   /** Running count of memory entries bots learned from a parent or child (at birth and by exchange), for the survey. */
   familyLearned: number
+  /** One record per bot, living or dead, in ascending id order. Old extinct branches are pruned (lineage.ts). */
+  lineage: LineageRecord[]
+  /** Records dropped from `lineage` so far. */
+  lineagePruned: number
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -368,6 +389,13 @@ export type Tuning = {
     shareEvery: number
     /** Only entries of these kinds pass. */
     shareKinds: NodeKind[]
+  }
+  /** The family-tree store (M11, see lineage.ts). Bookkeeping only: it never changes how the bots behave. */
+  lineage: {
+    /** When there are more records than this, pruning starts. */
+    maxRecords: number
+    /** ...and drops records until this many are left (extinct branches first), so pruning runs in batches. */
+    pruneTo: number
   }
   stats: {
     /** A Sample is recorded every this many ticks. */
