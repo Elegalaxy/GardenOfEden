@@ -3,6 +3,7 @@ import { DeathCauses } from './DeathCauses.tsx'
 import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
 import { FamilyPanel } from './FamilyPanel.tsx'
+import { HeatLegend } from './HeatLegend.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunMenu } from './RunMenu.tsx'
@@ -109,6 +110,9 @@ export default function App() {
           </section>
           <div className="area-status">
             <ToolStatus />
+          </div>
+          <div className="area-heat">
+            <HeatLegend />
           </div>
           <div className="area-legend">
             <Legend />

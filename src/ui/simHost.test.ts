@@ -250,15 +250,7 @@ describe('queries', () => {
   })
 })
 
-describe('reserved and utility messages', () => {
-  it('accepts a heat request without doing anything yet', () => {
-    const host = makeHost()
-    const before = stateHash(host.world)
-    expect(host.handle({ type: 'heat', layer: 'visits', range: 100 })).toEqual([])
-    expect(host.handle({ type: 'heat', layer: null, range: 0 })).toEqual([])
-    expect(stateHash(host.world)).toBe(before)
-  })
-
+describe('utility messages', () => {
   it('answers sync after the messages before it', () => {
     const host = makeHost()
     expect(host.handle({ type: 'sync', reqId: 77 })).toEqual([{ type: 'synced', reqId: 77 }])

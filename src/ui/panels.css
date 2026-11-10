@@ -214,6 +214,7 @@
     'status'
     'speed'
     'tools'
+    'heat'
     'stats'
     'inspector'
     'family'
@@ -248,6 +249,11 @@
 
 .area-legend {
   grid-area: legend;
+}
+
+.area-heat {
+  grid-area: heat;
+  min-width: 0;
 }
 
 .area-events {
@@ -294,6 +300,7 @@
       'tools side'
       'map side'
       'status side'
+      'heat side'
       'legend side'
       'events side'
       'chart side';
@@ -343,6 +350,7 @@
       'speed speed side'
       'tools map side'
       'tools status side'
+      'heat heat side'
       'legend legend side'
       'events events side'
       'chart chart side';
@@ -1831,5 +1839,168 @@ button.fam-founder-button:hover:not(:disabled) {
 @media (max-width: 640px) {
   .fam-body {
     --fam-step: 14px;
+  }
+}
+
+/* Heatmap controls and legend (M15). One panel under the map (grid area `heat`), so nothing above or below the
+   map in flow changes height and --map-chrome still holds. Its parts keep their room whether or not a layer is
+   on: the body has a minimum height of its longest content (a line of text plus the five steps and the peak),
+   and the readout line is always one line tall. */
+.heat-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr); /* long text wraps instead of stretching the column */
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.heat-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.heat-group {
+  display: flex;
+  gap: 4px;
+}
+
+.heat-option {
+  min-width: 52px;
+  padding-inline: 10px;
+  font-weight: 600;
+}
+
+.heat-option[aria-checked='true'] {
+  background: #26324a;
+  border-color: #9ec1ff;
+  box-shadow: inset 0 -3px 0 #9ec1ff;
+}
+
+.heat-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.heat-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: 3.2rem; /* two lines: the explanation, then the steps and the peak */
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.heat-note,
+.heat-unit,
+.heat-peak,
+.heat-readout {
+  margin: 0;
+}
+
+.heat-note {
+  color: var(--text-muted);
+}
+
+.heat-unit {
+  flex: 1 1 100%;
+  color: var(--text-muted);
+}
+
+.heat-unit strong,
+.heat-peak strong {
+  color: var(--text-strong);
+}
+
+.heat-bins {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heat-bin {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.heat-bin-empty {
+  color: var(--text-faint);
+}
+
+.heat-swatch {
+  flex: none;
+  width: 20px;
+  height: 14px;
+  background-color: #141a24; /* the map's colour: the step's translucent white is drawn over it, as on the map */
+  border: 1px solid #6a738c;
+  border-radius: 3px;
+}
+
+.heat-readout {
+  min-height: 1.45em;
+  overflow-wrap: anywhere;
+  color: var(--text-strong);
+  font-size: 0.85rem;
+}
+
+/* The body wraps to more lines as the column narrows (3 lines about 720px wide, 4 about 600px), so it reserves
+   that many. */
+@media (min-width: 641px) and (max-width: 1099px) {
+  .heat-body {
+    min-height: 4.4rem;
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1099px) {
+  .heat-body {
+    min-height: 5.6rem;
+  }
+}
+
+@media (min-width: 1100px) and (max-width: 1239px) {
+  .heat-body {
+    min-height: 4.3rem;
+  }
+}
+
+@media (max-width: 640px) {
+  /* No keyboard on a phone, and the room is better spent on the legend. */
+  .heat-hint {
+    display: none;
+  }
+
+  /* Each group takes the full width, its buttons share it. */
+  .heat-group {
+    flex: 1 1 100%;
+  }
+
+  .heat-option {
+    flex: 1 1 0;
+    min-width: 44px;
+    padding-inline: 4px;
+  }
+
+  .heat-body {
+    min-height: 7.2rem;
+  }
+}
+
+@media (max-width: 340px) {
+  .heat-body {
+    min-height: 8.6rem;
+  }
+
+  .heat-readout {
+    min-height: 2.9em; /* "Under cursor (34, 12): 3.4 deaths, recent" no longer fits on one line */
   }
 }

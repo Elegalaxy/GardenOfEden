@@ -14,7 +14,8 @@
 //   exportSave{reqId}       the run as a Save (the state hash is computed here, off the page's thread).
 //   select{id}              the bot whose full record (with memory) rides along with slow data, or null.
 //   query{reqId, kind, ...} read-only family-tree questions (lineage.ts), for the tree view (M14).
-//   heat{layer, range}      reserved for the heatmaps (M15). The host accepts and ignores it for now.
+//   heat{layer, range}      which heatmap layer the page shows (heat.ts), or layer null for none. The host always
+//                           accumulates the heat; this only says what to send. It answers with a heatSnapshot at once.
 //   sync{reqId}             answered with `synced` once every earlier message has been answered.
 //
 // From the worker:
@@ -22,11 +23,17 @@
 //   frame{frame, ack?}      the picture of the world (see Frame). `ack: 'advance'` answers an advance.
 //   commandResult{...}      the command's result (the frame showing its effect is sent just before).
 //   loadProgress, loadDone  the load's progress, and how it ended (a loaded run's frame is sent just before).
+//   heatSnapshot{heat}      one layer of the heat grid (6,144 numbers) with its summary. Sent only while a layer is
+//                           on: right after a `heat` request, a command, a reset or a load, whenever an advance asks
+//                           for slow data (paused), and otherwise at most about four times a second while running.
+//                           It rides after the frame it belongs to, never inside it, so the frame channel costs
+//                           nothing when the heatmap is off. It carries its run id so a late one is ignored.
 //   save, queryResult, synced, error
 
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
 import type { Save } from '../persist/save.ts'
+import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
 import type {
   ActiveEvent,
   Bot,
@@ -110,7 +117,7 @@ export type QueryAnswer =
   | { kind: 'family'; view: FamilyView | null }
   | { kind: 'founders'; lines: FounderLine[] }
 
-export type HeatRequest = { layer: string | null; range: number }
+export type HeatRequest = { layer: HeatLayer | null; range: HeatRange }
 
 export type ToWorker =
   | { type: 'advance'; ticks: number; slow?: boolean }
@@ -130,6 +137,7 @@ export type FromWorker =
   | { type: 'commandResult'; reqId: number; result: CommandResult; meteorKills: number }
   | { type: 'loadProgress'; tick: number; target: number }
   | { type: 'loadDone'; outcome: LoadResult }
+  | { type: 'heatSnapshot'; heat: HeatSnapshot }
   | { type: 'save'; reqId: number; save: Save }
   | ({ type: 'queryResult'; reqId: number } & QueryAnswer)
   | { type: 'synced'; reqId: number }

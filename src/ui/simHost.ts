@@ -12,6 +12,10 @@
 //  - While a load runs, the current world is not touched: advance does nothing, commands and
 //    resets are refused. The new world is built apart and replaces the old one only when it is
 //    complete; a failed or cancelled load leaves the old run exactly as it was.
+//  - The heat grid (heat.ts, M15) is accumulated always, after every step and every command, whether or not the page shows
+//    a heatmap, so switching one on shows the whole history. A load builds its own grid through the replay job and the
+//    live one is replaced only when the load completes. The grid is not part of the World, so it never touches the hash.
+//    Snapshots go to the page only while a layer is on (see protocol.ts).
 //  - A frame carries the numbers that change every tick; the bulky ones (samples, log, commands,
 //    the selected bot's memory) ride along at most about four times a second, when asked for,
 //    and with every answer to a command, a selection or a new run (see protocol.ts).
@@ -27,6 +31,8 @@ import { step } from '../sim/step.ts'
 import type { Bot, Rules, World } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
 import { findBot } from './geometry.ts'
+import { HEAT_LAYERS, HEAT_RANGES, createHeat, observeWorld, snapshotHeat } from './heat.ts'
+import type { HeatGrid, HeatLayer, HeatRange } from './heat.ts'
 import type { Frame, FromWorker, QueryAnswer, RunInfo, ToWorker, ViewBot } from './protocol.ts'
 import { createReplayJob } from './replayJob.ts'
 import type { ReplayJob } from './replayJob.ts'
@@ -56,6 +62,8 @@ export const SLOW_INTERVAL_MS = 250
 /** Replay ticks per call to the replay job, and how long a slice of a load may run before it yields to messages. */
 const SLICE_TICKS = 200
 export const LOAD_SLICE_MS = 40
+/** How often (ms) a heat snapshot is sent while the clock runs and a layer is on. */
+export const HEAT_INTERVAL_MS = 250
 /** Largest answer to a family query, whatever the page asks. */
 const MAX_QUERY_NODES = 2000
 const MAX_QUERY_DEPTH = 50
@@ -124,6 +132,8 @@ export type SimHost = {
   readonly loading: boolean
   /** The live world, for tests and the adapter's error path. Never hand it to the page. */
   readonly world: World
+  /** The live heat grid, for tests. Never hand it to the page (it gets snapshots). */
+  readonly heat: HeatGrid
 }
 
 export type HostOptions = {
@@ -134,6 +144,8 @@ export type HostOptions = {
   slowIntervalMs?: number
   /** How long one slice of a load may run (default `LOAD_SLICE_MS`). */
   loadSliceMs?: number
+  /** How often (ms) a heat snapshot is sent while the clock runs (default `HEAT_INTERVAL_MS`). */
+  heatIntervalMs?: number
 }
 
 export function createSimHost(options: HostOptions = {}): SimHost {
@@ -141,13 +153,27 @@ export function createSimHost(options: HostOptions = {}): SimHost {
   const now = options.now ?? ((): number => performance.now())
   const slowIntervalMs = options.slowIntervalMs ?? SLOW_INTERVAL_MS
   const loadSliceMs = options.loadSliceMs ?? LOAD_SLICE_MS
+  const heatIntervalMs = options.heatIntervalMs ?? HEAT_INTERVAL_MS
 
   let world = createWorld(DEFAULT_SEED, edenPreset, rules)
   let presetId: string = edenPreset.id
   let runId = 0
   let selectedId: number | null = null
   let lastSlowAt = Number.NEGATIVE_INFINITY
-  let load: { job: ReplayJob; save: Save } | null = null
+  let load: { job: ReplayJob; save: Save; heat: HeatGrid } | null = null
+  let heat = createHeat(world.width, world.height)
+  let heatLayer: HeatLayer | null = null
+  let heatRange: HeatRange = 'all'
+  let lastHeatAt = Number.NEGATIVE_INFINITY
+
+  /** The heat snapshot to send now, or nothing: no layer is on, or it is not yet time (unless `force`). */
+  const heatMessages = (force: boolean): FromWorker[] => {
+    if (heatLayer === null) return []
+    const t = now()
+    if (!force && t - lastHeatAt < heatIntervalMs) return []
+    lastHeatAt = t
+    return [{ type: 'heatSnapshot', heat: snapshotHeat(heat, heatLayer, heatRange, runId) }]
+  }
 
   const frame = (forceSlow: boolean): Frame => {
     const t = now()
@@ -166,7 +192,9 @@ export function createSimHost(options: HostOptions = {}): SimHost {
       return [{ type: 'loadDone', outcome: { status: 'failed', message: kept(problem ?? 'This save has an unknown preset.') } }]
     }
     try {
-      load = { job: createReplayJob(save.seed, preset, rules, save.commands, save.tick), save }
+      // The replay builds its own heat grid, observing the same moments as the live host does.
+      const loadHeat = createHeat(preset.width, preset.height)
+      load = { job: createReplayJob(save.seed, preset, rules, save.commands, save.tick, (replayed) => observeWorld(loadHeat, replayed)), save, heat: loadHeat }
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown error'
       return [{ type: 'loadDone', outcome: { status: 'failed', message: kept(`This save could not be started (${reason}).`) } }]
@@ -192,12 +220,14 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     // Complete: only now does the new world replace the old one.
     const hashMatches = stateHash(job.world) === save.hash
     world = job.world
+    heat = current.heat
     presetId = save.presetId
     runId += 1
     selectedId = null
     load = null
     return [
       { type: 'frame', frame: frame(true) },
+      ...heatMessages(true),
       { type: 'loadDone', outcome: { status: 'loaded', hashMatches, seed: save.seed, tick: save.tick, commandCount: save.commands.length } },
     ]
   }
@@ -216,27 +246,34 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     switch (msg.type) {
       case 'advance': {
         if (load === null && Number.isFinite(msg.ticks)) {
-          for (let i = Math.floor(msg.ticks); i > 0; i -= 1) step(world, rules)
+          for (let i = Math.floor(msg.ticks); i > 0; i -= 1) {
+            step(world, rules)
+            observeWorld(heat, world)
+          }
         }
-        return [{ type: 'frame', frame: frame(msg.slow === true), ack: 'advance' }]
+        return [{ type: 'frame', frame: frame(msg.slow === true), ack: 'advance' }, ...heatMessages(msg.slow === true)]
       }
       case 'command': {
         const meteorBefore = world.deathsByCause.meteor
         const result: CommandResult = load !== null ? { ok: false, reason: LOADING_REASON } : applyCommand(world, rules, msg.cmd)
+        // A meteor kills at command time, so the heat must see the world right after a command, too.
+        if (result.ok) observeWorld(heat, world)
         return [
           { type: 'frame', frame: frame(true) },
           { type: 'commandResult', reqId: msg.reqId, result, meteorKills: world.deathsByCause.meteor - meteorBefore },
+          ...heatMessages(true),
         ]
       }
       case 'reset': {
         const preset = findPreset(msg.presetId ?? edenPreset.id)
         if (load === null && preset !== undefined && isValidSeed(msg.seed)) {
           world = createWorld(msg.seed, preset, rules)
+          heat = createHeat(world.width, world.height)
           presetId = preset.id
           runId += 1
           selectedId = null
         }
-        return [{ type: 'frame', frame: frame(true) }]
+        return [{ type: 'frame', frame: frame(true) }, ...heatMessages(true)]
       }
       case 'load':
         return startLoad(msg.save)
@@ -253,8 +290,10 @@ export function createSimHost(options: HostOptions = {}): SimHost {
       case 'query':
         return [{ type: 'queryResult', reqId: msg.reqId, ...answer(msg) }]
       case 'heat':
-        // Reserved for the heatmaps (M15): accepted, nothing to do yet.
-        return []
+        // Anything that is not a known layer or range means "none" and "all time".
+        heatLayer = HEAT_LAYERS.find((layer) => layer === msg.layer) ?? null
+        heatRange = HEAT_RANGES.find((range) => range === msg.range) ?? 'all'
+        return heatMessages(true)
       case 'sync':
         return [{ type: 'synced', reqId: msg.reqId }]
     }
@@ -268,6 +307,9 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     },
     get world() {
       return world
+    },
+    get heat() {
+      return heat
     },
   }
 }

@@ -10,13 +10,9 @@ import { useEffect } from 'react'
 import { KIND_LETTER } from './labels.ts'
 import { globalEventForKey } from './eventInfo.ts'
 import { dispatch, setTool, useWorldStore } from './store.ts'
+import { isTypingTarget } from './typing.ts'
 import { TOOLS, toolForKey, toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
-}
 
 /** The little badge on a tool button: the same R/W/D/S keys as the map legend (water is a droplet shape). */
 function ToolBadge({ id }: { id: Tool }) {

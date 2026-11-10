@@ -24,6 +24,11 @@
 // checked; the old run is untouched until then and is kept if the load fails or is cancelled.
 // While a load runs the clock and the player's tools are stopped.
 //
+// Heatmaps (M15): `setHeatLayer` / `setHeatRange` / `cycleHeatLayer` say which layer of the heat grid (heat.ts) the map
+// shows and how (all time or recent). The worker accumulates the heat whether or not a layer is on and sends a compact
+// `heatSnapshot` only while one is; the latest matching one is `snapshot.heat`. The cell under the pointer is kept in a
+// small store of its own (`setHoverCell`, `useHoverCell`) so moving the mouse does not wake every panel.
+//
 // Everything that changes the run is a message, so it is answered later: tests use
 // `settled()` to wait until every earlier message has been answered.
 
@@ -36,6 +41,9 @@ import type { Command, DeathsByCause } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
+import type { Cell } from './geometry.ts'
+import { nextHeatLayer } from './heat.ts'
+import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
 import { formatPoint } from './labels.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
 import { DEFAULT_SEED, LOADING_REASON, checkLoad, isValidSeed } from './simHost.ts'
@@ -99,6 +107,14 @@ export type WorldSnapshot = {
   alpha: number
   /** Where the simulation runs: a real Worker, or the page's own thread (tests, or no Worker available). */
   engine: 'worker' | 'inline'
+  /** The heatmap layer the map shows, or null for none; and whether it counts all time or only recent events. */
+  heatLayer: HeatLayer | null
+  heatRange: HeatRange
+  /**
+   * The latest heat snapshot for this layer and range and the current run, or null (none on, or the first one has not
+   * arrived yet). Replaced about four times a second while running; its identity says when it changed.
+   */
+  heat: HeatSnapshot | null
 }
 
 type Listener = () => void
@@ -115,6 +131,9 @@ let noticeSeq = 0
 let saveNotice: SaveNotice | null = null
 let saveNoticeSeq = 0
 let load: (LoadProgress & { done: (outcome: LoadOutcome) => void }) | null = null
+let heatLayer: HeatLayer | null = null
+let heatRange: HeatRange = 'all'
+let heat: HeatSnapshot | null = null
 
 // The clock's side of the conversation with the worker.
 /** Ticks that fell due while an advance was in flight. */
@@ -154,6 +173,10 @@ function makeSnapshot(): WorldSnapshot {
     load: load === null ? null : { tick: load.tick, target: load.target },
     alpha,
     engine: client === undefined ? 'inline' : client.kind,
+    heatLayer,
+    heatRange,
+    // A snapshot of the run before a reset or a load is not shown for the new one.
+    heat: heat !== null && heat.runId === view.runId ? heat : null,
   }
 }
 
@@ -297,6 +320,13 @@ function onMessage(msg: FromWorker): void {
       request?.resolve(msg)
       return
     }
+    case 'heatSnapshot':
+      // Only the one asked for, for this run: a late answer to an earlier layer, range or run is dropped.
+      if (msg.heat.layer === heatLayer && msg.heat.range === heatRange && msg.heat.runId === view.runId) {
+        heat = msg.heat
+        publish()
+      }
+      return
     case 'loadProgress':
       if (load !== null) {
         load.tick = msg.tick
@@ -372,6 +402,57 @@ export function setPaused(next: boolean): void {
 export function stepOnce(): Promise<void> {
   if (!paused) return Promise.resolve()
   return advance(1, 1)
+}
+
+// ---- Heatmaps ----
+
+function sendHeatRequest(): void {
+  client.post({ type: 'heat', layer: heatLayer, range: heatRange })
+}
+
+/** Shows a heatmap layer on the map, or none (null). The first snapshot comes back from the worker a moment later. */
+export function setHeatLayer(next: HeatLayer | null): void {
+  if (next === heatLayer) return
+  heatLayer = next
+  heat = null
+  sendHeatRequest()
+  publish()
+}
+
+export function setHeatRange(next: HeatRange): void {
+  if (next === heatRange) return
+  heatRange = next
+  heat = null
+  if (heatLayer !== null) sendHeatRequest()
+  publish()
+}
+
+/** The H key: none, traffic, births, deaths, round again. */
+export function cycleHeatLayer(): void {
+  setHeatLayer(nextHeatLayer(heatLayer))
+}
+
+const hoverListeners = new Set<Listener>()
+let hoverCell: Cell | null = null
+
+/** The map cell under the pointer (or the keyboard cursor), or null. Kept outside the snapshot so moving the pointer re-renders only what reads it. */
+export function setHoverCell(next: Cell | null): void {
+  if (next === null ? hoverCell === null : hoverCell !== null && hoverCell.cx === next.cx && hoverCell.cy === next.cy) return
+  hoverCell = next === null ? null : { cx: next.cx, cy: next.cy }
+  for (const listener of hoverListeners) listener()
+}
+
+export function useHoverCell(): Cell | null {
+  return useSyncExternalStore(
+    (listener) => {
+      hoverListeners.add(listener)
+      return () => {
+        hoverListeners.delete(listener)
+      }
+    },
+    () => hoverCell,
+    () => hoverCell,
+  )
 }
 
 export function setTool(next: Tool): void {
@@ -555,6 +636,9 @@ export function setSimClient(next: SimClient): void {
   selection = null
   notice = null
   saveNotice = null
+  heatLayer = null
+  heatRange = 'all'
+  heat = null
   settleIdle()
   connect(next)
   publish()

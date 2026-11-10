@@ -16,6 +16,9 @@
 // ghost of what a placement tool would add (an X through it when it would be
 // refused).
 //
+// A heatmap layer (M15, heatRender.ts) is drawn right after the grid, under the zones, nodes and bots; the cell the
+// readout is about gets a thin outline on top.
+//
 // World events (M8): a plague zone is a hatched disc with a dashed ring and the
 // label "P PLAGUE" with the ticks left (shortened, or left out, when the zone is small); a meteor crater is a danger zone drawn in
 // the meteor colour with an M instead of a D, and for its first moments an
@@ -24,7 +27,9 @@
 
 import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { botPosition, findBot, findNode } from './geometry.ts'
-import type { Layout } from './geometry.ts'
+import type { Cell, Layout } from './geometry.ts'
+import { drawHeat, drawHeatCursor } from './heatRender.ts'
+import type { HeatSnapshot } from './heat.ts'
 import { chordWidth, fitLabel } from './labels.ts'
 import type { Selection } from './tools.ts'
 import type { ViewWorld } from './viewWorld.ts'
@@ -47,6 +52,9 @@ export type Overlay = {
   hover: Selection | null
   ghost: Ghost | null
 }
+
+/** A heat layer to draw, and the cell under the pointer (outlined while a layer is on). */
+export type HeatOverlay = { snapshot: HeatSnapshot; cell: Cell | null }
 
 export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
 
@@ -435,6 +443,7 @@ export function drawWorld(
   size: Size,
   tuning: Tuning,
   overlay?: Overlay,
+  heat?: HeatOverlay | null,
 ): void {
   const layout = computeLayout(size, world)
   const { scale, offsetX, offsetY } = layout
@@ -445,6 +454,7 @@ export function drawWorld(
   ctx.fillStyle = COLORS.mapFill
   ctx.fillRect(offsetX, offsetY, world.width * scale, world.height * scale)
   drawGrid(ctx, world, layout)
+  if (heat) drawHeat(ctx, heat.snapshot, world, layout)
 
   // Big zones first so smaller things sit on top of them.
   for (const event of world.events) {
@@ -500,4 +510,5 @@ export function drawWorld(
   }
 
   if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay)
+  if (heat?.cell) drawHeatCursor(ctx, heat.cell, layout)
 }

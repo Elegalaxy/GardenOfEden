@@ -2,6 +2,10 @@
 // report progress (the simulation host runs it, in the worker, since M13). It does exactly what `replayWorld` does (same calls in the same order, so
 // the same `stateHash`), but `run(maxTicks)` stops after a number of ticks and the
 // caller comes back later. The sim stays pure; only the slicing lives here.
+//
+// `onTick` (optional) is called with the world after every step and after every applied command,
+// the same two moments at which the live host observes the world, so whatever it accumulates
+// (the heatmaps, M15) comes out the same for a replay as for the run it replays.
 
 import { applyCommand } from '../sim/commands.ts'
 import type { RecordedCommand } from '../sim/replay.ts'
@@ -27,6 +31,7 @@ export function createReplayJob(
   rules: Rules,
   commands: readonly RecordedCommand[],
   target: number,
+  onTick?: (world: World) => void,
 ): ReplayJob {
   const world = createWorld(seed, preset, rules)
   let next = 0
@@ -55,15 +60,18 @@ export function createReplayJob(
           if (world.tick < recorded.tick) {
             if (budget === 0) return
             step(world, rules)
+            onTick?.(world)
             budget -= 1
           } else {
             const result = applyCommand(world, rules, recorded.cmd)
             if (!result.ok) throw new Error(`the command at tick ${recorded.tick} was refused: ${result.reason}`)
+            onTick?.(world)
             next += 1
           }
         } else if (world.tick < target) {
           if (budget === 0) return
           step(world, rules)
+          onTick?.(world)
           budget -= 1
         } else {
           finished = true

@@ -23,7 +23,7 @@ import { toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
-import { clickMap, useWorldStore } from './store.ts'
+import { clickMap, setHoverCell, useWorldStore } from './store.ts'
 
 const BOT_REACH_CELLS = 1
 const BOT_REACH_PIXELS = 14
@@ -70,7 +70,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     return () => observer.disconnect()
   }, [])
 
-  const { world, alpha, tool, selection } = snapshot
+  const { world, alpha, tool, selection, heat } = snapshot
   const layout = useMemo(
     () => (size.width < 1 || size.height < 1 ? null : computeLayout(size, world)),
     [size, world],
@@ -112,8 +112,14 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     const ctx = canvas.getContext('2d')
     if (ctx === null) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost })
+    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell })
   })
+
+  // The heatmap legend reads the cell under the pointer (or the keyboard cursor) from the store.
+  useEffect(() => {
+    setHoverCell(cell)
+  }, [cell])
+  useEffect(() => () => setHoverCell(null), [])
 
   const cellFromEvent = (clientX: number, clientY: number): Cell | null => {
     const canvas = canvasRef.current
