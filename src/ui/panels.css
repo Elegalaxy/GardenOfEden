@@ -216,6 +216,7 @@
     'tools'
     'stats'
     'inspector'
+    'family'
     'legend'
     'events'
     'chart'
@@ -270,6 +271,11 @@
   grid-area: inspector;
 }
 
+.side-family {
+  grid-area: family;
+  min-width: 0;
+}
+
 .side-deaths {
   grid-area: deaths;
 }
@@ -293,13 +299,19 @@
       'chart side';
   }
 
+  /* The side column spans every row, so a tall one (a selected bot's inspector, the family tree, a
+     long log) would otherwise stretch those rows and push the map down. contain: size gives it no
+     height of its own in that sizing: it fills the rows' height and, if it is taller, spills below. */
   .area-side {
     display: grid;
     grid-area: side;
+    align-self: stretch;
+    contain: size;
     gap: 12px;
   }
 
   .side-inspector,
+  .side-family,
   .side-deaths,
   .side-log {
     grid-area: auto;
@@ -1506,5 +1518,318 @@ button.log-button[aria-pressed='true'] {
 
   .save-progress progress {
     flex-basis: 100%;
+  }
+}
+
+/* Family panel (M14). The tree and the founder table sit in a box of fixed height that scrolls, and
+   the header keeps the height of its button, so refreshing the data or switching between the founder
+   lines and a tree moves nothing around them. Every button keeps its 44px height. */
+.family-panel {
+  min-width: 0;
+}
+
+.fam-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.fam-head h2 {
+  margin: 0;
+}
+
+.fam-lines-button {
+  padding-inline: 10px;
+}
+
+.fam-body {
+  --fam-step: 16px;
+  min-width: 0;
+}
+
+.fam-stale {
+  opacity: 0.65;
+}
+
+.fam-title {
+  margin: 0 0 2px;
+  font-size: 1.1rem;
+}
+
+.fam-title:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.fam-sub {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.fam-status {
+  white-space: nowrap;
+}
+
+.fam-alive {
+  color: #7ee787;
+}
+
+.fam-gone {
+  color: var(--text-muted);
+}
+
+.fam-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #9ec1ff;
+  cursor: pointer;
+}
+
+.fam-details summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.fam-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.fam-kpi {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid #2a3350;
+  border-radius: 6px;
+}
+
+.fam-kpi dt {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.fam-kpi dd {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 1.3rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.fam-section h4 {
+  margin-top: 8px;
+}
+
+.fam-note {
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.fam-error {
+  color: #ffb4a8;
+}
+
+.fam-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 9.5rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.fam-chip {
+  display: grid;
+  justify-items: start;
+  gap: 0;
+  padding: 2px 10px;
+  line-height: 1.25;
+}
+
+.fam-chip-id {
+  font-weight: 650;
+}
+
+.fam-chip-meta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.fam-more-button {
+  padding-inline: 10px;
+}
+
+.fam-tree-box {
+  height: 19rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #2a3350;
+  border-radius: 6px;
+}
+
+.fam-tree-box > .fam-note {
+  padding: 8px;
+}
+
+.fam-tree {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fam-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding-left: calc(var(--level, 0) * var(--fam-step));
+  border-bottom: 1px solid #2a3350;
+}
+
+.fam-row[data-selected] {
+  background: #26324a;
+  box-shadow: inset 3px 0 0 #9ec1ff;
+}
+
+.fam-more-row {
+  display: block;
+  padding: 6px 8px 6px calc(var(--level, 0) * var(--fam-step) + 46px);
+}
+
+.fam-toggle {
+  min-width: 44px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
+.fam-toggle-gap {
+  width: 44px;
+}
+
+.fam-main {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  padding: 3px 6px;
+  text-align: left;
+  border-color: transparent;
+  background: none;
+  line-height: 1.3;
+}
+
+button.fam-main:hover:not(:disabled),
+button.fam-toggle:hover:not(:disabled) {
+  background: #26324a;
+  filter: none;
+}
+
+.fam-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+}
+
+.fam-line-2 {
+  font-size: 0.85rem;
+}
+
+.fam-meta {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.fam-deeper {
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  border: 1px solid #6a738c;
+  border-radius: 4px;
+}
+
+.fam-focus-button {
+  padding: 4px 8px;
+  font-size: 0.85rem;
+}
+
+.fam-foot {
+  margin: 0;
+  padding: 6px 8px;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
+.fam-founders {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.fam-founders th,
+.fam-founders td {
+  padding: 0 6px;
+  border-bottom: 1px solid #2a3350;
+  font-weight: 400;
+  text-align: left;
+}
+
+.fam-founders thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding-block: 4px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--panel);
+}
+
+.fam-founders .num {
+  width: 3.6em;
+  text-align: right;
+}
+
+.fam-founder-button {
+  display: grid;
+  width: 100%;
+  gap: 0;
+  padding: 2px 6px;
+  text-align: left;
+  border-color: transparent;
+  background: none;
+  line-height: 1.3;
+}
+
+button.fam-founder-button:hover:not(:disabled) {
+  background: #26324a;
+  filter: none;
+}
+
+.show-family {
+  margin-top: 8px;
+}
+
+.gone-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .fam-body {
+    --fam-step: 14px;
   }
 }

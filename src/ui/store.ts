@@ -187,6 +187,14 @@ export function useEngine(): WorldSnapshot['engine'] {
   return useSyncExternalStore(subscribe, () => getSnapshot().engine, () => getSnapshot().engine)
 }
 
+/**
+ * One value out of the snapshot. The component re-renders only when the value changes (compared with `Object.is`), so pick
+ * something stable (a number, a boolean, the selection object), not a fresh object: the snapshot itself changes every frame.
+ */
+export function useStoreValue<T>(pick: (snapshot: WorldSnapshot) => T): T {
+  return useSyncExternalStore(subscribe, () => pick(getSnapshot()), () => pick(getSnapshot()))
+}
+
 // ---- Talking to the worker ----
 
 /** Sends a message that is answered by one carrying the same `reqId`. */
@@ -477,7 +485,7 @@ export function exportSave(): Promise<Save> {
   })
 }
 
-/** The family around one bot, from the worker's lineage records (see familyView in sim/lineage.ts). The tree view (M14) reads this. */
+/** The family around one bot, from the worker's lineage records (see familyView in sim/lineage.ts). The family panel (M14) reads this. */
 export function queryFamily(id: number, up: number, down: number, maxNodes: number, maxChildren?: number): Promise<FamilyView | null> {
   return ask((reqId) => ({ type: 'query', reqId, kind: 'family', id, up, down, maxNodes, maxChildren })).then((msg) => {
     if (msg.type !== 'queryResult' || msg.kind !== 'family') throw new Error('The simulation sent no family.')

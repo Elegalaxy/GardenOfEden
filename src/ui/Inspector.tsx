@@ -8,6 +8,7 @@ import { tuning } from '../content/index.ts'
 import { ruinDecayRate } from '../sim/ruins.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
+import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
@@ -165,6 +166,9 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
           )}
         </Row>
       </dl>
+      <button type="button" className="secondary show-family" onClick={() => revealFamily(bot.id)}>
+        Show family tree
+      </button>
       <h4>Traits</h4>
       <dl className="kv">
         {TRAIT_NAMES.map((name) => (
@@ -248,9 +252,16 @@ function GoneNotice({ selection, world }: { selection: Selection; world: ViewWor
       <p className="gone" role="status">
         <span aria-hidden="true">✕</span> Gone. {detail || 'It is no longer in the world.'}
       </p>
-      <button type="button" className="secondary" onClick={() => select(null)}>
-        Clear selection
-      </button>
+      <div className="gone-actions">
+        {selection.kind === 'bot' && (
+          <button type="button" className="secondary" onClick={() => revealFamily(selection.id)}>
+            Show family tree
+          </button>
+        )}
+        <button type="button" className="secondary" onClick={() => select(null)}>
+          Clear selection
+        </button>
+      </div>
     </>
   )
 }

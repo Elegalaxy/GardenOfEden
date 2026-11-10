@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { DeathCauses } from './DeathCauses.tsx'
 import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
+import { FamilyPanel } from './FamilyPanel.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunMenu } from './RunMenu.tsx'
@@ -123,6 +124,9 @@ export default function App() {
           <div className="area-side">
             <div className="side-inspector">
               <Inspector />
+            </div>
+            <div className="side-family">
+              <FamilyPanel />
             </div>
             <div className="side-deaths">
               <DeathCauses />
