@@ -1,7 +1,7 @@
 // Save and load (M9). A run is its seed, preset and commands, so a save is tiny.
 //   Save to file       downloads garden-of-eden-<seed>-t<tick>.json
 //   Load from file     reads a save the player picks; asks first if this run has commands
-//   Copy share link    puts the run in the address-bar fragment (capped; long runs use a file)
+//   Copy share link    puts the run, compressed, in the address-bar fragment (capped; long runs use a file)
 //   Resume last run    the browser keeps the latest run automatically (autosave.ts)
 // A load replays the run in slices with a progress bar and a Cancel button, and the old
 // run stays until the new one is complete. It lives in the header's Run & save menu
@@ -11,11 +11,12 @@
 // Everything read from a file is untrusted: it goes through `decodeSave`, and the seed
 // and other text are only ever rendered as text.
 
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { MAX_SAVE_CHARS, decodeSave, encodeSave, makeSave, saveFileName } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { encodeShare } from '../persist/share.ts'
+import type { ShareEncoding } from '../persist/share.ts'
 import { clearStoredRun, useAutosave } from './autosave.ts'
 import { downloadText } from './download.ts'
 import { shareUrl } from './shareLink.ts'
@@ -43,13 +44,21 @@ export function SavePanel() {
   const fileId = useId()
   const linkId = useId()
 
-  // Whether the run fits in a link. `world` is mutated in place, so the command count and
-  // run id say when the answer can have changed.
-  const shareFit = useMemo(
-    () => encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH)),
+  // Whether the run fits in a link (null until the first answer; compressing is async). The world is mutated
+  // in place, so the command count and run id say when the answer can have changed. The last answer stays
+  // until the next arrives, so the button and the status line do not flicker.
+  const [shareFit, setShareFit] = useState<ShareEncoding | null>(null)
+  useEffect(() => {
+    let current = true
+    void encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH)).then(
+      (fit) => current && setShareFit(fit),
+      () => undefined,
+    )
+    return () => {
+      current = false
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [commandCount, runId, presetId],
-  )
+  }, [commandCount, runId, presetId])
 
   const requestLoad = (save: Save): void => {
     if (commandCount > 0) setPending(save)
@@ -86,8 +95,8 @@ export function SavePanel() {
 
   const onShare = (): void => {
     exportSave()
-      .then((save) => {
-        const encoded = encodeShare(save)
+      .then(async (save) => {
+        const encoded = await encodeShare(save)
         if (!encoded.ok) {
           reportSave('error', encoded.message)
           return
@@ -115,7 +124,7 @@ export function SavePanel() {
     reportSave('ok', 'The autosaved run was removed from this browser.')
   }
 
-  const shareReason = shareFit.ok ? null : shareFit.message
+  const shareReason = shareFit === null || shareFit.ok ? null : shareFit.message
   const saved = autosave.saved
 
   return (
@@ -153,7 +162,7 @@ export function SavePanel() {
               type="button"
               className="secondary"
               onClick={onShare}
-              disabled={!shareFit.ok}
+              disabled={shareFit !== null && !shareFit.ok}
               title={shareReason ?? 'Copy a link that opens this run'}
             >
               Copy share link

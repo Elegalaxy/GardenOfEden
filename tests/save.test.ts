@@ -94,13 +94,13 @@ describe('replaying a saved run', () => {
     expect(stateHash(replayed)).toBe(save.hash)
   })
 
-  it('a link carries the run: the replay from a decoded link has the same hash', () => {
+  it('a link carries the run: the replay from a decoded link has the same hash', async () => {
     // Short run, so it fits in a link.
     const live = playRun('save-link', PLAN.slice(0, 4), 400)
-    const encoded = encodeShare(saveOf(live))
+    const encoded = await encodeShare(saveOf(live))
     expect(encoded.ok).toBe(true)
     if (!encoded.ok) return
-    const decoded = decodeShare(encoded.payload)
+    const decoded = await decodeShare(encoded.payload, encoded.format)
     if (!decoded.ok) throw new Error('decode failed')
     const replayed = replayWorld(decoded.save.seed, edenPreset, rules, decoded.save.commands, decoded.save.tick)
     expect(stateHash(replayed)).toBe(stateHash(live))
