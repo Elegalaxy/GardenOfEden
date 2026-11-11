@@ -28,12 +28,13 @@ import type { CommandResult } from '../sim/commands.ts'
 import { stateHash } from '../sim/hash.ts'
 import { familyView, founderLines } from '../sim/lineage.ts'
 import { step } from '../sim/step.ts'
-import type { Bot, Rules, World } from '../sim/types.ts'
+import type { Rules, World } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
+import { packBots } from './botColumns.ts'
 import { findBot } from './geometry.ts'
 import { HEAT_LAYERS, HEAT_RANGES, createHeat, observeWorld, snapshotHeat } from './heat.ts'
 import type { HeatGrid, HeatLayer, HeatRange } from './heat.ts'
-import type { Frame, FromWorker, QueryAnswer, RunInfo, ToWorker, ViewBot } from './protocol.ts'
+import type { Frame, FromWorker, QueryAnswer, RunInfo, ToWorker } from './protocol.ts'
 import { createReplayJob } from './replayJob.ts'
 import type { ReplayJob } from './replayJob.ts'
 
@@ -68,34 +69,10 @@ export const HEAT_INTERVAL_MS = 250
 const MAX_QUERY_NODES = 2000
 const MAX_QUERY_DEPTH = 50
 
-/** A bot without its memory list, which is bulky and only the selected bot's inspector wants. */
-export function viewBot(bot: Bot): ViewBot {
-  let learned = 0
-  for (const entry of bot.memory) if (entry.learnedFrom !== null) learned += 1
-  return {
-    id: bot.id,
-    x: bot.x,
-    y: bot.y,
-    px: bot.px,
-    py: bot.py,
-    energy: bot.energy,
-    health: bot.health,
-    thirst: bot.thirst,
-    age: bot.age,
-    cooldown: bot.cooldown,
-    generation: bot.generation,
-    parentId: bot.parentId,
-    traits: bot.traits,
-    intent: bot.intent,
-    heading: bot.heading,
-    memoryCount: bot.memory.length,
-    learnedCount: learned,
-  }
-}
-
 /**
- * The frame for a world as it stands. The parts are the world's own objects (not copies); posting the frame
- * (structured clone) or `structuredClone` is what separates them from the live world.
+ * The frame for a world as it stands. The parts are the world's own objects (not copies), except the bots,
+ * which are packed into fresh typed arrays; posting the frame (structured clone, with `transferListOf` for the
+ * arrays) is what separates the rest from the live world.
  */
 export function buildFrame(world: World, run: RunInfo, selectedId: number | null, slow: boolean): Frame {
   return {
@@ -103,7 +80,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
     fast: {
       tick: world.tick,
       nodes: world.nodes,
-      bots: world.bots.map(viewBot),
+      bots: packBots(world.bots),
       events: world.events,
       totalBirths: world.totalBirths,
       deathsByCause: world.deathsByCause,

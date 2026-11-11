@@ -8,6 +8,7 @@ import type { Command, World } from '../sim/types.ts'
 import { createWorld, takeSample, totalDeaths, totalFood, totalRuinFood } from '../sim/world.ts'
 import { activeEntries } from '../sim/worldEvents.ts'
 import { blockedReason } from './eventInfo.ts'
+import { unpackBots } from './botColumns.ts'
 import { botAt, findBot, findNode, nodeAt, pickAt } from './geometry.ts'
 import type { Frame } from './protocol.ts'
 import { drawWorld } from './render.ts'
@@ -145,7 +146,7 @@ describe('applyFrame', () => {
     const same = applyFrame(first, fast)
     expect(same).toBe(first)
     expect(first.tick).toBe(100)
-    expect(first.bots).toEqual(fast.fast.bots)
+    expect(first.bots).toEqual(unpackBots(fast.fast.bots))
     expect(first.samples).toBe(samples) // slow data keeps its previous value (and identity)
     expect(first.log).toBe(log)
 

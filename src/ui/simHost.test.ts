@@ -7,6 +7,7 @@ import { stateHash } from '../sim/hash.ts'
 import { familyView, founderLines } from '../sim/lineage.ts'
 import { replayWorld } from '../sim/replay.ts'
 import type { Command } from '../sim/types.ts'
+import { unpackBots } from './botColumns.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
 import { LOADING_REASON, createHostRunner, createSimHost } from './simHost.ts'
 import type { SimHost } from './simHost.ts'
@@ -130,11 +131,11 @@ describe('frames', () => {
     expect(frame.run).toMatchObject({ runId: 0, seed: 'a', presetId: 'eden', width: host.world.width, height: host.world.height })
     expect(frame.fast.tick).toBe(30)
     expect(frame.fast.nodes).toEqual(host.world.nodes)
-    expect(frame.fast.bots).toHaveLength(host.world.bots.length)
+    expect(frame.fast.bots.count).toBe(host.world.bots.length)
     expect(frame.fast.totalBirths).toBe(host.world.totalBirths)
     expect(frame.fast.deathsByCause).toEqual(host.world.deathsByCause)
     expect(frame.fast.lineageLength).toBe(host.world.lineage.length)
-    frame.fast.bots.forEach((view, i) => {
+    unpackBots(frame.fast.bots).forEach((view, i) => {
       const bot = host.world.bots[i]!
       expect(view).not.toHaveProperty('memory')
       expect(view).toMatchObject({ id: bot.id, x: bot.x, y: bot.y, px: bot.px, py: bot.py, energy: bot.energy, parentId: bot.parentId })
@@ -183,7 +184,7 @@ describe('frames', () => {
     expect(slowFrame.slow?.selectedBot).toEqual(host.world.bots.find((bot) => bot.id === target.id))
     const fast = advance(host, 1)
     expect(fast.slow).toBeNull()
-    for (const view of fast.fast.bots) expect(view).not.toHaveProperty('memory')
+    for (const view of unpackBots(fast.fast.bots)) expect(view).not.toHaveProperty('memory')
     // Deselecting, or selecting something that does not exist, gives null.
     expect(framesOf(host.handle({ type: 'select', id: null }))[0]!.slow?.selectedBot).toBeNull()
     expect(framesOf(host.handle({ type: 'select', id: 987654 }))[0]!.slow?.selectedBot).toBeNull()

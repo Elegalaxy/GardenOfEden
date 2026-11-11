@@ -3,7 +3,9 @@
 // fields of a `World` the panels use, with two differences: bots have no memory list (only
 // counts, see ViewBot), and the big lists (samples, log, commands) are only as fresh as the
 // last slow frame (about four times a second, and right after anything that changes them).
-// The per-tick numbers (tick, nodes, bots, events, totals) are exact for every frame.
+// The per-tick numbers (tick, nodes, bots, events, totals) are exact for every frame. Bots arrive packed in
+// typed arrays (botColumns.ts) and `applyFrame` builds a fresh `bots` array of ViewBot objects from them on every
+// frame, so identity says when the bots changed and no consumer needs to know about the packing.
 //
 // A ViewWorld is updated in place by `applyFrame`, like the World it mirrors was, so a
 // panel's memo keyed on the object keeps working; a frame from a different run starts a
@@ -11,6 +13,8 @@
 // when they changed.
 
 import type { Bot, World } from '../sim/types.ts'
+import { unpackBots } from './botColumns.ts'
+import { transferListOf } from './protocol.ts'
 import type { Frame, ViewBot } from './protocol.ts'
 import { buildFrame } from './simHost.ts'
 
@@ -50,7 +54,7 @@ function fresh(frame: Frame): ViewWorld {
     height: run.height,
     tick: fast.tick,
     nodes: fast.nodes,
-    bots: fast.bots,
+    bots: unpackBots(fast.bots),
     events: fast.events,
     deathsByCause: fast.deathsByCause,
     eaten: fast.eaten,
@@ -71,7 +75,7 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   const { fast, slow } = frame
   view.tick = fast.tick
   view.nodes = fast.nodes
-  view.bots = fast.bots
+  view.bots = unpackBots(fast.bots)
   view.events = fast.events
   view.deathsByCause = fast.deathsByCause
   view.eaten = fast.eaten
@@ -88,8 +92,13 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   return view
 }
 
+/** Copies a frame the way posting it does (structured clone, packed bots transferred). */
+export function cloneFrame(frame: Frame): Frame {
+  return structuredClone(frame, { transfer: transferListOf({ type: 'frame', frame }) })
+}
+
 /** A ViewWorld for a World: the first frame of a run, as the page sees it (used for the page's first paint, and by tests). */
 export function toViewWorld(world: World, presetId: string, runId = 0, selectedId: number | null = null): ViewWorld {
   const run = { runId, seed: world.seed, presetId, width: world.width, height: world.height }
-  return applyFrame(null, structuredClone(buildFrame(world, run, selectedId, true)))
+  return applyFrame(null, cloneFrame(buildFrame(world, run, selectedId, true)))
 }

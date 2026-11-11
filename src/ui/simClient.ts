@@ -7,10 +7,11 @@
 //   createInlineClient   runs the same host on the page's own thread (queueMicrotask for messages,
 //                        setTimeout between slices of a load). Used by tests and as the fallback.
 // Both copy every message with structuredClone (the worker does so by itself), so the page never
-// shares objects with the live world.
+// shares objects with the live world. A frame's packed bots are transferred, not copied (protocol.ts `transferListOf`).
 
 import { createHostRunner } from './simHost.ts'
 import type { HostOptions, SimHost } from './simHost.ts'
+import { transferListOf } from './protocol.ts'
 import type { FromWorker, ToWorker } from './protocol.ts'
 
 export type SimClient = {
@@ -30,7 +31,7 @@ export function createInlineClient(options: HostOptions = {}): InlineClient {
   let handler: (msg: FromWorker) => void = () => {}
   let stopped = false
   const runner = createHostRunner((msg) => {
-    const copy = structuredClone(msg)
+    const copy = structuredClone(msg, { transfer: transferListOf(msg) })
     queueMicrotask(() => {
       if (!stopped) handler(copy)
     })

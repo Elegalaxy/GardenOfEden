@@ -1,4 +1,4 @@
-// The messages between the page and the simulation worker (M13). Types only: the
+// The messages between the page and the simulation worker (M13). Types, plus `framesTransferList`: the
 // simulation runs behind `SimHost` (simHost.ts), in a Web Worker in the browser, and the
 // page talks to it through a `SimClient` (simClient.ts). Every message is plain data that
 // survives structured clone (no functions, no class instances).
@@ -53,6 +53,16 @@ export type ViewBot = Omit<Bot, 'memory'> & {
   learnedCount: number
 }
 
+/**
+ * The bots of a frame as two row-major typed arrays (layout in botColumns.ts); the page turns them back into `ViewBot`
+ * objects (`unpackBots`). The buffers are transferred with the frame, so a posted frame's arrays are the receiver's.
+ */
+export type PackedBots = {
+  count: number
+  f64: Float64Array
+  i32: Int32Array
+}
+
 /** Which run the frame is from, and the few facts that never change within one. */
 export type RunInfo = {
   /** Changes whenever a different run replaces the current one (new world, or a load). */
@@ -67,7 +77,7 @@ export type RunInfo = {
 export type FastData = {
   tick: number
   nodes: WorldNode[]
-  bots: ViewBot[]
+  bots: PackedBots
   events: ActiveEvent[]
   totalBirths: number
   deathsByCause: DeathsByCause
@@ -142,3 +152,9 @@ export type FromWorker =
   | ({ type: 'queryResult'; reqId: number } & QueryAnswer)
   | { type: 'synced'; reqId: number }
   | { type: 'error'; message: string }
+
+/** The ArrayBuffers a message carries that should be transferred (moved, not copied) when it is posted: a frame's packed bots. */
+export function transferListOf(msg: FromWorker): ArrayBuffer[] {
+  if (msg.type !== 'frame') return []
+  return [msg.frame.fast.bots.f64.buffer as ArrayBuffer, msg.frame.fast.bots.i32.buffer as ArrayBuffer]
+}
