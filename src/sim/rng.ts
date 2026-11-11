@@ -2,6 +2,7 @@
 // UTF-16 code units) and expanded with splitmix32 into one sfc32 state per
 // named stream. Draws mutate only the stream object they are given.
 
+import { cos, log, sin } from './exactMath.ts'
 import { RNG_STREAM_NAMES, type RngState, type RngStream, type Weighted } from './types.ts'
 
 const UINT32_MAX = 0xffffffff
@@ -167,10 +168,10 @@ export function nextNormal(stream: RngStream): number {
     u1 = nextFloat(stream)
   }
   const u2 = nextFloat(stream)
-  const magnitude = Math.sqrt(-2 * Math.log(u1))
+  const magnitude = Math.sqrt(-2 * log(u1))
   const angle = TWO_PI * u2
-  const spare = magnitude * Math.sin(angle)
-  const value = magnitude * Math.cos(angle)
+  const spare = magnitude * sin(angle)
+  const value = magnitude * cos(angle)
   if (!Number.isFinite(spare) || !Number.isFinite(value)) {
     throw new Error(
       `nextNormal produced a non-finite sample, received value=${describeValue(value)} spare=${describeValue(spare)}`,

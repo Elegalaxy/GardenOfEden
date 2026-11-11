@@ -7,6 +7,7 @@
 // from any plague zone covering it (a world event, see worldEvents.ts). A drought
 // or bounty scales how fast resources regrow (`regrowthMultiplier`).
 
+import { hypot } from './exactMath.ts'
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
 
 /** What one spot on the map does to a bot this tick. */
@@ -28,7 +29,7 @@ export function exposureAt(world: World, x: number, y: number): Exposure {
   let shelterDistance = Infinity
   for (const node of world.nodes) {
     if (node.kind !== 'danger' && node.kind !== 'shelter') continue
-    const d = Math.hypot(x - node.x, y - node.y)
+    const d = hypot(x - node.x, y - node.y)
     if (d > node.radius) continue
     if (node.kind === 'danger') {
       exposure.damage += node.damage
@@ -42,7 +43,7 @@ export function exposureAt(world: World, x: number, y: number): Exposure {
     }
   }
   for (const event of world.events) {
-    if (event.kind === 'plague' && Math.hypot(x - event.x, y - event.y) <= event.radius) exposure.plague += event.magnitude
+    if (event.kind === 'plague' && hypot(x - event.x, y - event.y) <= event.radius) exposure.plague += event.magnitude
   }
   return exposure
 }

@@ -1,16 +1,17 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer, M15)
-- **Current Goal:** M0 to M15 are built. M15 added heatmap overlays (traffic, births, deaths; all time or recent). Nothing is planned after it (see GAME_DESIGN section 9 "Later"). Not committed or pushed: the lead verifies and commits.
-- **Recent Changes (M15, heatmaps):**
-  - New in `src/ui`: `heat.ts` (pure: `HeatGrid`, `createHeat`, `observeWorld`, `snapshotHeat`, `heatBin`, `legendBins`, `nextHeatLayer`, `isHeatKey`), `heatRender.ts` (offscreen canvas, ramp, `drawHeat`, `drawHeatCursor`), `HeatLegend.tsx` (controls, legend, hover readout, key H), `typing.ts` (shared `isTypingTarget`, moved out of `Toolbar.tsx`). Tests: `heat.test.ts`, `simHostHeat.test.ts`, `heatRender.test.ts`, `storeHeat.test.ts`.
-  - Changed: `simHost.ts` (owns the grid, observes after steps, commands and in the load's replay; answers `heat`), `replayJob.ts` (optional `onTick` hook), `protocol.ts` (`heat{layer, range}` typed, new `heatSnapshot` message), `store.ts` (`heatLayer`, `heatRange`, `heat` in the snapshot, `setHeatLayer`, `setHeatRange`, `cycleHeatLayer`, `setHoverCell`, `useHoverCell`), `render.ts`, `WorldCanvas.tsx`, `App.tsx`, `panels.css` (grid area `heat`), `simHost.test.ts` (old "heat reserved" test removed).
-  - `src/sim`, `src/content`, `src/persist` and `tests/` untouched; survey rows (seeds a,b,c, 20000 ticks) identical before and after.
-  - Docs: `CLAUDE.md` (Heatmaps section, panels, protocol), `doc/GAME_DESIGN.md` (section 8 item 7, M15 row, open question, changelog), idea brief changelog.
+- **Last Updated By:** Claude (implementer, cross-engine hash fix)
+- **Current Goal:** M0 to M15 are built. The Node vs Chrome state hash difference is fixed (same run, same hash in both). Nothing is planned after it (see GAME_DESIGN section 9 "Later"). Not committed or pushed: the lead verifies and commits.
+- **Recent Changes (cross-engine determinism):**
+  - Root cause: `Math.cos`, `sin`, `atan2` and `log` are not bit-exact between V8 builds (Node 24 / V8 13.6 vs Chrome 156). First divergence at tick 1: bot 101's x differed in the last bit (3.036558786856637 in Chrome, 3.0365587868566366 in Node). `Math.hypot` and `Math.pow(x, 3)` happened to agree but are not guaranteed.
+  - New `src/sim/exactMath.ts` (`sin`, `cos`, `atan`, `atan2`, `log`, `exp`, `pow`, `hypot`; only + - * / and sqrt, about 1e-15 accurate). Swapped in at `commands.ts`, `metabolism.ts`, `movement.ts`, `nodes.ts`, `perception.ts`, `reproduction.ts`, `rng.ts` (Box-Muller), `ruins.ts`, `worldEvents.ts`.
+  - Guard: `tests/architecture.test.ts` bans the inexact `Math.*` functions and `**` in non-test `src/sim` files (fixture tests added). `tests/exactMath.test.ts` checks accuracy against `Math` and pins golden bit patterns.
+  - Docs: `CLAUDE.md` (Conventions rule), `doc/GAME_DESIGN.md` (section 10 resolved, changelog), idea brief changelog.
 - **Active Decisions / Constraints:**
-  - Heat is outside the World, always accumulated, never hashed or saved; a load rebuilds it by replay (bit-identical, tested). `heatSnapshot` is its own message (not in the frame), sent only while a layer is on, at most about 4 Hz while running, always when paused and after commands, resets and loads.
-  - The heat panel is its own grid area under the map's status line; its body reserves height per breakpoint in `panels.css`. Map rect is unchanged at every size measured (1440x900, 1280x800, 1100x800, 1024x768, 768x1024, 375x812, 290 wide). If the legend text changes, re-measure.
-  - Display constants (decay 0.9 per 100 ticks, 5 bins, ramp alphas) live in `heat.ts` / `heatRender.ts`, not `tuning.ts`.
+  - Sim math must be bit-exact: use `exactMath.ts`, never the banned `Math` functions or `**`. Changing `exactMath.ts` changes every hash.
+  - All hashes changed once. Old saves load with the "different version" warning. Survey tables (seeds a..j, 20,000 and 60,000 ticks) are identical before and after, so tuning is unchanged.
+  - `JSON.stringify` of floats is safe across engines (ECMAScript fixes the shortest round-trip string).
+  - Verified Node = Chrome at 1,000 / 5,000 / 20,000 / 60,000 ticks (seed a) and 20,000 (seeds b, j, zz-7); a CLI save loads in the browser with a matching hash. Firefox and Safari not tested.
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** one neutral ramp or a hue per layer; is the "recent" window right (half-life about 658 ticks); the legend is just under the fold at 1280x800 (layer buttons visible, key H works anywhere). Existing: cross-engine hash difference for 60,000-tick saves (GAME_DESIGN section 10); eden preset feel check. Noticed, not changed: restarting writes the new empty run over the autosave (the documented M9 design).
-- **Exact Next Step:** the lead reviews the M15 diff, commits and pushes, then checks the deployed site (worker URL under `/GardenOfEden/`) with a heat layer on.
+- **Open Questions for the user:** one neutral ramp or a hue per layer for heatmaps; is the "recent" window right (half-life about 658 ticks); the heat legend is just under the fold at 1280x800. Eden preset feel check. Noticed, not changed: restarting writes the new empty run over the autosave (the documented M9 design).
+- **Exact Next Step:** the lead reviews the diff, commits and pushes, then checks the deployed site loads a CLI-made save without the version warning.

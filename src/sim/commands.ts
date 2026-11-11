@@ -15,6 +15,7 @@
 // heading drawn from the `world` stream (never `ai`, so a placement does not
 // shift the random draws bots make while wandering). It also gets a lineage record (no parent, born now).
 
+import { hypot } from './exactMath.ts'
 import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
@@ -39,7 +40,7 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
         return `The map is full (${tuning.player.maxNodes} nodes).`
       }
       for (const node of world.nodes) {
-        if (node.kind === cmd.kind && Math.hypot(node.x - cmd.x, node.y - cmd.y) < tuning.player.minNodeGap) {
+        if (node.kind === cmd.kind && hypot(node.x - cmd.x, node.y - cmd.y) < tuning.player.minNodeGap) {
           return `Too close to another ${cmd.kind} node.`
         }
       }

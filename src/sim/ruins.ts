@@ -17,6 +17,7 @@
 // number of ruins is separate from `player.maxNodes`; the player's cap counts
 // placed nodes only.
 
+import { hypot } from './exactMath.ts'
 import { makeNode } from './world.ts'
 import type { Bot, Rules, Tuning, World, WorldNode } from './types.ts'
 
@@ -39,7 +40,7 @@ export function leaveRuin(world: World, bot: Bot, rules: Rules): void {
   for (const node of world.nodes) {
     if (node.kind !== 'ruin') continue
     count += 1
-    const d = Math.hypot(node.x - bot.x, node.y - bot.y)
+    const d = hypot(node.x - bot.x, node.y - bot.y)
     if (d < nearestDistance) {
       nearest = node
       nearestDistance = d
@@ -60,7 +61,7 @@ export function leaveRuin(world: World, bot: Bot, rules: Rules): void {
 /** Is the point inside the radius of any danger node (zones, groves and meteor craters alike)? */
 export function insideAnyDanger(world: Pick<World, 'nodes'>, x: number, y: number): boolean {
   for (const node of world.nodes) {
-    if (node.kind === 'danger' && Math.hypot(x - node.x, y - node.y) <= node.radius) return true
+    if (node.kind === 'danger' && hypot(x - node.x, y - node.y) <= node.radius) return true
   }
   return false
 }

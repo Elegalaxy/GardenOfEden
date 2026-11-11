@@ -79,6 +79,13 @@ const NODE_BUILTINS = new Set([
 
 const SIM_API_RULES: { source: string; rule: string }[] = [
   { source: String.raw`Math\s*\.\s*random\b`, rule: 'src/sim must not use Math.random' },
+  {
+    // Only + - * /, sqrt, floor, ceil, round, trunc, abs, min, max, sign, fround and imul are bit-exact in every
+    // engine. The rest differ in the last bit between V8 versions (Node and Chrome did). Use exactMath.ts.
+    source: String.raw`Math\s*\.\s*(?:sin|cos|tan|asin|acos|atan|atan2|sinh|cosh|tanh|asinh|acosh|atanh|exp|expm1|log|log2|log10|log1p|pow|cbrt|hypot)\b`,
+    rule: 'src/sim must not use inexact Math functions (use exactMath.ts)',
+  },
+  { source: String.raw`\*\*`, rule: 'src/sim must not use ** (use exactMath.ts pow or multiply)' },
   { source: String.raw`\bDate\b`, rule: 'src/sim must not use Date' },
   { source: String.raw`performance\s*\.\s*now\b`, rule: 'src/sim must not use performance.now' },
   { source: String.raw`\bconsole\b`, rule: 'src/sim must not use console' },
@@ -354,7 +361,10 @@ function checkFile(absFile: string, text: string): { layer: FileLayer | null; sp
     if (layer === 'sim') {
       apiRules = SIM_API_RULES
       if (isTestFile(absFile)) {
-        apiRules = SIM_API_RULES.filter((apiRule) => apiRule.rule !== 'src/sim must not use console')
+        // Tests may print, and may compare against the engine's own Math.
+        apiRules = SIM_API_RULES.filter(
+          (apiRule) => apiRule.rule !== 'src/sim must not use console' && !apiRule.rule.includes('inexact Math'),
+        )
       }
     } else if (layer === 'content') {
       apiRules = CONTENT_IO_RULES
@@ -435,6 +445,10 @@ describe('architecture boundaries', () => {
   it('bans forbidden sim APIs and cross-layer imports', () => {
     const banned = [
       { source: 'Math.random()', rule: 'src/sim must not use Math.random' },
+      { source: 'Math.cos(1)', rule: 'src/sim must not use inexact Math functions (use exactMath.ts)' },
+      { source: 'Math.pow(2, 3)', rule: 'src/sim must not use inexact Math functions (use exactMath.ts)' },
+      { source: 'Math . hypot(3, 4)', rule: 'src/sim must not use inexact Math functions (use exactMath.ts)' },
+      { source: 'const x = 2 ** 3', rule: 'src/sim must not use ** (use exactMath.ts pow or multiply)' },
       { source: 'Date.now()', rule: 'src/sim must not use Date' },
       { source: 'performance.now()', rule: 'src/sim must not use performance.now' },
       { source: 'console.log(1)', rule: 'src/sim must not use console' },
@@ -453,6 +467,9 @@ describe('architecture boundaries', () => {
 
     expectAllowed('sim/fixture.test.ts', 'console.log(1)')
     expectAllowed('sim/fixture.ts', '// Math.random()\nexport const n = 1\n')
+    expectAllowed('sim/fixture.ts', '// Math.cos(1) and 2 ** 3 in a comment\nexport const n = Math.sqrt(2) + Math.floor(1.5) + Math.min(1, 2)\n')
+    expectAllowed('sim/fixture.test.ts', 'Math.sin(1)')
+    expectRule('sim/fixture.ts', 'Math.sin(1)', 'src/sim must not use inexact Math functions (use exactMath.ts)')
     expectRule('sim/fixture.test.ts', 'Math.random()', 'src/sim must not use Math.random')
     expectRule('sim/fixture.test.ts', "import React from 'react'", 'src/sim must not import React')
     expectAllowed('sim/fixture.test.ts', "import { it } from 'vitest'\nconsole.log('[DEBUG rng]')")

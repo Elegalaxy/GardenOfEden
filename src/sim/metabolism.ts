@@ -17,6 +17,7 @@
 // (a tie goes to danger). A meteor's cause, 'meteor', is only recorded by the command that
 // strikes (worldEvents.ts); a bot never dies of it inside `deathCause`.
 
+import { pow } from './exactMath.ts'
 import type { Exposure } from './nodes.ts'
 import type { Bot, DeathCause, Tuning } from './types.ts'
 
@@ -30,7 +31,7 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   const t = tuning.bot
   const sensing = t.senseDrain * (bot.traits.senseRadius - tuning.traits.senseRadius)
   bot.energy -= (t.baseDrain + sensing + (moved ? t.moveDrain : 0)) * bot.traits.metabolism * exposure.drainMult
-  const thirstLoss = t.thirstDrain * Math.pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
+  const thirstLoss = t.thirstDrain * pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
   bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage - exposure.plague)
   bot.age += 1

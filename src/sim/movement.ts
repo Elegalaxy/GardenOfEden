@@ -21,6 +21,7 @@
 //
 // `act` returns whether the bot moved (moving costs extra energy).
 
+import { atan2, cos, sin } from './exactMath.ts'
 import { isDesperate } from './brain.ts'
 import { speedOf } from './metabolism.ts'
 import { drink, eat } from './nodes.ts'
@@ -30,8 +31,8 @@ import type { Bot, MemoryEntry, Rules, World, WorldNode } from './types.ts'
 
 /** Where a step along `heading` lands, kept on the map. `clamped` is true if the map edge stopped it. */
 function stepAlong(world: World, bot: Bot, heading: number, length: number): { x: number; y: number; clamped: boolean } {
-  const rawX = bot.x + Math.cos(heading) * length
-  const rawY = bot.y + Math.sin(heading) * length
+  const rawX = bot.x + cos(heading) * length
+  const rawY = bot.y + sin(heading) * length
   const x = Math.min(world.width, Math.max(0, rawX))
   const y = Math.min(world.height, Math.max(0, rawY))
   return { x, y, clamped: x !== rawX || y !== rawY }
@@ -71,7 +72,7 @@ function steer(world: World, bot: Bot, heading: number, length: number, dangers:
 
 function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: MemoryEntry[], rules: Rules): boolean {
   const d = distance(bot.x, bot.y, tx, ty)
-  const heading = Math.atan2(ty - bot.y, tx - bot.x)
+  const heading = atan2(ty - bot.y, tx - bot.x)
   const speed = speedOf(bot, rules.tuning)
   const length = Math.min(speed, d)
   // Aim exactly at the target while the straight step is safe, so a bot can arrive on it.
@@ -96,15 +97,15 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
     // Nearer to the centre pushes harder; exactly on the centre pushes along the heading.
     const weight = 1 / Math.max(d, 0.1)
     if (d < 1e-9) {
-      awayX += Math.cos(bot.heading)
-      awayY += Math.sin(bot.heading)
+      awayX += cos(bot.heading)
+      awayY += sin(bot.heading)
     } else {
       awayX += ((bot.x - danger.x) / d) * weight
       awayY += ((bot.y - danger.y) / d) * weight
     }
   }
   if (awayX === 0 && awayY === 0) return false
-  const heading = Math.atan2(awayY, awayX)
+  const heading = atan2(awayY, awayX)
   const next = stepAlong(world, bot, heading, speedOf(bot, rules.tuning))
   if (next.x === bot.x && next.y === bot.y) return false
   bot.x = next.x

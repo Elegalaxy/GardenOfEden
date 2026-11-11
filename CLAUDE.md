@@ -49,6 +49,8 @@ Heat lives outside the `World`, in a `HeatGrid` (`src/ui/heat.ts`, 96 x 64 cells
 
 ### Conventions
 
+**Sim math must be bit-exact across engines.** Only + - * /, `Math.sqrt`, floor, ceil, round, trunc, abs, min, max, sign, fround and imul are specified to give the same bits everywhere; `Math.sin/cos/tan/atan/atan2/exp/log/pow/hypot/cbrt` and `**` are not (Node and Chrome differed from tick 1, so the same run hashed differently). Inside `src/sim` use `exactMath.ts` (`sin`, `cos`, `atan`, `atan2`, `log`, `exp`, `pow`, `hypot`, built from the exact operations only); `tests/architecture.test.ts` bans the others in non-test sim files. Changing `exactMath.ts` changes every hash (`tests/exactMath.test.ts` pins golden bits). `JSON.stringify` of numbers is safe: ECMAScript specifies the shortest round-trip string, so `stateHash` agrees across engines.
+
 Unit tests sit next to source as `*.test.ts`. Files open with a short header comment explaining the module's rules; keep that style. Every number that changes behaviour belongs in `src/content/tuning.ts` or `nodeDefs.ts`, not in `src/sim`. Changing RNG draw order or the tick order changes every hash; treat that as a deliberate change.
 
 ## Handoff

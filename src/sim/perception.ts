@@ -15,10 +15,11 @@
 // Since M10 a bot's memory can also hold sightings copied from its parent or child (family.ts);
 // `learnedFrom` names the source, and seeing the node itself clears it.
 
+import { hypot } from './exactMath.ts'
 import type { Bot, MemoryEntry, NodeKind, Tuning, World, WorldNode } from './types.ts'
 
 export function distance(ax: number, ay: number, bx: number, by: number): number {
-  return Math.hypot(bx - ax, by - ay)
+  return hypot(bx - ax, by - ay)
 }
 
 /** Nodes whose edge is inside the bot's sense radius, in id order. */

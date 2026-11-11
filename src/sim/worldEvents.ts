@@ -28,6 +28,7 @@
 // phase (drought and bounty). `expireEvents` runs last in `step`, after the ruins decay: an event
 // started after tick T with duration D affects ticks T+1 to T+D and is removed at the end of tick T+D.
 
+import { hypot } from './exactMath.ts'
 import { recordDeath } from './lineage.ts'
 import { leaveRuin } from './ruins.ts'
 import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, Tuning, World } from './types.ts'
@@ -148,7 +149,7 @@ function strike(world: World, rules: Rules, x: number, y: number): number {
 
   const killed: Bot[] = []
   for (const bot of world.bots) {
-    const d = Math.hypot(bot.x - x, bot.y - y)
+    const d = hypot(bot.x - x, bot.y - y)
     if (d >= m.radius) continue
     bot.health -= m.damage * (1 - d / m.radius)
     if (bot.health <= 0) killed.push(bot)

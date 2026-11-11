@@ -16,6 +16,7 @@
 // (`family.inherit`, see family.ts); that draws no random numbers. Each child also gets a lineage
 // record, and its parent's record counts one more child (lineage.ts).
 
+import { cos, sin } from './exactMath.ts'
 import { inheritMemory } from './family.ts'
 import { addRecord, findRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
@@ -67,8 +68,8 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
     const reach = nextFloat(stream) * tuning.bot.spawnSpread
     const heading = nextFloat(stream) * TWO_PI
     const traits = mutateTraits(c.traits, tuning.mutation, stream)
-    const x = Math.min(world.width, Math.max(0, c.x + Math.cos(angle) * reach))
-    const y = Math.min(world.height, Math.max(0, c.y + Math.sin(angle) * reach))
+    const x = Math.min(world.width, Math.max(0, c.x + cos(angle) * reach))
+    const y = Math.min(world.height, Math.max(0, c.y + sin(angle) * reach))
     const child: Bot = {
       id: world.nextId,
       x,
