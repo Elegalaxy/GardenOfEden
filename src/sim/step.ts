@@ -65,7 +65,7 @@ export function step(world: World, rules: Rules): void {
     const moved = act(world, bot, rules, nodesById)
     const exposure = exposureAt(world, bot.x, bot.y)
     metabolise(bot, moved, exposure, tuning)
-    const cause = deathCause(bot, exposure, tuning)
+    const cause = deathCause(bot, exposure)
     if (cause !== null) {
       dead.add(bot.id)
       fallen.push(bot)

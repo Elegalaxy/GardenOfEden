@@ -11,7 +11,7 @@
 // `pAge` (M16) is the mean parent age at a birth over the kept lineage records.
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
-// survey column `fem` is the number of females alive at the end.
+// survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
 // form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
 // Same arguments always print the same output.

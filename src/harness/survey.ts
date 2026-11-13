@@ -12,7 +12,9 @@
 // parent or child over the run (M10); `lineage` and `pruned` are the lineage records kept at the end and
 // dropped over the run (M11). `pAge` (M16) is the mean parent age at a birth: child.born - parent.born over
 // the kept lineage records whose parent record is also kept (a dash when there are none; with sexes it is the
-// mother's age). `fem` (M17) is the number of females among the bots alive at the end. `withoutFamily` gives the rules with that
+// mother's age). `fem` (M17) is the number of females among the bots alive at the end.
+// `inb` (M18) is the number of births whose parents were close relatives (inbreeding score above 0).
+// `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`).
 
 import { stateHash } from '../sim/hash.ts'
@@ -43,6 +45,8 @@ export type SeedSurvey = {
   parentAge: number | null
   /** Females among the bots alive at the end (M17). */
   females: number
+  /** Births with an inbreeding score above 0 (M18). */
+  inbred: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -128,13 +132,14 @@ export function surveySeed(
     pruned: world.lineagePruned,
     parentAge: meanParentAge(world),
     females: world.bots.filter((bot) => bot.sex === 'female').length,
+    inbred: world.inbredBirths,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -160,6 +165,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.pruned,
       parentAgeCell(r.parentAge),
       r.females,
+      r.inbred,
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

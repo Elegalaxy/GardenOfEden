@@ -67,6 +67,18 @@ export const tuning: Tuning = {
     maleCost: 0,
     maleCooldown: 50,
   },
+  // Inbreeding (M18): a child's score is 1 when its parents are parent and child or full siblings, 0.5
+  // for half siblings, else 0 (lineage.relatedness). At score s the child lives lifespanLoss * s shorter
+  // (of bot.maxAge) and starts with energyLoss * s less energy and healthLoss * s less health. All 0 =
+  // no penalty. There is no bar on pairing, so mate seeking from a small pool pays this price.
+  // energyLoss is 0 on purpose: with the plan's 0.3 (or any value from 0.05 up) the scripted-event
+  // survival tests in tests/events.test.ts lost a run to extinction on some seed, and the plan's
+  // 0.3/0.3/0.3 failed there too; 0.2 / 0 / 0.2 passes events, traits and tuning tests.
+  inbreeding: {
+    lifespanLoss: 0.2,
+    energyLoss: 0,
+    healthLoss: 0.2,
+  },
   brain: {
     seekWeight: 1.25,
     thirstWeight: 1.25,

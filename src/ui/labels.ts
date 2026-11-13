@@ -158,6 +158,12 @@ export function fertilityLabel(age: number, tuning: Pick<Tuning, 'bot' | 'fertil
   return { percent, phase: 'declining' }
 }
 
+/** The inbreeding score (M18, 0 to 1) as words: "no" at 0, else the percent (1 = parent and child or full siblings). */
+export function inbreedingLabel(score: number): string {
+  if (score <= 0) return 'No'
+  return `Yes · ${Math.round(100 * score)}%`
+}
+
 export const FERTILITY_PHASE_LABEL: Record<FertilityPhase, string> = {
   young: 'too young',
   rising: 'rising',

@@ -60,7 +60,7 @@ export function parentsText(record: Pick<LineageRecord, 'parentId' | 'fatherId'>
 /** One sentence for a screen reader: everything on the row. */
 export function rowLabel(record: LineageRecord): string {
   const died = record.died === null ? 'alive' : `${causeSentence(record.cause ?? undefined).toLowerCase()} at tick ${formatCount(record.died)}`
-  return `Bot #${record.id}, generation ${record.generation}, born at tick ${formatCount(record.born)}, ${died}, ${childrenText(record.children)}, ${parentsText(record)}`
+  return `Bot #${record.id}, generation ${record.generation}, born at tick ${formatCount(record.born)}, ${died}, ${childrenText(record.children)}, ${parentsText(record)}${record.inbreeding > 0 ? ', inbred' : ''}`
 }
 
 /** How many older ancestors may exist beyond the ones listed (an upper bound: founders are generation 0), or 0 when the chain is complete. */

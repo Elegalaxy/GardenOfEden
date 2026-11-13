@@ -38,6 +38,15 @@ function crowd(source: World, n: number): Bot[] {
 describe('packBots / unpackBots', () => {
   const world = busy()
 
+  it('carries the inbreeding score and the lifespan', () => {
+    const bot = structuredClone(world.bots[0]!)
+    bot.inbreeding = 0.5
+    bot.lifespan = 2700
+    const [out] = unpackBots(packBots([bot]))
+    expect(out).toMatchObject({ inbreeding: 0.5, lifespan: 2700 })
+    expect(out).toEqual(oldViewBot(bot))
+  })
+
   it('round-trips every bot exactly as the old ViewBot', () => {
     expect(world.bots.length).toBeGreaterThan(5)
     const packed = packBots(world.bots)

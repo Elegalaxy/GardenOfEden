@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -105,5 +105,11 @@ describe('chordWidth', () => {
     expect(fertilityLabel(declineAge, tuning)).toEqual({ percent: 100, phase: 'declining' })
     expect(fertilityLabel((declineAge + fertileUntil) / 2, tuning)).toEqual({ percent: 50, phase: 'declining' })
     expect(fertilityLabel(fertileUntil, tuning)).toEqual({ percent: 0, phase: 'past' })
+  })
+
+  it('labels the inbreeding score', () => {
+    expect(inbreedingLabel(0)).toBe('No')
+    expect(inbreedingLabel(0.5)).toBe('Yes · 50%')
+    expect(inbreedingLabel(1)).toBe('Yes · 100%')
   })
 })

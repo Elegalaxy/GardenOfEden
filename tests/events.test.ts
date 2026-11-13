@@ -153,11 +153,11 @@ describe('plague', () => {
     const bot = world.bots[0]
     bot.health = 0
     const exposure = { damage: 1, plague: 1, heal: 0, drainMult: 1, shelterId: null }
-    expect(deathCause(bot, exposure, tuning)).toBe('danger')
-    expect(deathCause(bot, { ...exposure, plague: 1.5 }, tuning)).toBe('plague')
-    expect(deathCause(bot, { ...exposure, damage: 0, plague: 0 }, tuning)).toBe('danger')
+    expect(deathCause(bot, exposure)).toBe('danger')
+    expect(deathCause(bot, { ...exposure, plague: 1.5 })).toBe('plague')
+    expect(deathCause(bot, { ...exposure, damage: 0, plague: 0 })).toBe('danger')
     bot.health = 5
-    expect(deathCause(bot, { ...exposure, plague: 9 }, tuning)).toBeNull()
+    expect(deathCause(bot, { ...exposure, plague: 9 })).toBeNull()
   })
 })
 

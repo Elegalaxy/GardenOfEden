@@ -78,6 +78,8 @@ export function makeBot(id: number, x: number, y: number, heading: number, rules
     parentId: null,
     fatherId: null,
     sex,
+    inbreeding: 0,
+    lifespan: bot.maxAge,
     traits: { ...traits },
     memory: [],
     intent: { kind: 'wander', targetId: null },
@@ -161,6 +163,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     totalBirths: 0,
     events: [],
     familyLearned: 0,
+    inbredBirths: 0,
     lineage: [],
     lineagePruned: 0,
   }

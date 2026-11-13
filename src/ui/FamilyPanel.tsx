@@ -41,7 +41,7 @@ import {
 } from './familyMath.ts'
 import type { NodeRow, TreeKey, TreeRow } from './familyMath.ts'
 import { focusRecord, pinFocusFor, useFamilyFocus } from './familyFocus.ts'
-import { TRAIT_LABEL, formatTrait } from './labels.ts'
+import { TRAIT_LABEL, formatTrait, inbreedingLabel } from './labels.ts'
 import { select, useStoreValue } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
 import { useFamilyData } from './useFamilyData.ts'
@@ -83,6 +83,7 @@ function FocusCard({ view, titleRef }: { view: FamilyView; titleRef: RefObject<H
       </h3>
       <p className="fam-sub figure">
         <Status record={focus} /> · gen {focus.generation} · born t {formatCount(focus.born)} · {childrenText(focus.children)}
+        {focus.inbreeding > 0 && <> · inbred</>}
       </p>
       <details className="fam-details">
         <summary>Record details</summary>
@@ -111,6 +112,7 @@ function FocusCard({ view, titleRef }: { view: FamilyView; titleRef: RefObject<H
               </button>
             )}
           </DetailRow>
+          <DetailRow label="Inbred">{inbreedingLabel(focus.inbreeding)}</DetailRow>
           <DetailRow label="Sex">{focus.sex === 'female' ? 'Female' : 'Male'}</DetailRow>
           <DetailRow label="Children">{formatCount(focus.children)} in its lifetime</DetailRow>
           {TRAIT_NAMES.map((name) => (

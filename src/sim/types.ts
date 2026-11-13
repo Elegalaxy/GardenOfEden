@@ -125,6 +125,10 @@ export type Bot = {
   /** The father (sexual mode); null for founders, placed bots and asexual births. */
   fatherId: number | null
   sex: Sex
+  /** How closely related its parents were, 0 (not) to 1 (parent and child, or full siblings), fixed at birth (M18). */
+  inbreeding: number
+  /** Age in ticks at which it dies of old age: `Tuning.bot.maxAge`, shortened by `inbreeding`. */
+  lifespan: number
   traits: Traits
   memory: MemoryEntry[]
   intent: Intent
@@ -216,6 +220,8 @@ export type LineageRecord = {
   parentId: number | null
   fatherId: number | null
   sex: Sex
+  /** The bot's inbreeding score at birth (see `Bot.inbreeding`). */
+  inbreeding: number
   generation: number
   /** Tick it appeared (0 for a preset founder). */
   born: number
@@ -250,6 +256,8 @@ export type World = {
   events: ActiveEvent[]
   /** Running count of memory entries bots learned from a parent or child (at birth and by exchange), for the survey. */
   familyLearned: number
+  /** Running count of births with an inbreeding score above 0 (M18), for the survey. */
+  inbredBirths: number
   /** One record per bot, living or dead, in ascending id order. Old extinct branches are pruned (lineage.ts). */
   lineage: LineageRecord[]
   /** Records dropped from `lineage` so far. */
@@ -359,6 +367,16 @@ export type Tuning = {
     maleCost: number
     /** A father's cooldown after a birth, divided by his fertility and rounded up. */
     maleCooldown: number
+  }
+  /**
+   * Inbreeding penalty (M18). A child's score is 1 for parent and child or full siblings, 0.5 for half
+   * siblings, else 0. At score s its lifespan is cut by lifespanLoss * s, and it starts with energy and
+   * health cut by energyLoss * s and healthLoss * s (fractions, 0 to 1).
+   */
+  inbreeding: {
+    lifespanLoss: number
+    energyLoss: number
+    healthLoss: number
   }
   brain: {
     /** Utility of seeking food is this times the missing energy fraction. */

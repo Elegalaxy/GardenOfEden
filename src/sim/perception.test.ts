@@ -33,6 +33,7 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
     familyLearned: 0,
+    inbredBirths: 0,
     lineage: [],
     lineagePruned: 0,
   }
@@ -54,6 +55,8 @@ function botAt(x: number, memory: MemoryEntry[] = []): Bot {
     parentId: null,
     fatherId: null,
     sex: 'female',
+    inbreeding: 0,
+    lifespan: 3000,
     traits: { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1 },
     memory,
     intent: { kind: 'wander', targetId: null },

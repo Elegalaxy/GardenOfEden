@@ -15,6 +15,11 @@
 // `sex.maleCooldown` / fertility (`payFather`). No random draws in pairing. With sex off a bot breeds alone
 // in the bot loop through `conceive`, as before M17.
 //
+// Inbreeding (M18, `tuning.inbreeding`): there is no bar on pairing, but a child of close relatives
+// (score from `lineage.relatedness`: parent and child or full siblings 1, half siblings 0.5, else 0)
+// starts with less energy and health and has a shorter `lifespan`, each cut by its loss fraction times
+// the score. Nothing is drawn for it. The energy the mother paid stays paid; the cut part is lost.
+//
 // A newborn starts with full health and full thirst (water, unlike energy, is not
 // handed down: a child costs the parent no thirst).
 //
@@ -33,7 +38,7 @@
 
 import { cos, sin } from './exactMath.ts'
 import { inheritFromParents, inheritMemory } from './family.ts'
-import { addRecord, findRecord } from './lineage.ts'
+import { addRecord, findRecord, relatedness } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import { distance } from './perception.ts'
 import { crossTraits, mutateTraits } from './traits.ts'
@@ -176,6 +181,9 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       sex = autoSex(world.bots)
     }
     const traits = mutateTraits(crossed, tuning.mutation, stream)
+    // Inbreeding (M18): scored from the parents' lineage records, no draw.
+    const inbreeding = c.fatherId === null ? 0 : relatedness(world, c.parentId, c.fatherId)
+    const loss = tuning.inbreeding
     const x = Math.min(world.width, Math.max(0, c.x + cos(angle) * reach))
     const y = Math.min(world.height, Math.max(0, c.y + sin(angle) * reach))
     const child: Bot = {
@@ -184,8 +192,8 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       y,
       px: x,
       py: y,
-      energy: c.energy,
-      health: tuning.bot.maxHealth,
+      energy: c.energy * (1 - loss.energyLoss * inbreeding),
+      health: tuning.bot.maxHealth * (1 - loss.healthLoss * inbreeding),
       thirst: tuning.bot.maxThirst,
       age: 0,
       cooldown: tuning.bot.reproCooldown,
@@ -193,6 +201,8 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       parentId: c.parentId,
       fatherId: c.fatherId,
       sex,
+      inbreeding,
+      lifespan: Math.round(tuning.bot.maxAge * (1 - loss.lifespanLoss * inbreeding)),
       traits,
       memory: [],
       intent: { kind: 'wander', targetId: null },
@@ -209,12 +219,13 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
     world.familyLearned += child.memory.length
     world.nextId += 1
     world.bots.push(child)
-    addRecord(world, child.id, child.parentId, child.fatherId, child.sex, child.generation, child.traits)
+    addRecord(world, child.id, child.parentId, child.fatherId, child.sex, child.generation, child.traits, inbreeding)
     const parentRecord = c.parentId === null ? undefined : findRecord(world, c.parentId)
     if (parentRecord !== undefined) parentRecord.children += 1
     const fatherRecord = c.fatherId === null ? undefined : findRecord(world, c.fatherId)
     if (fatherRecord !== undefined) fatherRecord.children += 1
     world.totalBirths += 1
+    if (inbreeding > 0) world.inbredBirths += 1
     pushEvent(world, tuning, { tick: world.tick, type: 'birth', botId: child.id, x, y })
   }
 }

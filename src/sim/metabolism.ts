@@ -9,7 +9,8 @@
 // steep power is deliberate: a fast bot is cheaper per cell walked and finds the
 // rare springs sooner, so with a gentler cost it simply out-breeds everyone
 // (see tuning.ts). A bot dies of danger or plague (health <= 0), thirst (thirst <= 0),
-// starvation (energy <= 0) or old age (age >= maxAge). When more than one is true on
+// starvation (energy <= 0) or old age (age >= the bot's own `lifespan`: maxAge, or less for an
+// inbred bot, see reproduction.ts). When more than one is true on
 // the same tick the first in that order is the recorded cause: the acute ones
 // come first, and the health causes before everything because they are done to
 // the bot. If health ran out and the bot took plague damage this tick, the cause is
@@ -38,10 +39,10 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   if (bot.cooldown > 0) bot.cooldown -= 1
 }
 
-export function deathCause(bot: Bot, exposure: Exposure, tuning: Tuning): DeathCause | null {
+export function deathCause(bot: Bot, exposure: Exposure): DeathCause | null {
   if (bot.health <= 0) return exposure.plague > exposure.damage ? 'plague' : 'danger'
   if (bot.thirst <= 0) return 'thirst'
   if (bot.energy <= 0) return 'starve'
-  if (bot.age >= tuning.bot.maxAge) return 'age'
+  if (bot.age >= bot.lifespan) return 'age'
   return null
 }

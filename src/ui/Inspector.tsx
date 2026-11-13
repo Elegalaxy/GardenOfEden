@@ -10,7 +10,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, inbreedingLabel } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -121,6 +121,8 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Row label="Age">
           {bot.age} ticks · {stage}
         </Row>
+        <Row label="Lifespan">{bot.lifespan} ticks</Row>
+        <Row label="Inbred">{inbreedingLabel(bot.inbreeding)}</Row>
         <Row label="Sex">{bot.sex === 'female' ? 'Female' : 'Male'}</Row>
         <Row label="Generation">{bot.generation}</Row>
         <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>

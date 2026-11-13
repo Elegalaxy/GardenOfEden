@@ -24,7 +24,8 @@
 //            records dropped so far.
 //
 // A record has a mother (`parentId`, the bearing parent, or the only parent when sex is off) and a
-// `fatherId` (null for founders, placed bots and asexual births), plus its `sex`.
+// `fatherId` (null for founders, placed bots and asexual births), plus its `sex` and its `inbreeding`
+// score at birth (M18; `relatedness` computes it from two records).
 // A record whose parent record is gone is valid: `parentId` keeps the id, `findRecord` just misses.
 // `children` is a lifetime count and is not lowered when a child record is pruned, so it can exceed
 // the number of kept child records.
@@ -95,12 +96,14 @@ export function addRecord(
   sex: Sex,
   generation: number,
   traits: Traits,
+  inbreeding = 0,
 ): LineageRecord {
   const record: LineageRecord = {
     id,
     parentId,
     fatherId,
     sex,
+    inbreeding,
     generation,
     born: world.tick,
     died: null,
@@ -125,6 +128,26 @@ export function addRecord(
   }
   records.splice(lo, 0, record)
   return record
+}
+
+/**
+ * Inbreeding score (M18) of a child of this mother and father, from their records: 1 when one is the
+ * other's parent or they are full siblings (same mother and same father), 0.5 for half siblings (exactly
+ * one parent in common), else 0. It compares the parent ids stored in the two records, so it needs only
+ * the mates' own records (a living bot's record is never pruned); a parent that is null (founder, placed
+ * bot, asexual birth) never matches anything, and a mate whose record is missing counts as unrelated.
+ * Draws no random numbers.
+ */
+export function relatedness(world: Pick<World, 'lineage'>, motherId: number, fatherId: number): number {
+  const mother = world.lineage[indexOfId(world.lineage, motherId)]
+  const father = world.lineage[indexOfId(world.lineage, fatherId)]
+  if (mother === undefined || father === undefined) return 0
+  if (mother.parentId === fatherId || mother.fatherId === fatherId) return 1
+  if (father.parentId === motherId || father.fatherId === motherId) return 1
+  const sameMother = mother.parentId !== null && mother.parentId === father.parentId
+  const sameFather = mother.fatherId !== null && mother.fatherId === father.fatherId
+  if (sameMother && sameFather) return 1
+  return sameMother || sameFather ? 0.5 : 0
 }
 
 /** Marks the bot's record dead at the current tick. Does nothing when the record is not kept. */
