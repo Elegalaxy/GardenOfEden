@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { edenPreset, rules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, rules } from '../content/index.ts'
 import { SAVE_VERSION } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { stateHash } from '../sim/hash.ts'
@@ -71,7 +71,7 @@ describe('advance and commands', () => {
     const replayed = replayWorld('a', edenPreset, rules, host.world.commands, host.world.tick)
     expect(save.hash).toBe(stateHash(replayed))
     expect(save.hash).toBe(stateHash(host.world))
-    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'a', presetId: 'eden', sim: 1, tick: 110 })
+    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'a', presetId: 'eden', sim: SIM_VERSION, tick: 110 })
     expect(save.commands).toHaveLength(3)
   })
 

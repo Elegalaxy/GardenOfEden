@@ -2,6 +2,8 @@
 // notices, so the same thing is always called the same name.
 
 import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
+import { fertilityAt } from '../sim/reproduction.ts'
+import type { Tuning } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
 
 export const KIND_LABEL: Record<NodeKind, string> = {
@@ -133,4 +135,25 @@ export function fitLabel(candidates: readonly string[], maxWidth: number, measur
 export function chordWidth(r: number, dy: number): number {
   const d = Math.abs(dy)
   return d >= r ? 0 : 2 * Math.sqrt(r * r - d * d)
+}
+
+export type FertilityPhase = 'young' | 'rising' | 'prime' | 'declining' | 'past'
+
+/** Fertility at an age as a whole percent plus a phase word for the inspector (M16). */
+export function fertilityLabel(age: number, tuning: Pick<Tuning, 'bot' | 'fertility'>): { percent: number; phase: FertilityPhase } {
+  const percent = Math.round(100 * fertilityAt(age, tuning))
+  const { primeAge, declineAge, fertileUntil } = tuning.fertility
+  if (age < tuning.bot.adultAge) return { percent, phase: 'young' }
+  if (age >= fertileUntil) return { percent, phase: 'past' }
+  if (age < primeAge) return { percent, phase: 'rising' }
+  if (age < declineAge) return { percent, phase: 'prime' }
+  return { percent, phase: 'declining' }
+}
+
+export const FERTILITY_PHASE_LABEL: Record<FertilityPhase, string> = {
+  young: 'too young',
+  rising: 'rising',
+  prime: 'prime',
+  declining: 'declining',
+  past: 'past breeding',
 }

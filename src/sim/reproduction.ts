@@ -1,6 +1,9 @@
 // Reproduction. A bot reproduces alone, and only when all of these hold:
-// energy at or above its `reproThreshold` trait, age of at least `adultAge`,
-// cooldown over, standing in a shelter, and room under the population cap.
+// energy at or above its `reproThreshold` trait, fertility above 0 (see `fertilityAt`:
+// 0 below `adultAge` and past `fertileUntil`), cooldown over, standing in a shelter, and
+// room under the population cap. After a birth the parent's cooldown is `reproCooldown`
+// divided by its fertility at that moment, rounded up, so a young or old parent waits
+// longer. No random numbers are drawn for any of this.
 //
 // A newborn starts with full health and full thirst (water, unlike energy, is not
 // handed down: a child costs the parent no thirst).
@@ -38,9 +41,26 @@ export type Conception = {
   energy: number
 }
 
-/** The bot-only conditions: energy, age and cooldown. Shelter and cap are checked by the caller. */
+/**
+ * Fertility (0 to 1) at an age: 0 below adultAge, startFraction at adultAge rising to 1 at primeAge,
+ * 1 until declineAge, falling to 0 at fertileUntil, 0 from there. Only + - * / are used. A zero-length
+ * segment is skipped: primeAge <= adultAge means 1 from adultAge; fertileUntil <= declineAge means 1
+ * until fertileUntil, then 0.
+ */
+export function fertilityAt(age: number, tuning: Pick<Tuning, 'bot' | 'fertility'>): number {
+  const { adultAge } = tuning.bot
+  const { startFraction, primeAge, declineAge, fertileUntil } = tuning.fertility
+  if (age < adultAge || age >= fertileUntil) return 0
+  if (age < primeAge) {
+    return startFraction + ((1 - startFraction) * (age - adultAge)) / (primeAge - adultAge)
+  }
+  if (age < declineAge) return 1
+  return (fertileUntil - age) / (fertileUntil - declineAge)
+}
+
+/** The bot-only conditions: energy, fertility and cooldown. Shelter and cap are checked by the caller. */
 export function meetsReproductionNeeds(bot: Bot, tuning: Tuning): boolean {
-  return bot.energy >= bot.traits.reproThreshold && bot.age >= tuning.bot.adultAge && bot.cooldown <= 0
+  return bot.energy >= bot.traits.reproThreshold && fertilityAt(bot.age, tuning) > 0 && bot.cooldown <= 0
 }
 
 /** Takes the child's energy from the parent and starts its cooldown; null when the bot is not eligible. */
@@ -48,7 +68,7 @@ export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning:
   if (!inShelter || !hasRoom || !meetsReproductionNeeds(bot, tuning)) return null
   const energy = bot.energy * tuning.bot.childEnergyShare
   bot.energy -= energy + tuning.bot.birthCost
-  bot.cooldown = tuning.bot.reproCooldown
+  bot.cooldown = Math.ceil(tuning.bot.reproCooldown / fertilityAt(bot.age, tuning))
   return {
     parentId: bot.id,
     generation: bot.generation,

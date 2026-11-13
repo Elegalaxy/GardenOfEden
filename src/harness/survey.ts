@@ -10,13 +10,15 @@
 // applies player commands, such as world events, at their ticks; `refused` lists
 // the ones the sim refused. `learned` is how many memory entries bots took from a
 // parent or child over the run (M10); `lineage` and `pruned` are the lineage records kept at the end and
-// dropped over the run (M11). `withoutFamily` gives the rules with that
+// dropped over the run (M11). `pAge` (M16) is the mean parent age at a birth: child.born - parent.born over
+// the kept lineage records whose parent record is also kept (a dash when there are none). `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
-import type { DeathsByCause, Eaten, Preset, Rules, Traits } from '../sim/types.ts'
+import { findRecord } from '../sim/lineage.ts'
+import type { DeathsByCause, Eaten, Preset, Rules, Traits, World } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
 import { makeScript } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
@@ -36,9 +38,30 @@ export type SeedSurvey = {
   /** Lineage records kept at the end, and records pruned over the run (M11). */
   lineage: number
   pruned: number
+  /** Mean parent age at a birth over the kept lineage records (M16); null when none qualify. */
+  parentAge: number | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
+}
+
+/** Mean of child.born - parent.born over kept records whose parent record is kept; null when none. */
+export function meanParentAge(world: Pick<World, 'lineage'>): number | null {
+  let sum = 0
+  let count = 0
+  for (const record of world.lineage) {
+    if (record.parentId === null) continue
+    const parent = findRecord(world as World, record.parentId)
+    if (parent === undefined) continue
+    sum += record.born - parent.born
+    count += 1
+  }
+  return count === 0 ? null : sum / count
+}
+
+/** The mean parent age for a table cell: whole ticks, or a dash. */
+export function parentAgeCell(value: number | null): string {
+  return value === null ? '-' : value.toFixed(0)
 }
 
 /** The ruins' share of all food eaten, as a percentage with one decimal; a dash when nothing was eaten. */
@@ -95,13 +118,14 @@ export function surveySeed(
     learned: world.familyLearned,
     lineage: world.lineage.length,
     pruned: world.lineagePruned,
+    parentAge: meanParentAge(world),
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -125,6 +149,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.learned,
       r.lineage,
       r.pruned,
+      parentAgeCell(r.parentAge),
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

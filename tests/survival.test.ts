@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { rules } from '../src/content/index.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { exposureAt } from '../src/sim/nodes.ts'
+import { fertilityAt } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
@@ -127,7 +128,8 @@ describe('reproduction', () => {
     expect(child.id).toBeGreaterThan(parent.id)
     expect(child.traits).toEqual(parent.traits)
     expect(child.traits).not.toBe(parent.traits)
-    expect(parent.cooldown).toBe(reproCooldown)
+    // The parent was 100 ticks past adultAge at the birth; its cooldown stretches by its fertility then.
+    expect(parent.cooldown).toBe(Math.ceil(reproCooldown / fertilityAt(rules.tuning.bot.adultAge + 100, rules.tuning)))
     expect(world.totalBirths).toBe(1)
     expect(world.log.some((event) => event.type === 'birth' && event.botId === child.id)).toBe(true)
   })

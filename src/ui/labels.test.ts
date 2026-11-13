@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fitLabel } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel } from './labels.ts'
+import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
 const KINDS: NodeKind[] = ['resource', 'danger', 'shelter', 'ruin', 'water']
@@ -93,5 +94,16 @@ describe('chordWidth', () => {
     expect(chordWidth(10, -6)).toBeCloseTo(16)
     expect(chordWidth(10, 10)).toBe(0)
     expect(chordWidth(10, 12)).toBe(0)
+  })
+
+  it('labels fertility by age with a percent and a phase', () => {
+    const { adultAge } = tuning.bot
+    const { primeAge, declineAge, fertileUntil } = tuning.fertility
+    expect(fertilityLabel(0, tuning)).toEqual({ percent: 0, phase: 'young' })
+    expect(fertilityLabel(adultAge, tuning)).toEqual({ percent: Math.round(100 * tuning.fertility.startFraction), phase: 'rising' })
+    expect(fertilityLabel(primeAge, tuning)).toEqual({ percent: 100, phase: 'prime' })
+    expect(fertilityLabel(declineAge, tuning)).toEqual({ percent: 100, phase: 'declining' })
+    expect(fertilityLabel((declineAge + fertileUntil) / 2, tuning)).toEqual({ percent: 50, phase: 'declining' })
+    expect(fertilityLabel(fertileUntil, tuning)).toEqual({ percent: 0, phase: 'past' })
   })
 })

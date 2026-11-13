@@ -16,7 +16,7 @@
 //              `desperateFraction`) accepts a spring inside danger and ignores
 //              avoidance on the way, the same bargain as food in a grove.
 //   rest       needs a remembered shelter and low health (with hysteresis).
-//   reproduce  needs the reproduction conditions and a remembered shelter.
+//   reproduce  needs the reproduction conditions (energy, fertility above 0, cooldown over) and a remembered shelter.
 //   wander     the fallback, with a small constant score.
 //
 // How low is "desperate" depends on the bot's caution trait (`desperateFraction`, M12): `desperateBelow`

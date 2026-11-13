@@ -7,7 +7,8 @@
 // Both print the mean of each trait over the living bots (sense, caution,
 // reproAt, metab), after a line with the founders' values.
 // `learned` counts memory entries bots took from a parent or child (M10); the last two columns are the
-// lineage records kept and the ones pruned so far (M11).
+// lineage records kept and the ones pruned so far (M11);
+// `pAge` (M16) is the mean parent age at a birth over the kept lineage records.
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
 // form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
@@ -21,7 +22,7 @@ import { createWorld, totalDeaths, totalFood, totalRuinFood } from '../sim/world
 import type { World } from '../sim/types.ts'
 import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
-import { formatSurvey, ruinShareCell, surveySeed, traitCell, withoutFamily } from './survey.ts'
+import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutFamily } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
@@ -128,6 +129,7 @@ function row(world: World): string {
     world.familyLearned,
     world.lineage.length,
     world.lineagePruned,
+    parentAgeCell(meanParentAge(world)),
   ]
   return cells.map((cell) => String(cell).padStart(8)).join('')
 }
@@ -163,7 +165,7 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${options.noFamily ? ' no-family' : ''}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned']
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
       .map((cell) => cell.padStart(8))
       .join(''),
   )

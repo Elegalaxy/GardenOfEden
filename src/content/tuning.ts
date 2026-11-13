@@ -41,6 +41,17 @@ export const tuning: Tuning = {
     birthCost: 20,
     spawnSpread: 1.5,
   },
+  // Fertility by age (M16): 0 below bot.adultAge, `startFraction` at adultAge rising linearly to 1 at
+  // `primeAge`, 1 until `declineAge`, falling linearly to 0 at `fertileUntil`, 0 after (maxAge still
+  // ends the life). After a birth the cooldown is bot.reproCooldown / fertility, rounded up. The
+  // neutral setting (startFraction 1, primeAge = adultAge, declineAge = fertileUntil = maxAge) gives
+  // the pre-M16 rules exactly; tests/fertility.test.ts checks that against the old hash.
+  fertility: {
+    startFraction: 0.5,
+    primeAge: 600,
+    declineAge: 1800,
+    fertileUntil: 2600,
+  },
   brain: {
     seekWeight: 1.25,
     thirstWeight: 1.25,

@@ -1,17 +1,17 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer, stage 0 of the aging/sexes plan: simulation version in saves)
-- **Current Goal:** M0 to M15 are built. Working through the approved plan (scratchpad `PLAN_AGING_SEX.md`: aging fertility, two sexes, inbreeding penalty), one stage at a time. Stage 0 is done; next is Stage 1. Not committed or pushed: the lead verifies and commits.
-- **Recent Changes (stage 0):**
-  - New `src/content/version.ts` (`SIM_VERSION = 1`, header says when to bump), re-exported from `src/content/index.ts`.
-  - `src/persist/save.ts`: `SAVE_VERSION` 2, `Save.sim` after `presetId` (key order version, seed, presetId, sim, tick, hash, commands), `MAX_SIM_VERSION` 1,000,000, `sim` validated as an integer 1..max, `upgradeSave` turns a version 1 save into version 2 with `sim: 1`, `makeSave(run, presetId, hash, sim)`.
-  - `src/ui/simHost.ts` and `SavePanel.tsx` pass `SIM_VERSION`; `src/ui/store.ts` has `mismatchWarning(saveSim, current)` (older / newer wording with both rules versions, else the old `MISMATCH_WARNING`) and keeps `sim` on the pending load.
-  - Tests: `src/persist/save.test.ts` (v1 upgrade, v2 round trip, bad sim), `src/ui/loadRun.test.ts` (newer / older wording), save fixtures in autosave, share, simHost, simHostHeat and `tests/save.test.ts` gained `sim`.
-  - Docs: GAME_DESIGN section 8 item 4, section 10 (two questions resolved), changelog; CLAUDE.md persist paragraph.
-  - `src/sim` untouched; no hash changed.
+- **Last Updated By:** Claude (implementer, Stage 1 aging fertility, M16)
+- **Current Goal:** Aging and sexes work, approved plan at the scratchpad `PLAN_AGING_SEX.md`. Stage 0 (sim version in saves) is committed. Stage 1 (aging fertility, asexual model kept) is built and verified but NOT committed: the lead reviews, commits and pushes. Next are Stage 2a (sexes), 2b (two-parent tree), 2c (inbreeding penalty); not started.
+- **Recent Changes (Stage 1):**
+  - `src/sim/types.ts`: `Tuning.fertility { startFraction, primeAge, declineAge, fertileUntil }`; `bot.adultAge` comment fixed.
+  - `src/content/tuning.ts`: `fertility` block, values 0.5 / 600 / 1800 / 2600 (the plan defaults; no retune needed). `src/content/version.ts`: `SIM_VERSION` 2.
+  - `src/sim/reproduction.ts`: pure `fertilityAt(age, tuning)`; `meetsReproductionNeeds` uses fertility > 0; `conceive` sets cooldown `ceil(reproCooldown / fertility)`. Newborn cooldown stays a full `reproCooldown`. `step.ts`, `brain.ts`: comments only.
+  - Harness: survey/CLI column `pAge` (`meanParentAge`, `parentAgeCell` in `survey.ts`).
+  - UI: `labels.ts` `fertilityLabel` + `FERTILITY_PHASE_LABEL`; Inspector rows Fertility, "Ready to breed in", Age child/adult/elder.
+  - Tests: new `tests/fertility.test.ts` (curve, gate, cooldown, neutral-control hash e1069c163c8bf330 for eden seed a at 3,000 ticks), `labels.test.ts`, `tests/survival.test.ts`.
+  - Docs: GAME_DESIGN (status, section 6 item 3a, M16 row, section 10, changelog with survey numbers), CLAUDE.md Sim flow, idea brief changelog.
 - **Active Decisions / Constraints:**
-  - SIM_VERSION stays 1 here; planned bumps: stage 1 -> 2, stage 2a -> 3, stage 2c -> 4 (stage 2b none).
-  - Persist still imports no content; the ui passes the number.
+  - Survey totals (a..j, 20k ticks): births 7,910 -> 7,202 (-9%); pop range 21/75 -> 23/77. `pAge` 1,031 -> 956 (cooldown effect is swamped by the end-of-life cutoff).
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** unchanged (heat ramp, "recent" window, legend position at 1280x800, eden feel check).
-- **Exact Next Step:** the lead reviews the diff, commits and pushes stage 0, then Stage 1 (aging fertility): first capture the 10-seed survey and the eden seed a hash at 3,000 ticks before any edit.
+- **Open Questions for the user:** unchanged from M15; plus whether the fertility numbers (200/600/1800/2600, 50% start) feel right.
+- **Exact Next Step:** the lead reviews the diff, commits and pushes Stage 1, then starts Stage 2a (sex in the sim) per the plan.

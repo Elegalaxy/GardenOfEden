@@ -310,7 +310,7 @@ export type Tuning = {
     healthRegen: number
     /** Age (ticks) at which a bot dies of old age. */
     maxAge: number
-    /** Age (ticks) before a bot may reproduce. */
+    /** Age (ticks) at which a bot becomes an adult: fertility starts here (see `Tuning.fertility`), and the map draws it full size. */
     adultAge: number
     /** Ticks a parent (and its child) must wait before reproducing. */
     reproCooldown: number
@@ -324,6 +324,19 @@ export type Tuning = {
     birthCost: number
     /** A child appears at most this far from its parent, in cells. */
     spawnSpread: number
+  }
+  /**
+   * Fertility by age (M16), a piecewise linear curve between 0 and 1: 0 below `bot.adultAge`,
+   * `startFraction` at adultAge rising to 1 at `primeAge`, 1 until `declineAge`, then falling to 0
+   * at `fertileUntil` and 0 after. A bot may breed only while fertility is above 0, and after a
+   * birth its cooldown is `bot.reproCooldown` divided by its fertility (rounded up), so the young
+   * and the old breed less often.
+   */
+  fertility: {
+    startFraction: number
+    primeAge: number
+    declineAge: number
+    fertileUntil: number
   }
   brain: {
     /** Utility of seeking food is this times the missing energy fraction. */

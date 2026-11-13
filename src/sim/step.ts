@@ -1,6 +1,6 @@
 // One tick of the world. Bots act in id order, and each bot goes through the
 // same phases: perceive -> memory -> decide -> act -> metabolise -> death check
-// (then, if it lived, a reproduction check). Bots never read each other, with one
+// (then, if it lived, a reproduction check: fertility, M16). Bots never read each other, with one
 // exception: a parent and its own child share what they remember (family.ts, M10).
 // Otherwise they only share nodes, so the order matters only when two bots reach
 // the same food in one tick (the lower id eats first).

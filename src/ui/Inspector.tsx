@@ -10,7 +10,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, formatPoint, formatTrait } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -104,7 +104,8 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   const { intent } = bot
   const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
   const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
-  const adult = bot.age >= tuning.bot.adultAge
+  const stage = bot.age < tuning.bot.adultAge ? 'child' : bot.age >= tuning.fertility.fertileUntil ? 'elder' : 'adult'
+  const fertility = fertilityLabel(bot.age, tuning)
   const children = world.bots.filter((other) => other.parentId === bot.id)
   // The bot is alive, so the population is never empty here.
   const mean = meanTraits(world.bots) ?? bot.traits
@@ -116,7 +117,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Meter label="Thirst" value={bot.thirst} max={tuning.bot.maxThirst} low={bot.thirst < 0.2 * tuning.bot.maxThirst} />
         <Meter label="Health" value={bot.health} max={tuning.bot.maxHealth} low={bot.health < 0.3 * tuning.bot.maxHealth} />
         <Row label="Age">
-          {bot.age} ticks · {adult ? 'adult' : 'child'}
+          {bot.age} ticks · {stage}
         </Row>
         <Row label="Generation">{bot.generation}</Row>
         <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>
@@ -132,7 +133,10 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
           )}
         </Row>
         <Row label="Position">{formatPoint(bot.x, bot.y)}</Row>
-        <Row label="Repro cooldown">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
+        <Row label="Fertility">
+          {fertility.percent}% · {FERTILITY_PHASE_LABEL[fertility.phase]}
+        </Row>
+        <Row label="Ready to breed in">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
         <Row label="Memory">
           {bot.memoryCount} / {tuning.memory.cap + tuning.memory.waterCap} nodes · {bot.learnedCount} from family
         </Row>

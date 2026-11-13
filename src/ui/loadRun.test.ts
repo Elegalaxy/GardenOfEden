@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
+import { SIM_VERSION } from '../content/index.ts'
 import { SAVE_VERSION } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { MISMATCH_WARNING, advance, mismatchWarning, cancelLoad, dispatch, exportSave, getSnapshot, resetWorld, setPaused, settled, startLoad } from './store.ts'
@@ -27,7 +28,7 @@ async function playSomeRun(): Promise<Save> {
 describe('exportSave', () => {
   it('holds the seed, preset, tick, commands and the state hash of the live world', async () => {
     const save = await playSomeRun()
-    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'load-src', presetId: 'eden', sim: 1, tick: 230 })
+    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'load-src', presetId: 'eden', sim: SIM_VERSION, tick: 230 })
     expect(save.commands).toHaveLength(3)
     expect(save.hash).toMatch(/^[0-9a-f]{16}$/)
     // The hash is of the worker's world (simHost.test.ts checks it against replayWorld); asking again gives the same save.
@@ -64,10 +65,10 @@ describe('startLoad', () => {
   })
 
   it('words a hash mismatch by the simulation version', async () => {
-    const save = { ...(await playSomeRun()), hash: '0000000000000000', sim: 2 }
+    const save = { ...(await playSomeRun()), hash: '0000000000000000', sim: SIM_VERSION + 1 }
     await startLoad(save)
-    expect(getSnapshot().saveNotice?.text).toContain('newer version of the simulation (rules v2, now v1)')
-    expect(mismatchWarning(1, 2)).toContain('older version of the simulation (rules v1, now v2)')
+    expect(getSnapshot().saveNotice?.text).toContain(`newer version of the simulation (rules v${SIM_VERSION + 1}, now v${SIM_VERSION})`)
+    expect(mismatchWarning(SIM_VERSION - 1, SIM_VERSION)).toContain(`older version of the simulation (rules v${SIM_VERSION - 1}, now v${SIM_VERSION})`)
     expect(mismatchWarning(3, 3)).toBe(MISMATCH_WARNING)
   })
 
