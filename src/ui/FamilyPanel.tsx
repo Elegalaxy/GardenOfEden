@@ -1,7 +1,8 @@
 // The family panel (M14): the lineage of one bot as HTML lists, so a keyboard and a screen reader
-// work with it. With a bot selected (or a record picked here) it shows that record, its ancestors as
-// a chain (nearest first) and its descendants as an open-and-close tree; with nothing selected it
-// shows the founder lines. Data comes from the worker's lineage records (`useFamilyData`), not from
+// work with it. With a bot selected (or a record picked here) it shows that record, its mother's
+// line as a chain (nearest first; each chip links to that bot's father), its father in the record
+// details, and its descendants as an open-and-close tree in which a child of two parents appears
+// once; with nothing selected it shows the founder lines (a bot belongs to the lines of both parents). Data comes from the worker's lineage records (`useFamilyData`), not from
 // the page's copy of the world, so dead bots appear too. The pure parts (rows, wording, keys) are in
 // familyMath.ts.
 //
@@ -73,8 +74,8 @@ function DetailRow({ label, children }: { label: string; children: ReactNode }) 
 
 /** The focus record: who it is, how it ended, and (opened) its birth traits and parent. */
 function FocusCard({ view, titleRef }: { view: FamilyView; titleRef: RefObject<HTMLHeadingElement | null> }) {
-  const { focus, ancestors } = view
-  const parent = ancestors[0]
+  const { focus, ancestors, father, fatherMissing } = view
+  const mother = ancestors[0]
   return (
     <div className="fam-focus">
       <h3 ref={titleRef} tabIndex={-1} className="fam-title">
@@ -88,17 +89,29 @@ function FocusCard({ view, titleRef }: { view: FamilyView; titleRef: RefObject<H
         <dl className="kv">
           <DetailRow label="Born">tick {formatCount(focus.born)}</DetailRow>
           <DetailRow label="Status">{statusText(focus)}</DetailRow>
-          <DetailRow label="Parent">
+          <DetailRow label="Mother">
             {focus.parentId === null ? (
               'none (founder or placed)'
-            ) : parent === undefined ? (
+            ) : mother === undefined ? (
               <>#{focus.parentId} · record not kept</>
             ) : (
-              <button type="button" className="link-button" onClick={() => focusRecord(parent.id)}>
-                #{parent.id}
+              <button type="button" className="link-button" onClick={() => focusRecord(mother.id)}>
+                #{mother.id}
               </button>
             )}
           </DetailRow>
+          <DetailRow label="Father">
+            {focus.fatherId === null ? (
+              'none (founder or placed)'
+            ) : father === null || fatherMissing ? (
+              <>#{focus.fatherId} · record not kept</>
+            ) : (
+              <button type="button" className="link-button" onClick={() => focusRecord(father.id)}>
+                #{father.id}
+              </button>
+            )}
+          </DetailRow>
+          <DetailRow label="Sex">{focus.sex === 'female' ? 'Female' : 'Male'}</DetailRow>
           <DetailRow label="Children">{formatCount(focus.children)} in its lifetime</DetailRow>
           {TRAIT_NAMES.map((name) => (
             <DetailRow key={name} label={`Birth ${TRAIT_LABEL[name].toLowerCase()}`}>
@@ -124,23 +137,23 @@ function Ancestors({ view, older, onOlder }: { view: FamilyView; older: boolean;
     chips.current[from]?.focus()
   }, [ancestors.length])
   return (
-    <section className="fam-section" aria-label="Ancestors">
-      <h4>Ancestors</h4>
+    <section className="fam-section" aria-label="Mother's line">
+      <h4>Mother's line</h4>
       {ancestors.length === 0 ? (
         <p className="empty fam-note">
-          {focus.parentId === null ? 'None: this bot has no parent (a founder, or one you placed).' : 'Its parent record is no longer kept.'}
+          {focus.parentId === null ? 'None: this bot has no mother (a founder, or one you placed).' : 'Its mother record is no longer kept.'}
         </p>
       ) : (
         <ol className="fam-chain">
           {ancestors.map((record, index) => (
-            <li key={record.id}>
+            <li key={record.id} className="fam-chain-item">
               <button
                 type="button"
                 className="fam-chip"
                 ref={(element) => {
                   chips.current[index] = element
                 }}
-                aria-label={`${index === 0 ? 'Parent' : `Ancestor ${index + 1}`}: ${rowLabel(record)}. Focus the tree here`}
+                aria-label={`${index === 0 ? 'Mother' : `Ancestor ${index + 1}`}: ${rowLabel(record)}. Focus the tree here`}
                 onClick={() => focusRecord(record.id)}
               >
                 <span className="fam-chip-id">#{record.id}</span>
@@ -148,6 +161,16 @@ function Ancestors({ view, older, onOlder }: { view: FamilyView; older: boolean;
                   <span aria-hidden="true">{statusGlyph(record)}</span> gen {record.generation}
                 </span>
               </button>
+              {record.fatherId !== null && (
+                <button
+                  type="button"
+                  className="secondary fam-father-button"
+                  aria-label={`Focus the tree on bot #${record.fatherId}, father of bot #${record.id}`}
+                  onClick={() => focusRecord(record.fatherId)}
+                >
+                  father #{record.fatherId}
+                </button>
+              )}
             </li>
           ))}
           {more > 0 && (
@@ -347,7 +370,7 @@ function FounderTable({ lines, titleRef }: { lines: FounderLine[]; titleRef: Ref
       <h3 ref={titleRef} tabIndex={-1} className="fam-title">
         Founder lines
       </h3>
-      <p className="fam-note">Founders and bots you placed, with everyone descended from them (in a long run, also the oldest line whose ancestors were pruned). Pick a line, or select a bot on the map.</p>
+      <p className="fam-note">Founders and bots you placed, with everyone descended from them (in a long run, also the oldest line whose ancestors were pruned). A bot belongs to the lines of both parents, so lines can overlap. Pick a line, or select a bot on the map.</p>
       {lines.length === 0 ? (
         <p className="empty fam-note">No lineage records yet.</p>
       ) : (

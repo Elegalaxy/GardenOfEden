@@ -49,10 +49,18 @@ export function childrenText(count: number): string {
   return count === 1 ? '1 child' : `${formatCount(count)} children`
 }
 
+/** "mother #4, father #9", "mother #4" (one parent), or "no parents" (a founder or a placed bot). Ids only: the records may be gone. */
+export function parentsText(record: Pick<LineageRecord, 'parentId' | 'fatherId'>): string {
+  const parts: string[] = []
+  if (record.parentId !== null) parts.push(`mother #${record.parentId}`)
+  if (record.fatherId !== null) parts.push(`father #${record.fatherId}`)
+  return parts.length === 0 ? 'no parents' : parts.join(', ')
+}
+
 /** One sentence for a screen reader: everything on the row. */
 export function rowLabel(record: LineageRecord): string {
   const died = record.died === null ? 'alive' : `${causeSentence(record.cause ?? undefined).toLowerCase()} at tick ${formatCount(record.died)}`
-  return `Bot #${record.id}, generation ${record.generation}, born at tick ${formatCount(record.born)}, ${died}, ${childrenText(record.children)}`
+  return `Bot #${record.id}, generation ${record.generation}, born at tick ${formatCount(record.born)}, ${died}, ${childrenText(record.children)}, ${parentsText(record)}`
 }
 
 /** How many older ancestors may exist beyond the ones listed (an upper bound: founders are generation 0), or 0 when the chain is complete. */
@@ -131,6 +139,8 @@ export const isOpen = (id: number, depth: number, options: Pick<FlattenOptions, 
  */
 export function flattenTree(descendants: readonly FamilyNode[], hiddenRoot: number, options: FlattenOptions): Flattened {
   const rows: TreeRow[] = []
+  // A record is listed once even if the data repeats it (a child of two parents): row keys must be unique.
+  const listed = new Set<number>()
   let omitted = 0
   const push = (row: TreeRow): void => {
     if (rows.length < options.maxRows) rows.push(row)
@@ -139,6 +149,8 @@ export function flattenTree(descendants: readonly FamilyNode[], hiddenRoot: numb
   const visit = (nodes: readonly FamilyNode[], hidden: number, depth: number, parentId: number | null): void => {
     for (const node of nodes) {
       const id = node.record.id
+      if (listed.has(id)) continue
+      listed.add(id)
       const expandable = node.children.length > 0 || node.hiddenChildren > 0
       const expanded = expandable && isOpen(id, depth, options)
       push({

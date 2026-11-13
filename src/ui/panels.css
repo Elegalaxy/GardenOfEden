@@ -1063,6 +1063,25 @@ button.log-button[aria-pressed='true'] {
   font-weight: 400;
 }
 
+.trait-sexes {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  line-height: 1.3;
+}
+
+.trait-sexes-label {
+  color: var(--text-muted);
+}
+
+.trait-sexes-value {
+  color: var(--text-strong);
+  font-weight: 650;
+}
+
+.trait-sexes-empty {
+  color: var(--text-muted);
+}
+
 .trait-table {
   width: 100%;
   border-collapse: collapse;
@@ -1680,6 +1699,16 @@ button.log-button[aria-pressed='true'] {
 
 .fam-more-button {
   padding-inline: 10px;
+}
+
+.fam-chain-item {
+  display: flex;
+  gap: 2px;
+}
+
+.fam-father-button {
+  padding-inline: 8px;
+  font-size: 0.8rem;
 }
 
 .fam-tree-box {

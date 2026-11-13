@@ -367,6 +367,70 @@ describe('familyView and founderLines', () => {
   })
 })
 
+describe('familyView and founderLines with two parents', () => {
+  //  1 (dead) ──┬── 3 (alive) ──┬── 5 (alive)      mother of 3 is 1, father of 3 is 2
+  //  2 (dead) ──┘               │                  mother of 5 is 3, father of 5 is 4
+  //  1 ────────── 4 (alive) ────┘
+  function pair(): World {
+    return handBuilt([rec(1, null, 5), rec(2, null, 6), { ...rec(3, 1), fatherId: 2 }, rec(4, 1), { ...rec(5, 3), fatherId: 4 }], [3, 4, 5])
+  }
+  const shape = (nodes: ReturnType<typeof familyView> extends infer V ? (V extends { descendants: infer D } ? D : never) : never): unknown[] =>
+    nodes.map((n) => [n.record.id, shape(n.children)])
+
+  it('gives the focus its father, and keeps the mother line as the ancestors', () => {
+    const view = familyView(pair(), 5, 5, 0, 10)!
+    expect(ids(view.ancestors)).toEqual([3, 1])
+    expect(view.father?.id).toBe(4)
+    expect(view.fatherMissing).toBe(false)
+    expect(view.ancestors[0]!.fatherId).toBe(2)
+    const founder = familyView(pair(), 1, 5, 0, 10)!
+    expect(founder.father).toBeNull()
+    expect(founder.fatherMissing).toBe(false)
+  })
+
+  it('reports a father whose record is gone', () => {
+    const world = pair()
+    world.lineage = world.lineage.filter((r) => r.id !== 4)
+    const view = familyView(world, 5, 5, 0, 10)!
+    expect(view.father).toBeNull()
+    expect(view.fatherMissing).toBe(true)
+  })
+
+  it('lists a child of two parents once, and counts it once', () => {
+    const view = familyView(pair(), 1, 0, 5, 100)!
+    // 5 hangs under 3 (the first reached: equal weight, lowest id) and not again under 4.
+    expect(shape(view.descendants)).toEqual([[3, [[5, []]]], [4, []]])
+    expect(view.totalDescendants).toBe(3)
+    expect(view.livingDescendants).toBe(3)
+    expect(view.hiddenChildren).toBe(0)
+    const viaFather = familyView(pair(), 2, 0, 5, 100)!
+    expect(shape(viaFather.descendants)).toEqual([[3, [[5, []]]]])
+    expect(viaFather.totalDescendants).toBe(2)
+  })
+
+  it('shows a child of two parents under its father too', () => {
+    const view = familyView(pair(), 4, 0, 5, 100)!
+    expect(shape(view.descendants)).toEqual([[5, []]])
+    expect(view.totalDescendants).toBe(1)
+  })
+
+  it('makes lines overlap: each founder counts the shared descendants', () => {
+    expect(founderLines(pair()).map((l) => [l.record.id, l.living, l.total])).toEqual([
+      [1, 3, 3],
+      [2, 2, 2],
+    ])
+  })
+
+  it('is a root only when no parent is kept', () => {
+    const world = pair()
+    // 3 loses its mother (1) but keeps its father (2): still part of line 2, not a root. 4 loses its mother: a root.
+    world.lineage = world.lineage.filter((r) => r.id !== 1)
+    expect(founderLines(world).map((l) => l.record.id)).toEqual([2, 4])
+    world.lineage = world.lineage.filter((r) => r.id !== 2)
+    expect(founderLines(world).map((l) => l.record.id)).toEqual([3, 4])
+  })
+})
+
 describe('over a long run', () => {
   it.each(['a', 'b'])('seed %s keeps the store within maxRecords and never loses a living bot', (seed) => {
     const founders = foundersIn(edenPreset)
@@ -381,7 +445,8 @@ describe('over a long run', () => {
     // Extinct branches go before ancestry: what pruning keeps is mostly the recent past.
     const lines = founderLines(world)
     expect(lines.length).toBeGreaterThan(0)
-    expect(lines.reduce((sum, l) => sum + 1 + l.total, 0)).toBe(world.lineage.length)
+    // Lines can overlap (a child belongs to both parents' lines), so the lines cover at least every record.
+    expect(lines.reduce((sum, l) => sum + 1 + l.total, 0)).toBeGreaterThanOrEqual(world.lineage.length)
   }, SLOW)
 
   it('prunes in batches: a small store drops to pruneTo each time it passes maxRecords', () => {

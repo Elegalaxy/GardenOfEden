@@ -373,7 +373,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
         ctx.restore()
       }
       if (bot !== undefined) {
-        // Family ties (M10): a dotted line to the living parent and each living child. The inspector
+        // Family ties (M10): a dotted line to the living mother, the living father and each living child. The inspector
         // names them too, so the line is never the only cue.
         const p = botPosition(bot, alpha)
         ctx.save()
@@ -383,7 +383,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
         ctx.setLineDash([2, 4])
         ctx.beginPath()
         for (const other of world.bots) {
-          if (other.id !== bot.parentId && other.parentId !== bot.id) continue
+          if (other.id !== bot.parentId && other.id !== bot.fatherId && other.parentId !== bot.id && other.fatherId !== bot.id) continue
           const q = botPosition(other, alpha)
           ctx.moveTo(px(p.x), py(p.y))
           ctx.lineTo(px(q.x), py(q.y))

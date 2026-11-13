@@ -29,11 +29,15 @@
 // `children` is a lifetime count and is not lowered when a child record is pruned, so it can exceed
 // the number of kept child records.
 //
-// Read-only queries for the family-tree view (no UI yet):
-//   familyView      a record, its ancestors (nearest first), and its descendants as a depth-, width-
-//                   and size-limited tree. Descendant counts cover the kept records only.
-//   founderLines    the roots of the forest: records with `parentId` null, or whose parent record is
-//                   no longer kept, each with its living and total descendant counts.
+// Read-only queries for the family-tree view. With two parents the family is a graph (a DAG: a child
+// has a larger id than both parents), so a child is listed under its mother and under its father:
+//   familyView      a record, its mother line (ancestors, nearest first), its father, and its
+//                   descendants as a depth-, width- and size-limited tree in which every record
+//                   appears once (under the first parent reached). Descendant counts cover the kept
+//                   records only and count each record once.
+//   founderLines    the roots of the forest: records none of whose parents is kept (parentId and
+//                   fatherId each null or pruned), each with its living and total descendant counts.
+//                   Lines can overlap: a child of two lines counts in both.
 // Both count descendants without the record itself.
 
 import type { DeathCause, LineageRecord, Sex, Traits, Tuning, World } from './types.ts'
@@ -48,15 +52,19 @@ export type FamilyNode = {
 
 export type FamilyView = {
   focus: LineageRecord
-  /** Parent first, then grandparent, and so on, at most `up` of them. */
+  /** The mother line: mother first, then her mother, and so on, at most `up` of them (each record's `fatherId` leads to the other side). */
   ancestors: LineageRecord[]
   /** True when the walk up ended because an ancestor's record is no longer kept (not because of the `up` limit). */
   ancestorsMissing: boolean
+  /** The focus's father record, or null (no father, or his record is no longer kept: see `fatherMissing`). */
+  father: LineageRecord | null
+  /** True when the focus has a `fatherId` but that record is no longer kept. */
+  fatherMissing: boolean
   /** Kept children of the focus that `descendants` leaves out (too many siblings, `down` is 0, or out of room). */
   hiddenChildren: number
   /** The focus's kept children as a tree to depth `down`; shown children are those with the most living descendants first, then the lowest id. */
   descendants: FamilyNode[]
-  /** Kept descendants of the focus still alive (the focus itself not counted). */
+  /** Kept descendants of the focus still alive (the focus itself not counted; each record once). */
   livingDescendants: number
   /** All kept descendants of the focus (the focus itself not counted). */
   totalDescendants: number
@@ -180,23 +188,48 @@ export function pruneLineage(world: World, tuning: Tuning): void {
   world.lineagePruned += removed.size
 }
 
-/** Kept children of every record that has any, by parent id. Child lists are in ascending id order. */
+/**
+ * Kept children of every record that has any, by parent id. A record is listed under its mother
+ * (`parentId`) and under its father (`fatherId`), so the family is a graph, not a tree. Child lists
+ * are in ascending id order.
+ */
 function childIndex(world: World): Map<number, LineageRecord[]> {
   const index = new Map<number, LineageRecord[]>()
-  for (const record of world.lineage) {
-    if (record.parentId === null) continue
-    const list = index.get(record.parentId)
-    if (list === undefined) index.set(record.parentId, [record])
+  const add = (parent: number, record: LineageRecord): void => {
+    const list = index.get(parent)
+    if (list === undefined) index.set(parent, [record])
     else list.push(record)
+  }
+  for (const record of world.lineage) {
+    if (record.parentId !== null) add(record.parentId, record)
+    if (record.fatherId !== null && record.fatherId !== record.parentId) add(record.fatherId, record)
   }
   return index
 }
 
+/** Every kept record below `root` (the root itself not included), each once, found with a visited set. */
+function descendantsOf(root: LineageRecord, index: ReadonlyMap<number, LineageRecord[]>): LineageRecord[] {
+  const seen = new Set<number>([root.id])
+  const found: LineageRecord[] = []
+  const stack: LineageRecord[] = [root]
+  while (stack.length > 0) {
+    const record = stack.pop() as LineageRecord
+    for (const child of index.get(record.id) ?? []) {
+      if (seen.has(child.id)) continue
+      seen.add(child.id)
+      found.push(child)
+      stack.push(child)
+    }
+  }
+  return found
+}
+
 /**
- * The family around one bot. `up` is how many ancestors to list, `down` the tree depth below the
- * focus (0 = no descendants shown), `maxNodes` the most descendant nodes in the tree and
- * `maxChildren` the most under any one node. Nodes are added level by level, so a tight `maxNodes`
- * cuts the deepest generation first. Null when the focus has no record.
+ * The family around one bot. `up` is how many ancestors to list (the mother line), `down` the tree
+ * depth below the focus (0 = no descendants shown), `maxNodes` the most descendant nodes in the tree
+ * and `maxChildren` the most under any one node. Nodes are added level by level, so a tight `maxNodes`
+ * cuts the deepest generation first. A child of two kept parents appears once in the tree, under
+ * whichever parent is reached first. Null when the focus has no record.
  */
 export function familyView(
   world: World,
@@ -221,43 +254,39 @@ export function familyView(
     ancestors.push(parent)
     cursor = parent
   }
+  const father = focus.fatherId === null ? undefined : findRecord(world, focus.fatherId)
+  const fatherMissing = focus.fatherId !== null && father === undefined
 
-  // Descendant counts for the whole subtree, bottom-up (a child always has a larger id than its parent).
+  // Descendant counts, bottom-up (a child always has a larger id than either parent). The focus's own
+  // counts are exact (a visited set); the per-node counts that rank siblings add up the children's
+  // counts, so a record reachable through two children is counted twice there (ranking only).
   const index = childIndex(world)
-  const subtree: LineageRecord[] = []
-  const stack: LineageRecord[] = [focus]
-  while (stack.length > 0) {
-    const record = stack.pop() as LineageRecord
-    subtree.push(record)
-    for (const child of index.get(record.id) ?? []) stack.push(child)
-  }
-  subtree.sort((a, b) => b.id - a.id)
+  const subtree = descendantsOf(focus, index)
+  const livingDescendants = subtree.reduce((sum, r) => sum + (r.died === null ? 1 : 0), 0)
+  const order = [focus, ...subtree].sort((a, b) => b.id - a.id)
   const livingBelow = new Map<number, number>()
-  const totalBelow = new Map<number, number>()
-  for (const record of subtree) {
+  for (const record of order) {
     let living = 0
-    let total = 0
-    for (const child of index.get(record.id) ?? []) {
-      living += (child.died === null ? 1 : 0) + (livingBelow.get(child.id) ?? 0)
-      total += 1 + (totalBelow.get(child.id) ?? 0)
-    }
+    for (const child of index.get(record.id) ?? []) living += (child.died === null ? 1 : 0) + (livingBelow.get(child.id) ?? 0)
     livingBelow.set(record.id, living)
-    totalBelow.set(record.id, total)
   }
 
   // The tree, one level at a time. Siblings are ranked by living members of their branch (the child included).
+  // `seen` makes every record appear once: a child already placed under another parent is skipped here.
   const weight = (r: LineageRecord): number => (livingBelow.get(r.id) ?? 0) + (r.died === null ? 1 : 0)
+  const seen = new Set<number>([focus.id])
   const root: FamilyNode = { record: focus, children: [], hiddenChildren: 0 }
   let budget = Math.max(0, maxNodes)
   let level: FamilyNode[] = [root]
   for (let depth = 0; depth <= down; depth += 1) {
     const nextLevel: FamilyNode[] = []
     for (const node of level) {
-      const kept = index.get(node.record.id) ?? []
+      const kept = (index.get(node.record.id) ?? []).filter((r) => !seen.has(r.id))
       const ordered = [...kept].sort((a, b) => weight(b) - weight(a) || a.id - b.id)
       const canShow = depth < down ? Math.min(ordered.length, Math.max(0, maxChildren), budget) : 0
       for (let i = 0; i < canShow; i += 1) {
         const child: FamilyNode = { record: ordered[i], children: [], hiddenChildren: 0 }
+        seen.add(ordered[i].id)
         node.children.push(child)
         nextLevel.push(child)
       }
@@ -272,35 +301,32 @@ export function familyView(
     focus,
     ancestors,
     ancestorsMissing,
+    father: father ?? null,
+    fatherMissing,
     hiddenChildren: root.hiddenChildren,
     descendants: root.children,
-    livingDescendants: livingBelow.get(focus.id) ?? 0,
-    totalDescendants: totalBelow.get(focus.id) ?? 0,
+    livingDescendants,
+    totalDescendants: subtree.length,
   }
 }
 
 /**
- * The roots of the forest: every record with `parentId` null or whose parent record is not kept,
- * with its descendant counts. Sorted by living descendants (most first), then by id.
+ * The roots of the forest: every record none of whose parents is kept (`parentId` and `fatherId` each
+ * null or pruned), with its descendant counts. Sorted by living descendants (most first), then by id.
+ * Lines can overlap: a child of two lines counts in both, so the totals can add up to more than the
+ * number of records.
  */
 export function founderLines(world: World): FounderLine[] {
   const records = world.lineage
-  const living = new Array<number>(records.length).fill(0)
-  const total = new Array<number>(records.length).fill(0)
+  const index = childIndex(world)
   const lines: FounderLine[] = []
-  const rootIndexes: number[] = []
-  // Newest first: a child is added to its parent's counts after the child's own counts are complete.
-  for (let i = records.length - 1; i >= 0; i -= 1) {
-    const record = records[i]
-    const parentIndex = record.parentId === null ? -1 : indexOfId(records, record.parentId)
-    if (parentIndex < 0) {
-      rootIndexes.push(i)
-      continue
-    }
-    living[parentIndex] += (record.died === null ? 1 : 0) + living[i]
-    total[parentIndex] += 1 + total[i]
+  for (const record of records) {
+    const motherKept = record.parentId !== null && indexOfId(records, record.parentId) >= 0
+    const fatherKept = record.fatherId !== null && indexOfId(records, record.fatherId) >= 0
+    if (motherKept || fatherKept) continue
+    const below = descendantsOf(record, index)
+    lines.push({ record, living: below.reduce((sum, r) => sum + (r.died === null ? 1 : 0), 0), total: below.length })
   }
-  for (const i of rootIndexes) lines.push({ record: records[i], living: living[i], total: total[i] })
   return lines.sort((a, b) => b.living - a.living || a.record.id - b.record.id)
 }
 

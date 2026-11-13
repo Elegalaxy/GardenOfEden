@@ -22,6 +22,7 @@ import {
   indentCap,
   indentLevels,
   olderAncestors,
+  parentsText,
   resolveFocus,
   rowLabel,
   shouldRequery,
@@ -80,8 +81,37 @@ describe('status wording', () => {
   })
 
   it('reads a whole row aloud, without colour', () => {
-    expect(rowLabel(record(7, 3, { generation: 2, born: 500, children: 1 }))).toBe('Bot #7, generation 2, born at tick 500, alive, 1 child')
+    expect(rowLabel(record(7, 3, { generation: 2, born: 500, children: 1 }))).toBe('Bot #7, generation 2, born at tick 500, alive, 1 child, mother #3')
     expect(rowLabel(record(8, 3, { died: 900, cause: 'thirst' }))).toContain('died of thirst at tick 900')
+  })
+})
+
+describe('two parents', () => {
+  it('words the parents of a record', () => {
+    expect(parentsText(record(1, null))).toBe('no parents')
+    expect(parentsText(record(2, 1))).toBe('mother #1')
+    expect(parentsText(record(3, 1, { fatherId: 2 }))).toBe('mother #1, father #2')
+    expect(rowLabel(record(3, 1, { fatherId: 2 }))).toContain('mother #1, father #2')
+  })
+
+  it('lists a record that two parents both carry only once, with unique keys', () => {
+    const shared = record(5, 3, { fatherId: 4 })
+    const under3 = node(record(3, 1), [node(shared)])
+    const under4 = node(record(4, 1), [node(shared)])
+    const { rows } = flattenTree([under3, under4], 0, { ...opts, defaultDepth: 9 })
+    const listed = nodeRows(rows).map((row) => row.id)
+    expect(listed).toEqual([3, 5, 4])
+    expect(new Set(listed).size).toBe(listed.length)
+  })
+
+  it('builds unique rows from a real view in which a child has two parents in the tree', () => {
+    const all = [record(1, null), record(2, null), record(3, 1, { fatherId: 2 }), record(4, 1), record(5, 3, { fatherId: 4 })]
+    const world = replayWorld('a', edenPreset, rules, [], 0)
+    world.lineage = all
+    const view = familyView(world, 1, 0, 8, 100)!
+    const { rows } = flattenTree(view.descendants, view.hiddenChildren, { ...opts, defaultDepth: 99 })
+    const listed = nodeRows(rows).map((row) => row.id)
+    expect(listed.sort()).toEqual([3, 4, 5])
   })
 })
 

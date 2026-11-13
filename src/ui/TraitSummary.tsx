@@ -14,11 +14,23 @@ import { fractionOf, traitNumber } from './traitMath.ts'
 export function TraitSummary() {
   const { world, population } = useWorldStore()
   const stats = traitStats(world.bots)
+  const females = world.bots.filter((bot) => bot.sex === 'female').length
+  const males = world.bots.length - females
   return (
     <section className="panel trait-summary" aria-label="Population traits">
       <h2>
         Population traits <span className="trait-count figure">{population} alive</span>
       </h2>
+      <p className="trait-sexes">
+        <span className="trait-sexes-label">Females / Males</span>{' '}
+        {population === 0 ? (
+          <span className="trait-sexes-empty">none alive</span>
+        ) : (
+          <span className="figure trait-sexes-value">
+            {females} / {males}
+          </span>
+        )}
+      </p>
       <table className="trait-table">
         <thead>
           <tr>
