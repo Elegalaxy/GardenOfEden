@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { edenPreset, nodeDefs, rules, tuning } from '../src/content/index.ts'
+import { SIM_VERSION, edenPreset, nodeDefs, rules, tuning } from '../src/content/index.ts'
 import { EVENT_KINDS, PLACEABLE_KINDS, decodeSave, encodeSave, makeSave } from '../src/persist/save.ts'
 import type { Save } from '../src/persist/save.ts'
 import { decodeShare, encodeShare } from '../src/persist/share.ts'
@@ -48,7 +48,7 @@ const PLAN: Timed[] = [
 const END_TICK = 1800 // the last command sits exactly on the saved tick
 
 function saveOf(world: World): Save {
-  return makeSave(world, edenPreset.id, stateHash(world))
+  return makeSave(world, edenPreset.id, stateHash(world), SIM_VERSION)
 }
 
 describe('save format and content', () => {

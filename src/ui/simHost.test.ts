@@ -71,7 +71,7 @@ describe('advance and commands', () => {
     const replayed = replayWorld('a', edenPreset, rules, host.world.commands, host.world.tick)
     expect(save.hash).toBe(stateHash(replayed))
     expect(save.hash).toBe(stateHash(host.world))
-    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'a', presetId: 'eden', tick: 110 })
+    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'a', presetId: 'eden', sim: 1, tick: 110 })
     expect(save.commands).toHaveLength(3)
   })
 
@@ -298,7 +298,7 @@ describe('load', () => {
   })
 
   it('keeps the old world when it is cancelled, part-way through', () => {
-    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', tick: 500_000, hash: '0000000000000000', commands: [] }
+    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', sim: 1, tick: 500_000, hash: '0000000000000000', commands: [] }
     const host = makeHost({ loadSliceMs: 0 })
     advance(host, 25)
     const before = stateHash(host.world)
@@ -391,7 +391,7 @@ describe('createHostRunner', () => {
     expect(sent.map((m) => m.type)).toEqual(['frame'])
     expect(queue).toHaveLength(0)
 
-    send({ type: 'load', save: { version: SAVE_VERSION, seed: 'r', presetId: 'eden', tick: 2000, hash: '0000000000000000', commands: [] } })
+    send({ type: 'load', save: { version: SAVE_VERSION, seed: 'r', presetId: 'eden', sim: 1, tick: 2000, hash: '0000000000000000', commands: [] } })
     expect(queue).toHaveLength(1) // one pump scheduled, not one per message
     queue.shift()!()
     queue.shift()!()

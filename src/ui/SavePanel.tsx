@@ -13,6 +13,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { SIM_VERSION } from '../content/index.ts'
 import { MAX_SAVE_CHARS, decodeSave, encodeSave, makeSave, saveFileName } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { encodeShare } from '../persist/share.ts'
@@ -50,7 +51,7 @@ export function SavePanel() {
   const [shareFit, setShareFit] = useState<ShareEncoding | null>(null)
   useEffect(() => {
     let current = true
-    void encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH)).then(
+    void encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH, SIM_VERSION)).then(
       (fit) => current && setShareFit(fit),
       () => undefined,
     )

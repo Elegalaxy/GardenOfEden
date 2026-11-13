@@ -33,7 +33,7 @@
 // `settled()` to wait until every earlier message has been answered.
 
 import { useSyncExternalStore } from 'react'
-import { edenPreset, rules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, rules } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
@@ -79,6 +79,17 @@ export type LoadOutcome =
   | { status: 'failed'; message: string }
 
 export const MISMATCH_WARNING = 'This save was made by a different version of the simulation; the run may differ.'
+
+/** Warning for a hash mismatch, worded by how the save's simulation version compares with this one. */
+export function mismatchWarning(saveSim: number, current: number = SIM_VERSION): string {
+  if (saveSim < current) {
+    return `This save was made by an older version of the simulation (rules v${saveSim}, now v${current}); the run may differ.`
+  }
+  if (saveSim > current) {
+    return `This save was made by a newer version of the simulation (rules v${saveSim}, now v${current}); the run may differ.`
+  }
+  return MISMATCH_WARNING
+}
 
 export type WorldSnapshot = {
   /** The page's copy of the world (see viewWorld.ts); updated in place. */
@@ -130,7 +141,7 @@ let notice: Notice | null = null
 let noticeSeq = 0
 let saveNotice: SaveNotice | null = null
 let saveNoticeSeq = 0
-let load: (LoadProgress & { done: (outcome: LoadOutcome) => void }) | null = null
+let load: (LoadProgress & { sim: number; done: (outcome: LoadOutcome) => void }) | null = null
 let heatLayer: HeatLayer | null = null
 let heatRange: HeatRange = 'all'
 let heat: HeatSnapshot | null = null
@@ -270,7 +281,7 @@ function onLoadDone(outcome: Extract<FromWorker, { type: 'loadDone' }>['outcome'
       due = 0
       const commands = `${outcome.commandCount} command${outcome.commandCount === 1 ? '' : 's'}`
       const loaded = `Loaded seed "${outcome.seed}" at tick ${outcome.tick} with ${commands}. The run is paused.`
-      reportSave(outcome.hashMatches ? 'ok' : 'warn', outcome.hashMatches ? loaded : `${loaded} ${MISMATCH_WARNING}`)
+      reportSave(outcome.hashMatches ? 'ok' : 'warn', outcome.hashMatches ? loaded : `${loaded} ${mismatchWarning(current.sim)}`)
       current.done({ status: 'loaded', hashMatches: outcome.hashMatches })
       return
     }
@@ -605,7 +616,7 @@ export function startLoad(save: Save): Promise<LoadOutcome> {
   return new Promise<LoadOutcome>((resolve) => {
     saveNotice = null
     due = 0
-    load = { tick: 0, target: save.tick, done: resolve }
+    load = { tick: 0, target: save.tick, sim: save.sim, done: resolve }
     client.post({ type: 'load', save })
     publish()
   })

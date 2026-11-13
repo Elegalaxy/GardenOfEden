@@ -20,7 +20,7 @@
 //    the selected bot's memory) ride along at most about four times a second, when asked for,
 //    and with every answer to a command, a selection or a new run (see protocol.ts).
 
-import { edenPreset, findPreset, rules as defaultRules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, findPreset, rules as defaultRules } from '../content/index.ts'
 import { makeSave } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { applyCommand } from '../sim/commands.ts'
@@ -260,7 +260,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
         return [{ type: 'loadDone', outcome: { status: 'cancelled' } }]
       }
       case 'exportSave':
-        return [{ type: 'save', reqId: msg.reqId, save: makeSave(world, presetId, stateHash(world)) }]
+        return [{ type: 'save', reqId: msg.reqId, save: makeSave(world, presetId, stateHash(world), SIM_VERSION) }]
       case 'select':
         selectedId = typeof msg.id === 'number' ? msg.id : null
         return [{ type: 'frame', frame: frame(true) }]

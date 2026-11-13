@@ -3,7 +3,10 @@
 // the state hash it had there. Loading replays the commands up to `tick` and
 // compares the hash (a mismatch means the simulation changed since the save).
 //
-//   { version: 1, seed, presetId, tick, hash, commands: [{ tick, cmd }, ...] }
+//   { version: 2, seed, presetId, sim, tick, hash, commands: [{ tick, cmd }, ...] }
+//
+// `sim` is the simulation (rules) version that made the save (`SIM_VERSION` in content);
+// the ui compares it with the current one to word a hash mismatch.
 //
 // Everything read from a file, a link or localStorage is untrusted. `decodeSave`
 // parses with JSON.parse only (nothing is evaluated), checks every field and
@@ -17,7 +20,10 @@
 
 import type { Command, EventKind, NodeKind } from '../sim/types.ts'
 
-export const SAVE_VERSION = 1
+export const SAVE_VERSION = 2
+
+/** Highest simulation version a save may claim. */
+export const MAX_SIM_VERSION = 1_000_000
 
 /** Longest save text accepted, in characters (about 5,000 commands fit). */
 export const MAX_SAVE_CHARS = 1_000_000
@@ -38,6 +44,8 @@ export type Save = {
   version: number
   seed: string
   presetId: string
+  /** Simulation (rules) version that made the save, 1 to MAX_SIM_VERSION. */
+  sim: number
   /** The tick the run had reached when saved. */
   tick: number
   /** `stateHash` of the world at `tick`: 16 lowercase hex characters. */
@@ -62,7 +70,7 @@ export type SaveResult = { ok: true; save: Save } | { ok: false; error: SaveErro
 const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
 const PRESET_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
 const HASH_PATTERN = /^[0-9a-f]{16}$/
-const TOP_KEYS = ['version', 'seed', 'presetId', 'tick', 'hash', 'commands']
+const TOP_KEYS = ['version', 'seed', 'presetId', 'sim', 'tick', 'hash', 'commands']
 
 function fail(code: SaveErrorCode, message: string): { ok: false; error: SaveError } {
   return { ok: false, error: { code, message } }
@@ -117,8 +125,12 @@ function readCommand(raw: unknown): Command | null {
   }
 }
 
-/** Hook for older formats. Version 1 is the first, so nothing to upgrade yet. */
+/** Hook for older formats. Version 1 had no `sim` field; it was made by simulation version 1. */
 function upgradeSave(raw: Record<string, unknown>): Record<string, unknown> {
+  if (raw.version === 1) {
+    const { version: _version, seed, presetId, ...rest } = raw
+    return { version: 2, seed, presetId, sim: 1, ...rest }
+  }
   return raw
 }
 
@@ -142,6 +154,9 @@ export function validateSave(value: unknown): SaveResult {
   }
   if (typeof raw.presetId !== 'string' || !PRESET_PATTERN.test(raw.presetId)) {
     return fail('bad-field', 'The save has an invalid preset name.')
+  }
+  if (typeof raw.sim !== 'number' || !Number.isInteger(raw.sim) || raw.sim < 1 || raw.sim > MAX_SIM_VERSION) {
+    return fail('bad-field', 'The save has an invalid simulation version.')
   }
   if (!isTick(raw.tick)) {
     return fail('bad-field', `The save has an invalid tick (a whole number from 0 to ${MAX_TICK}).`)
@@ -177,7 +192,15 @@ export function validateSave(value: unknown): SaveResult {
 
   return {
     ok: true,
-    save: { version: SAVE_VERSION, seed: raw.seed, presetId: raw.presetId, tick: raw.tick, hash: raw.hash, commands },
+    save: {
+      version: SAVE_VERSION,
+      seed: raw.seed,
+      presetId: raw.presetId,
+      sim: raw.sim,
+      tick: raw.tick,
+      hash: raw.hash,
+      commands,
+    },
   }
 }
 
@@ -202,6 +225,7 @@ export function encodeSave(save: Save): string {
     version: save.version,
     seed: save.seed,
     presetId: save.presetId,
+    sim: save.sim,
     tick: save.tick,
     hash: save.hash,
     commands: save.commands.map((entry) => ({ tick: entry.tick, cmd: entry.cmd })),
@@ -213,11 +237,13 @@ export function makeSave(
   run: { seed: string; tick: number; commands: readonly SavedCommand[] },
   presetId: string,
   hash: string,
+  sim: number,
 ): Save {
   return {
     version: SAVE_VERSION,
     seed: run.seed,
     presetId,
+    sim,
     tick: run.tick,
     hash,
     commands: run.commands.map((entry) => ({ tick: entry.tick, cmd: { ...entry.cmd } })),

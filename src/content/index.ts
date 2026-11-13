@@ -7,5 +7,6 @@ import { tuning } from './tuning.ts'
 export { nodeDefs } from './nodeDefs.ts'
 export { blankPreset, edenPreset, findPreset, presets } from './presets.ts'
 export { tuning } from './tuning.ts'
+export { SIM_VERSION } from './version.ts'
 
 export const rules: Rules = { tuning, nodeDefs }

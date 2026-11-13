@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { SAVE_VERSION } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
-import { MISMATCH_WARNING, advance, cancelLoad, dispatch, exportSave, getSnapshot, resetWorld, setPaused, settled, startLoad } from './store.ts'
+import { MISMATCH_WARNING, advance, mismatchWarning, cancelLoad, dispatch, exportSave, getSnapshot, resetWorld, setPaused, settled, startLoad } from './store.ts'
 
 // Loading is the worker's job (rebuild in slices, check the hash, swap only when complete); the store shows it.
 // The tests run it through the inline client.
@@ -27,7 +27,7 @@ async function playSomeRun(): Promise<Save> {
 describe('exportSave', () => {
   it('holds the seed, preset, tick, commands and the state hash of the live world', async () => {
     const save = await playSomeRun()
-    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'load-src', presetId: 'eden', tick: 230 })
+    expect(save).toMatchObject({ version: SAVE_VERSION, seed: 'load-src', presetId: 'eden', sim: 1, tick: 230 })
     expect(save.commands).toHaveLength(3)
     expect(save.hash).toMatch(/^[0-9a-f]{16}$/)
     // The hash is of the worker's world (simHost.test.ts checks it against replayWorld); asking again gives the same save.
@@ -61,6 +61,14 @@ describe('startLoad', () => {
     expect(await startLoad(save)).toEqual({ status: 'loaded', hashMatches: false })
     expect(getSnapshot().saveNotice).toMatchObject({ level: 'warn' })
     expect(getSnapshot().saveNotice?.text).toContain(MISMATCH_WARNING)
+  })
+
+  it('words a hash mismatch by the simulation version', async () => {
+    const save = { ...(await playSomeRun()), hash: '0000000000000000', sim: 2 }
+    await startLoad(save)
+    expect(getSnapshot().saveNotice?.text).toContain('newer version of the simulation (rules v2, now v1)')
+    expect(mismatchWarning(1, 2)).toContain('older version of the simulation (rules v1, now v2)')
+    expect(mismatchWarning(3, 3)).toBe(MISMATCH_WARNING)
   })
 
   it('gives the loaded run a new run id, and no selection', async () => {
@@ -105,7 +113,7 @@ describe('startLoad', () => {
   })
 
   it('can be cancelled, and then the old run is untouched', async () => {
-    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', tick: 500_000, hash: '0000000000000000', commands: [] }
+    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', sim: 1, tick: 500_000, hash: '0000000000000000', commands: [] }
     resetWorld('keep-me')
     await advance(25, 1)
     const before = await exportSave()
@@ -125,7 +133,7 @@ describe('startLoad', () => {
   })
 
   it('shows progress, and can be cancelled part-way, after some slices have run', async () => {
-    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', tick: 500_000, hash: '0000000000000000', commands: [] }
+    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', sim: 1, tick: 500_000, hash: '0000000000000000', commands: [] }
     resetWorld('keep-me')
     await settled()
     const runId = getSnapshot().runId

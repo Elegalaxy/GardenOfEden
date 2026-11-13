@@ -240,7 +240,7 @@ describe('load', () => {
   })
 
   it('keeps the old grid when the load is cancelled', () => {
-    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', tick: 500_000, hash: '0000000000000000', commands: [] }
+    const long: Save = { version: SAVE_VERSION, seed: 'long-run', presetId: 'eden', sim: 1, tick: 500_000, hash: '0000000000000000', commands: [] }
     const host = createSimHost({ now: clock().now, loadSliceMs: 0 })
     advance(host, 50)
     const before = { traffic: host.heat.total.traffic.slice(), recent: host.heat.recent.traffic.slice(), tick: host.heat.tick }
@@ -260,7 +260,7 @@ describe('load', () => {
     const host = createSimHost({ now: clock().now })
     advance(host, 40)
     const before = host.heat.total.traffic.slice()
-    const bad: Save = { version: SAVE_VERSION, seed: 'a', presetId: 'eden', tick: 50, hash: '0000000000000000', commands: [{ tick: 5, cmd: { type: 'placeNode', kind: 'resource', x: 9999, y: 1 } }] }
+    const bad: Save = { version: SAVE_VERSION, seed: 'a', presetId: 'eden', sim: 1, tick: 50, hash: '0000000000000000', commands: [{ tick: 5, cmd: { type: 'placeNode', kind: 'resource', x: 9999, y: 1 } }] }
     host.handle({ type: 'load', save: bad })
     const outcome = finishLoad(host).find((m) => m.type === 'loadDone')
     expect(outcome?.type === 'loadDone' && outcome.outcome.status).toBe('failed')

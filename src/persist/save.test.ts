@@ -22,6 +22,7 @@ function sample(): Save {
     version: SAVE_VERSION,
     seed: 'Run-7',
     presetId: 'eden',
+    sim: 1,
     tick: 1500,
     hash: HASH,
     commands: [
@@ -58,8 +59,25 @@ describe('encodeSave and decodeSave', () => {
     expect(encodeSave((decoded as { save: Save }).save)).toBe(text)
   })
 
+  it('upgrades a version 1 save (no sim field) to version 2 with sim 1', () => {
+    const old = raw()
+    delete old.sim
+    old.version = 1
+    const result = validateSave(old)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.save).toMatchObject({ version: SAVE_VERSION, sim: 1 })
+      expect(Object.keys(JSON.parse(encodeSave(result.save)) as object).slice(0, 4)).toEqual(['version', 'seed', 'presetId', 'sim'])
+    }
+  })
+
+  it('roundtrips a version 2 save with its sim version', () => {
+    const save = { ...sample(), sim: 7 }
+    expect(decodeSave(encodeSave(save))).toEqual({ ok: true, save })
+  })
+
   it('roundtrips an empty run at tick 0', () => {
-    const save: Save = { version: SAVE_VERSION, seed: 'a', presetId: 'eden', tick: 0, hash: HASH, commands: [] }
+    const save: Save = { version: SAVE_VERSION, seed: 'a', presetId: 'eden', sim: 1, tick: 0, hash: HASH, commands: [] }
     expect(decodeSave(encodeSave(save))).toEqual({ ok: true, save })
   })
 
@@ -71,7 +89,7 @@ describe('encodeSave and decodeSave', () => {
 
   it('makeSave copies the commands so later play cannot change the save', () => {
     const live = [{ tick: 1, cmd: { type: 'placeBot' as const, x: 1, y: 2 } }]
-    const save = makeSave({ seed: 'a', tick: 5, commands: live }, 'eden', HASH)
+    const save = makeSave({ seed: 'a', tick: 5, commands: live }, 'eden', HASH, 1)
     live[0]!.cmd.x = 99
     expect(save.commands[0]?.cmd).toEqual({ type: 'placeBot', x: 1, y: 2 })
     expect(save.version).toBe(SAVE_VERSION)
@@ -113,6 +131,14 @@ describe('decodeSave rejects', () => {
     const value = raw()
     value.version = SAVE_VERSION + 1
     expect(expectError(value, 'newer-version')).toContain('newer version')
+  })
+
+  it('a bad simulation version', () => {
+    for (const sim of [undefined, 0, -1, 1.5, '1', null, 1_000_001]) {
+      const value = raw()
+      value.sim = sim
+      expectError(value, 'bad-field')
+    }
   })
 
   it('an unknown top-level field', () => {

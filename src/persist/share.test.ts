@@ -25,6 +25,7 @@ function save(commandCount: number): Save {
     version: SAVE_VERSION,
     seed: 'Link-1',
     presetId: 'eden',
+    sim: 1,
     tick: Math.max(4000, commandCount),
     hash: HASH,
     commands: Array.from({ length: commandCount }, (_, i) => ({

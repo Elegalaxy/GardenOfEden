@@ -9,6 +9,7 @@ const run: Save = {
   version: SAVE_VERSION,
   seed: 'a',
   presetId: 'eden',
+  sim: 1,
   tick: 10,
   hash: '0123456789abcdef',
   commands: [{ tick: 3, cmd: { type: 'placeBot', x: 1.5, y: 2.5 } }],
