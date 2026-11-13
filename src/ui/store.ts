@@ -543,17 +543,17 @@ export function clickMap(x: number, y: number, reach: number): void {
 }
 
 /**
- * Starts a fresh eden world for `seed`. Returns false (and changes nothing) for an invalid seed or while a load runs.
+ * Starts a fresh world for `seed` (the eden preset unless `presetId` names another). Returns false (and changes nothing) for an invalid seed or while a load runs.
  * The new world appears when the worker's first frame for it arrives (use `settled()` to wait for it).
  */
-export function resetWorld(seed: string): boolean {
+export function resetWorld(seed: string, presetId?: string): boolean {
   if (!isValidSeed(seed) || load !== null) return false
   due = 0
   saveNotice = null
   selection = null
   alpha = 1
   say(true, `Started a new world with seed "${seed}".`)
-  client.post({ type: 'reset', seed })
+  client.post({ type: 'reset', seed, presetId })
   publish()
   return true
 }

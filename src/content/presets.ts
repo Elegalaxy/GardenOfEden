@@ -37,7 +37,20 @@ export const edenPreset: Preset = {
   scatterBots: 40,
 }
 
-export const presets: Preset[] = [edenPreset]
+// A plain world: the same 96x64 map with nothing on it. The player places every
+// node and bot (food, water and shelter first, or the first bots just die).
+export const blankPreset: Preset = {
+  id: 'blank',
+  label: 'Blank',
+  width: 96,
+  height: 64,
+  nodes: [],
+  scatter: [],
+  bots: [],
+  scatterBots: 0,
+}
+
+export const presets: Preset[] = [edenPreset, blankPreset]
 
 export function findPreset(id: string): Preset | undefined {
   return presets.find((preset) => preset.id === id)

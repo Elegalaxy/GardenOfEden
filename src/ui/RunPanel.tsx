@@ -5,19 +5,22 @@
 // the menu close once a new world is running.
 
 import { useId, useState } from 'react'
+import { presets } from '../content/index.ts'
 import { DEFAULT_SEED, isValidSeed, resetWorld, useWorldStore } from './store.ts'
 
 export function RunPanel({ onStarted }: { onStarted?: () => void }) {
-  const { seed, commandCount, load } = useWorldStore()
+  const { seed, presetId, commandCount, load } = useWorldStore()
   const [draft, setDraft] = useState(seed || DEFAULT_SEED)
+  const [draftPreset, setDraftPreset] = useState(presetId)
   const [confirming, setConfirming] = useState(false)
   const inputId = useId()
+  const presetInputId = useId()
   const hintId = useId()
 
   const valid = isValidSeed(draft)
-  const same = draft === seed
+  const same = draft === seed && draftPreset === presetId
   const start = (): void => {
-    if (resetWorld(draft)) {
+    if (resetWorld(draft, draftPreset)) {
       setConfirming(false)
       onStarted?.()
     }
@@ -54,13 +57,31 @@ export function RunPanel({ onStarted }: { onStarted?: () => void }) {
             setConfirming(false)
           }}
         />
+        <label htmlFor={presetInputId} className="run-label">
+          World
+        </label>
+        <select
+          id={presetInputId}
+          className="seed-input preset-select"
+          value={draftPreset}
+          onChange={(event) => {
+            setDraftPreset(event.target.value)
+            setConfirming(false)
+          }}
+        >
+          {presets.map((preset) => (
+            <option key={preset.id} value={preset.id}>
+              {preset.id === 'blank' ? 'Blank (plain)' : preset.label}
+            </option>
+          ))}
+        </select>
         <button type="submit" className="secondary" disabled={!valid || load !== null} title={load !== null ? 'A saved run is loading' : valid ? undefined : 'Fix the seed first: 1 to 32 letters, digits or dashes'}>
           {same ? 'Restart this seed' : 'Start new world'}
         </button>
       </form>
       <p id={hintId} className={valid ? 'run-hint' : 'run-hint run-hint-error'}>
         {valid
-          ? `Running seed "${seed}". ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
+          ? `Running ${presetId} seed "${seed}". ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
           : 'A seed is 1 to 32 letters, digits or dashes.'}
       </p>
       {confirming && (

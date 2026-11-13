@@ -204,6 +204,19 @@ describe('resetWorld', () => {
     expect(getSnapshot().tick).toBe(0)
   })
 
+  it('starts a blank world with no nodes or bots, which stays quiet when stepped', async () => {
+    expect(resetWorld('plain', 'blank')).toBe(true)
+    await settled()
+    expect(getSnapshot().presetId).toBe('blank')
+    expect(getSnapshot().world.nodes).toHaveLength(0)
+    expect(getSnapshot().world.bots).toHaveLength(0)
+    await advance(50, 1)
+    expect(getSnapshot().tick).toBe(50)
+    // Placing something still works in a blank world.
+    await dispatch({ type: 'placeBot', x: 3.5, y: 3.5 })
+    expect(getSnapshot().world.bots).toHaveLength(1)
+  })
+
   it('changes the run id only when a different run replaces the current one', async () => {
     const first = getSnapshot().runId
     await advance(20, 1)
