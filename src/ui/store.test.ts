@@ -332,7 +332,7 @@ describe('the mirror', () => {
 
 describe('queries', () => {
   it('asks the worker for a bot\'s family and for the founder lines', async () => {
-    await advance(400, 1)
+    for (let i = 0; i < 12; i += 1) await advance(200, 1)
     const child = getSnapshot().world.bots.find((bot) => bot.parentId !== null)!
     expect(child).toBeDefined()
     const view = await queryFamily(child.id, 3, 2, 40)

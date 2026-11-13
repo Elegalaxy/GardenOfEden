@@ -1,17 +1,15 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer, Stage 1 aging fertility, M16)
-- **Current Goal:** Aging and sexes work, approved plan at the scratchpad `PLAN_AGING_SEX.md`. Stage 0 (sim version in saves) is committed. Stage 1 (aging fertility, asexual model kept) is built and verified but NOT committed: the lead reviews, commits and pushes. Next are Stage 2a (sexes), 2b (two-parent tree), 2c (inbreeding penalty); not started.
-- **Recent Changes (Stage 1):**
-  - `src/sim/types.ts`: `Tuning.fertility { startFraction, primeAge, declineAge, fertileUntil }`; `bot.adultAge` comment fixed.
-  - `src/content/tuning.ts`: `fertility` block, values 0.5 / 600 / 1800 / 2600 (the plan defaults; no retune needed). `src/content/version.ts`: `SIM_VERSION` 2.
-  - `src/sim/reproduction.ts`: pure `fertilityAt(age, tuning)`; `meetsReproductionNeeds` uses fertility > 0; `conceive` sets cooldown `ceil(reproCooldown / fertility)`. Newborn cooldown stays a full `reproCooldown`. `step.ts`, `brain.ts`: comments only.
-  - Harness: survey/CLI column `pAge` (`meanParentAge`, `parentAgeCell` in `survey.ts`).
-  - UI: `labels.ts` `fertilityLabel` + `FERTILITY_PHASE_LABEL`; Inspector rows Fertility, "Ready to breed in", Age child/adult/elder.
-  - Tests: new `tests/fertility.test.ts` (curve, gate, cooldown, neutral-control hash e1069c163c8bf330 for eden seed a at 3,000 ticks), `labels.test.ts`, `tests/survival.test.ts`.
-  - Docs: GAME_DESIGN (status, section 6 item 3a, M16 row, section 10, changelog with survey numbers), CLAUDE.md Sim flow, idea brief changelog.
+- **Last Updated By:** Claude (implementer, Stage 2a: two sexes with mate seeking, M17)
+- **Current Goal:** M0 to M17 are built. Stage 2a of PLAN_AGING_SEX.md is done (SIM_VERSION 3); Stage 2b (two-parent family tree view) and 2c (inbreeding penalty, SIM_VERSION 4) are NOT started. Not committed or pushed: the lead verifies and commits.
+- **Recent Changes (M17):**
+  - Sim: `Bot.fatherId`/`sex`, `LineageRecord.fatherId`/`sex`, `Tuning.sex` (enabled, femaleChance, mateRange 4, maleCost 0, maleCooldown 50; no `balance`, sex is a plain coin flip), `brain.seekMateScore`. New `src/sim/mating.ts`: per-tick grid of ready females, `nearestMate`, `findBotById`. A ready male that senses a ready female within his sense radius gets the `seekMate` intent (target = bot id) and walks to her; bots never perceive each other otherwise. `pairMates` (after the bot loop): female must stand in a shelter, male within mateRange of her, matched nearest-pair-first. Crossover, father memory merge/exchange, two-parent lineage pruning. Sex off = old in-loop path.
+  - Retune: eatRate 10, reproCooldown 100, birthCost 10, founders reproThreshold 65, maleCooldown 50. Tried and rejected: eatRate 8, mateRange 6/8, reproCooldown 150, birthCost 15 (see GAME_DESIGN changelog).
+  - Harness: `--asexual`, survey column `fem`. UI: botColumns stride 11 (fatherId, sex; intent code 6 = seekMate), Inspector Sex/Mother/Father and a link to the sought female, Add bot hint with next sex. Layout of the hint and Inspector checked at 1280x800, 1024x768, 768x1024, 375x812, 290x700: no shift, no overflow.
+  - Tests: tests/sex.test.ts (incl. mate search), tests/variants.ts (`asexual`, `stage1`), updates elsewhere; store.test.ts waits longer for a child.
 - **Active Decisions / Constraints:**
-  - Survey totals (a..j, 20k ticks): births 7,910 -> 7,202 (-9%); pop range 21/75 -> 23/77. `pAge` 1,031 -> 956 (cooldown effect is swamped by the end-of-life cutoff).
+  - Eden outcomes are chaotic: nearby settings flip single seeds under the drought/plague scripts. Re-run `tests/tuning.test.ts` and `tests/events.test.ts` after any tuning change.
+  - Asexual control: `stage1(rules)` + eden seeds a/b at 5,000 ticks gives 214/48 and 223/57 as before M17.
   - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** unchanged from M15; plus whether the fertility numbers (200/600/1800/2600, 50% start) feel right.
-- **Exact Next Step:** the lead reviews the diff, commits and pushes Stage 1, then starts Stage 2a (sex in the sim) per the plan.
+- **Open Questions for the user:** eatRate 10 (was 5) is the price of two sexes; fine? Should females search too, or should the mate sense radius be larger than the food one? Females must stand in a shelter, males need not: keep?
+- **Exact Next Step:** the lead reviews the diff, commits and pushes (note: `.claude/launch.json` was created for the browser check and should not be committed), then decide on Stage 2b.

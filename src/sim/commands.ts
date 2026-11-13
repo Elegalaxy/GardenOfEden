@@ -14,12 +14,14 @@
 // `rules.nodeDefs`. A placed bot gets the default traits, full health and a
 // heading drawn from the `world` stream (never `ai`, so a placement does not
 // shift the random draws bots make while wandering). It also gets a lineage record (no parent, born now).
+// A placed bot takes whichever sex there are fewer of among the living bots (a tie gives female; no draw),
+// so the command itself carries no sex.
 
 import { hypot } from './exactMath.ts'
 import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
-import { makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
+import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
 import type { CheckableWorld } from './worldEvents.ts'
 
@@ -100,9 +102,9 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       world.nextId += 1
       const heading = nextFloat(world.rng.world) * Math.PI * 2
       // New ids are the largest so far, so pushing keeps `bots` in ascending id order.
-      const bot = makeBot(id, cmd.x, cmd.y, heading, rules)
+      const bot = makeBot(id, cmd.x, cmd.y, heading, rules, autoSex(world.bots))
       world.bots.push(bot)
-      addRecord(world, id, null, bot.generation, bot.traits)
+      addRecord(world, id, null, null, bot.sex, bot.generation, bot.traits)
       pushEvent(world, tuning, {
         tick: world.tick,
         type: 'command',

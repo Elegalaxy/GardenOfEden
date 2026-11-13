@@ -7,6 +7,7 @@ import { fertilityAt } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
+import { asexual } from './variants.ts'
 
 // The full survival loop (M3): danger, shelter, reproduction, age. These need
 // the real numbers from src/content, so they live here and not next to src/sim.
@@ -110,7 +111,8 @@ describe('reproduction', () => {
 
   it('births a child in a shelter and moves the right share of energy', () => {
     // Mutation off, so the child's traits can be compared with the parent's (see traits.test.ts for mutation).
-    const still: Rules = { ...rules, tuning: { ...rules.tuning, mutation: { ...rules.tuning.mutation, strength: 0 } } }
+    const solo = asexual(rules)
+    const still: Rules = { ...solo, tuning: { ...solo.tuning, mutation: { ...solo.tuning.mutation, strength: 0 } } }
     const world = createWorld('a', shelterScene, still)
     ready(world, 90)
     const parent = world.bots[0]
@@ -135,13 +137,14 @@ describe('reproduction', () => {
   })
 
   it('waits for the cooldown before reproducing again', () => {
-    const world = createWorld('a', shelterScene, rules)
+    const solo = asexual(rules)
+    const world = createWorld('a', shelterScene, solo)
     ready(world, 100)
-    step(world, rules)
+    step(world, solo)
     expect(world.totalBirths).toBe(1)
     for (let i = 0; i < rules.tuning.bot.reproCooldown - 2; i += 1) {
       world.bots[0].energy = 100
-      step(world, rules)
+      step(world, solo)
     }
     expect(world.totalBirths).toBe(1)
   })

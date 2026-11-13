@@ -102,11 +102,13 @@ const MAX_CHILD_LINKS = 4
 
 function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   const { intent } = bot
-  const target = intent.targetId === null ? undefined : findNode(world, intent.targetId)
-  const parent = bot.parentId === null ? undefined : findBot(world, bot.parentId)
+  const mateTarget = intent.kind === 'seekMate' && intent.targetId !== null ? findBot(world, intent.targetId) : undefined
+  const target = intent.targetId === null || intent.kind === 'seekMate' ? undefined : findNode(world, intent.targetId)
+  const mother = bot.parentId === null ? undefined : findBot(world, bot.parentId)
+  const father = bot.fatherId === null ? undefined : findBot(world, bot.fatherId)
   const stage = bot.age < tuning.bot.adultAge ? 'child' : bot.age >= tuning.fertility.fertileUntil ? 'elder' : 'adult'
   const fertility = fertilityLabel(bot.age, tuning)
-  const children = world.bots.filter((other) => other.parentId === bot.id)
+  const children = world.bots.filter((other) => other.parentId === bot.id || other.fatherId === bot.id)
   // The bot is alive, so the population is never empty here.
   const mean = meanTraits(world.bots) ?? bot.traits
   return (
@@ -119,11 +121,14 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Row label="Age">
           {bot.age} ticks · {stage}
         </Row>
+        <Row label="Sex">{bot.sex === 'female' ? 'Female' : 'Male'}</Row>
         <Row label="Generation">{bot.generation}</Row>
         <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>
         <Row label="Target">
           {intent.targetId === null ? (
             'none'
+          ) : mateTarget !== undefined ? (
+            <SelectButton target={{ kind: 'bot', id: mateTarget.id }}>female #{mateTarget.id}</SelectButton>
           ) : target === undefined ? (
             <>#{intent.targetId} (gone)</>
           ) : (
@@ -143,14 +148,25 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
       </dl>
       <h4>Family</h4>
       <dl className="kv">
-        <Row label="Parent">
+        <Row label="Mother">
           {bot.parentId === null ? (
             'none (founder)'
-          ) : parent === undefined ? (
+          ) : mother === undefined ? (
             <>#{bot.parentId} · gone</>
           ) : (
             <>
-              <SelectButton target={{ kind: 'bot', id: parent.id }}>#{parent.id}</SelectButton> · alive
+              <SelectButton target={{ kind: 'bot', id: mother.id }}>#{mother.id}</SelectButton> · alive
+            </>
+          )}
+        </Row>
+        <Row label="Father">
+          {bot.fatherId === null ? (
+            'none (founder)'
+          ) : father === undefined ? (
+            <>#{bot.fatherId} · gone</>
+          ) : (
+            <>
+              <SelectButton target={{ kind: 'bot', id: father.id }}>#{father.id}</SelectButton> · alive
             </>
           )}
         </Row>

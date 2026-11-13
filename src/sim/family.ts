@@ -1,12 +1,14 @@
 // Family knowledge sharing (M10). The one exception to "bots only interact through shared nodes":
-// a parent and its own child can pass on what they remember. Nobody else can (no siblings, no
-// strangers): knowledge reaches siblings and grandparents only by relaying through a parent link.
+// a parent (mother or father) and its own child can pass on what they remember. Nobody else can (no
+// siblings, no strangers, and the two parents never share with each other): knowledge reaches
+// siblings and grandparents only by relaying through a parent link.
 //
 // Two ways knowledge passes:
-//  - At birth the child starts with a copy of the parent's memory as it was at conception
-//    (`inheritMemory`), unless `family.inherit` is off.
+//  - At birth the child starts with a copy of its mother's memory as it was at conception
+//    (`inheritMemory`), then its father's merged in (`inheritFromParents`: a newer sighting wins),
+//    unless `family.inherit` is off.
 //  - By exchange: on ticks where `tick % family.shareEvery === 0`, a living child and its living
-//    parent within `family.shareRadius` cells swap memory (`shareFamilyKnowledge`). A radius of 0
+//    parents (mother, then father) within `family.shareRadius` cells swap memory (`shareFamilyKnowledge`). A radius of 0
 //    turns exchange off.
 //
 // What passes: entries whose kind is in `family.shareKinds` (resource, water, shelter, danger; not
@@ -34,12 +36,30 @@ export function inheritMemory(parentMemory: MemoryEntry[], parentId: number, tun
 }
 
 /**
+ * A two-parent newborn's memory: the mother's shareable entries (as `inheritMemory`), then the
+ * father's merged in (a node the child lacks is added, a strictly newer sighting wins; copies are
+ * marked learned from the father), trimmed to the usual caps. Entries of removed nodes (not in `live`) from the father are skipped.
+ */
+export function inheritFromParents(
+  motherMemory: MemoryEntry[],
+  motherId: number,
+  fatherMemory: MemoryEntry[],
+  fatherId: number,
+  tuning: Tuning,
+  live: Set<number>,
+): MemoryEntry[] {
+  const child = { memory: inheritMemory(motherMemory, motherId, tuning) }
+  mergeMemory(child, fatherMemory, fatherId, tuning, live)
+  return child.memory
+}
+
+/**
  * Merges the shareable entries of `from` (a snapshot, never changed here) into the bot's memory:
  * a new node is added, a node the bot already knows is replaced only by a strictly newer sighting.
  * Entries of removed nodes (not in `live`) are skipped. Trims to the memory caps afterwards, and
  * returns how many of the copies are still in the memory after the trim.
  */
-export function mergeMemory(bot: Bot, from: MemoryEntry[], fromId: number, tuning: Tuning, live: Set<number>): number {
+export function mergeMemory(bot: Pick<Bot, 'memory'>, from: MemoryEntry[], fromId: number, tuning: Tuning, live: Set<number>): number {
   const touched = new Set<number>()
   for (const theirs of from) {
     if (!tuning.family.shareKinds.includes(theirs.kind) || !live.has(theirs.nodeId)) continue
@@ -62,7 +82,7 @@ export function mergeMemory(bot: Bot, from: MemoryEntry[], fromId: number, tunin
   return learned
 }
 
-/** The exchange phase: each living child swaps memory with its living parent when they are close. Adds to `world.familyLearned`. */
+/** The exchange phase: each living child swaps memory with its living mother, then its living father, when they are close. Adds to `world.familyLearned`. */
 export function shareFamilyKnowledge(world: World, tuning: Tuning): void {
   const { shareRadius, shareEvery } = tuning.family
   if (shareRadius <= 0 || shareEvery <= 0 || world.tick % shareEvery !== 0) return
@@ -70,19 +90,22 @@ export function shareFamilyKnowledge(world: World, tuning: Tuning): void {
   let hasChild = false
   for (const bot of world.bots) {
     byId.set(bot.id, bot)
-    if (bot.parentId !== null) hasChild = true
+    if (bot.parentId !== null || bot.fatherId !== null) hasChild = true
   }
   if (!hasChild) return
   const live = new Set<number>()
   for (const node of world.nodes) live.add(node.id)
 
   for (const child of world.bots) {
-    if (child.parentId === null) continue
-    const parent = byId.get(child.parentId)
-    if (parent === undefined || distance(child.x, child.y, parent.x, parent.y) > shareRadius) continue
-    const childMemory = child.memory.slice()
-    const parentMemory = parent.memory.slice()
-    world.familyLearned += mergeMemory(child, parentMemory, parent.id, tuning, live)
-    world.familyLearned += mergeMemory(parent, childMemory, child.id, tuning, live)
+    // Mother first, then father; the two parents never share with each other.
+    for (const parentId of [child.parentId, child.fatherId]) {
+      if (parentId === null) continue
+      const parent = byId.get(parentId)
+      if (parent === undefined || distance(child.x, child.y, parent.x, parent.y) > shareRadius) continue
+      const childMemory = child.memory.slice()
+      const parentMemory = parent.memory.slice()
+      world.familyLearned += mergeMemory(child, parentMemory, parent.id, tuning, live)
+      world.familyLearned += mergeMemory(parent, childMemory, child.id, tuning, live)
+    }
   }
 }

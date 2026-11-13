@@ -35,7 +35,7 @@ import { advance, queryFamily, setSimClient, settled } from './store.ts'
 const traits = { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1 }
 
 function record(id: number, parentId: number | null, extra: Partial<LineageRecord> = {}): LineageRecord {
-  return { id, parentId, generation: parentId === null ? 0 : 1, born: id * 10, died: null, cause: null, children: 0, traits, ...extra }
+  return { id, parentId, fatherId: null, sex: 'female', generation: parentId === null ? 0 : 1, born: id * 10, died: null, cause: null, children: 0, traits, ...extra }
 }
 
 function node(rec: LineageRecord, children: FamilyNode[] = [], hiddenChildren = 0): FamilyNode {

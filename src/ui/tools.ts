@@ -33,7 +33,7 @@ export const TOOLS: readonly ToolInfo[] = [
   { id: 'water', label: 'Add water', key: '3', hint: 'Click the map to place a spring. Bots drink here and it never runs dry.', nodeKind: 'water' },
   { id: 'danger', label: 'Add danger', key: '4', hint: 'Click the map to place a danger zone.', nodeKind: 'danger' },
   { id: 'shelter', label: 'Add shelter', key: '5', hint: 'Click the map to place a shelter.', nodeKind: 'shelter' },
-  { id: 'bot', label: 'Add bot', key: '6', hint: 'Click the map to place a bot.' },
+  { id: 'bot', label: 'Add bot', key: '6', hint: 'Click the map to place a bot. A birth needs a female in a shelter and a male beside her.' },
   { id: 'remove', label: 'Remove', key: '7', hint: 'Click a node to remove it. Bots cannot be removed.' },
 ]
 

@@ -32,6 +32,8 @@ function rec(id: number, parentId: number | null, died: number | null = null): L
   return {
     id,
     parentId,
+    fatherId: null,
+    sex: 'female',
     generation: 0,
     born: 0,
     died,
@@ -64,7 +66,7 @@ function expectConsistent(world: World, everMade: number): void {
   for (const bot of world.bots) {
     const record = findRecord(world, bot.id)
     expect(record, `record of living bot ${bot.id}`).toBeDefined()
-    expect(record).toMatchObject({ parentId: bot.parentId, generation: bot.generation, died: null, cause: null })
+    expect(record).toMatchObject({ parentId: bot.parentId, fatherId: bot.fatherId, sex: bot.sex, generation: bot.generation, died: null, cause: null })
   }
   expect(list.filter((r) => r.died === null)).toHaveLength(world.bots.length)
   expect(list.length + world.lineagePruned).toBe(everMade)
@@ -78,6 +80,8 @@ describe('records', () => {
       expect(findRecord(world, bot.id)).toEqual({
         id: bot.id,
         parentId: null,
+        fatherId: null,
+        sex: bot.sex,
         generation: 0,
         born: 0,
         died: null,
@@ -107,6 +111,7 @@ describe('records', () => {
     const counted = new Map<number, number>()
     for (const r of world.lineage) {
       if (r.parentId !== null) counted.set(r.parentId, (counted.get(r.parentId) ?? 0) + 1)
+      if (r.fatherId !== null) counted.set(r.fatherId, (counted.get(r.fatherId) ?? 0) + 1)
     }
     for (const r of world.lineage) expect(r.children).toBe(counted.get(r.id) ?? 0)
     // Dead records agree with the death counters, and a child is born after its parent and one generation down.
@@ -117,9 +122,13 @@ describe('records', () => {
     }
     for (const r of world.lineage) {
       if (r.parentId === null) continue
-      const parent = findRecord(world, r.parentId)!
-      expect(r.generation).toBe(parent.generation + 1)
-      expect(r.born).toBeGreaterThan(parent.born)
+      const mother = findRecord(world, r.parentId)!
+      const father = findRecord(world, r.fatherId!)!
+      expect(findRecord(world, r.parentId)!.sex).toBe('female')
+      expect(father.sex).toBe('male')
+      expect(r.generation).toBe(Math.max(mother.generation, father.generation) + 1)
+      expect(r.born).toBeGreaterThan(mother.born)
+      expect(r.born).toBeGreaterThan(father.born)
     }
   })
 
@@ -149,16 +158,45 @@ describe('records', () => {
 
   it('addRecord inserts an out-of-order id in place and ignores a repeated one', () => {
     const world = createWorld('a', scene({}), rules)
-    addRecord(world, 5, null, 0, tuning.traits)
-    addRecord(world, 9, 5, 1, tuning.traits)
-    addRecord(world, 7, 5, 1, tuning.traits)
-    const again = addRecord(world, 7, null, 0, tuning.traits)
+    addRecord(world, 5, null, null, 'female', 0, tuning.traits)
+    addRecord(world, 9, 5, null, 'female', 1, tuning.traits)
+    addRecord(world, 7, 5, null, 'female', 1, tuning.traits)
+    const again = addRecord(world, 7, null, null, 'female', 0, tuning.traits)
     expect(ids(world.lineage)).toEqual([5, 7, 9])
     expect(again.parentId).toBe(5)
     recordDeath(world, 7, 'age')
     expect(findRecord(world, 7)).toMatchObject({ died: 0, cause: 'age' })
     recordDeath(world, 99, 'age')
     expect(findRecord(world, 99)).toBeUndefined()
+  })
+})
+
+describe('two parents (M17)', () => {
+  it('keeps a dead father when a living bot descends from him, and drops an extinct branch instead', () => {
+    const mother = rec(1, null, 50)
+    const father = rec(2, null, 60)
+    const child = { ...rec(3, 1), fatherId: 2 }
+    const extinct = rec(4, null, 10)
+    const world = handBuilt([mother, father, child, extinct], [3])
+    world.bots[0]!.fatherId = 2
+    pruneLineage(world, withLineage(3, 3).tuning)
+    expect(ids(world.lineage)).toEqual([1, 2, 3])
+    // Under more pressure the oldest dead ancestors go first, whichever side they are on.
+    pruneLineage(world, withLineage(2, 2).tuning)
+    expect(ids(world.lineage)).toEqual([2, 3])
+  })
+
+  it('counts a child for both its mother and its father', () => {
+    const r = { ...rules, tuning: { ...tuning, bot: { ...tuning.bot, speed: 0 } } }
+    const world = createWorld('a', scene({ nodes: [{ kind: 'shelter', x: 20, y: 20 }], bots: [{ x: 19, y: 20 }, { x: 21, y: 20 }] }), r)
+    for (const bot of world.bots) {
+      bot.energy = 90
+      bot.age = tuning.bot.adultAge + 100
+    }
+    step(world, r)
+    expect(world.totalBirths).toBe(1)
+    expect(world.lineage.filter((record) => record.children === 1).map((record) => record.id)).toEqual([world.bots[0]!.id, world.bots[1]!.id])
+    expect(world.lineage[2]).toMatchObject({ parentId: world.bots[0]!.id, fatherId: world.bots[1]!.id })
   })
 })
 

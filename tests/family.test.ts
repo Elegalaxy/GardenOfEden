@@ -8,6 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { MemoryEntry, NodeKind, Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld, makeNode } from '../src/sim/world.ts'
+import { asexual } from './variants.ts'
 
 // Family knowledge sharing (M10): a parent and its own child pass on what they remember, at birth
 // and by exchange. These need the real numbers from src/content, so they live here and not next to
@@ -87,8 +88,9 @@ describe('at birth', () => {
   }
 
   it('starts with copies of the shareable entries, learned from the parent, with seenTick unchanged', () => {
-    const world = birthWorld(rules)
-    step(world, rules)
+    const solo = asexual(rules)
+    const world = birthWorld(solo)
+    step(world, solo)
     expect(world.bots).toHaveLength(2)
     const [parent, child] = world.bots
     expect(child.parentId).toBe(parent.id)
@@ -108,12 +110,65 @@ describe('at birth', () => {
   })
 
   it('starts empty when inheritance is off', () => {
-    const off = withFamily({ inherit: false })
+    const off = asexual(withFamily({ inherit: false }))
     const world = birthWorld(off)
     step(world, off)
     expect(world.bots).toHaveLength(2)
     expect(world.bots[1].memory).toEqual([])
     expect(world.familyLearned).toBe(0)
+  })
+})
+
+describe('two parents (M17)', () => {
+  const stand: Rules = { ...rules, tuning: { ...tuning, bot: { ...tuning.bot, speed: 0 } } }
+
+  /** A mother (id 2), a father (id 3) in a shelter, ready to breed, each knowing different nodes. */
+  function couple(): { world: World; mother: World['bots'][number]; father: World['bots'][number]; x: number; y: number; z: number } {
+    const world = createWorld('a', scene({ nodes: [{ kind: 'shelter', x: 20, y: 20 }], bots: [{ x: 19, y: 20 }, { x: 21, y: 20 }] }), stand)
+    const [mother, father] = world.bots
+    mother.sex = 'female'
+    father.sex = 'male'
+    for (const bot of world.bots) {
+      bot.energy = 90
+      bot.age = tuning.bot.adultAge + 100
+    }
+    const x = addNode(world, 'resource', 35, 35)
+    const y = addNode(world, 'water', 35, 5)
+    const z = addNode(world, 'danger', 5, 35)
+    // x: both know it, the father's sighting is newer. y: only the father. z: only the mother.
+    mother.memory = [know(world, x, 5, { amount: 3 }), know(world, z, 8)]
+    father.memory = [know(world, x, 9, { amount: 7 }), know(world, y, 6)]
+    return { world, mother, father, x, y, z }
+  }
+
+  it('merges the father memory into the newborn: newer sighting wins, learnedFrom names the source', () => {
+    const { world, mother, father, x, y, z } = couple()
+    step(world, stand)
+    expect(world.bots).toHaveLength(3)
+    const child = world.bots[2]!
+    expect(child).toMatchObject({ parentId: mother.id, fatherId: father.id })
+    expect(byNode(child.memory, x)).toMatchObject({ seenTick: 9, amount: 7, learnedFrom: father.id })
+    expect(byNode(child.memory, y)).toMatchObject({ learnedFrom: father.id })
+    expect(byNode(child.memory, z)).toMatchObject({ seenTick: 8, learnedFrom: mother.id })
+  })
+
+  it('lets a child swap memory with its father as well as its mother, and the parents never swap with each other', () => {
+    const { world, mother, father, x, y } = couple()
+    // A mother and father side by side, no child: nothing is shared.
+    world.tick = shareEvery * 5
+    shareFamilyKnowledge(world, tuning)
+    expect(byNode(mother.memory, y)).toBeUndefined()
+    expect(world.familyLearned).toBe(0)
+    // Now add a child of both, standing beside them, that knows something only it knows.
+    const kid = { ...structuredClone(mother), id: world.nextId, parentId: mother.id, fatherId: father.id, sex: 'female' as const, memory: [] as MemoryEntry[] }
+    world.nextId += 1
+    world.bots.push(kid)
+    kid.x = 20
+    kid.y = 20
+    shareFamilyKnowledge(world, tuning)
+    expect(byNode(kid.memory, y)).toMatchObject({ learnedFrom: father.id })
+    expect(byNode(kid.memory, x)).toBeDefined()
+    expect(byNode(father.memory, x)?.seenTick).toBe(9)
   })
 })
 
@@ -284,7 +339,7 @@ describe('inside a whole run', () => {
         if (entry.learnedFrom === null) continue
         // Only a direct parent or child can be the source.
         const source = world.bots.find((other) => other.id === entry.learnedFrom)
-        if (source !== undefined) expect(source.id === bot.parentId || source.parentId === bot.id).toBe(true)
+        if (source !== undefined) expect([bot.parentId, bot.fatherId].includes(source.id) || source.parentId === bot.id || source.fatherId === bot.id).toBe(true)
         expect(tuning.family.shareKinds).toContain(entry.kind)
       }
     }

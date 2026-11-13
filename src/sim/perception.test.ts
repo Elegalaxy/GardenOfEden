@@ -52,6 +52,8 @@ function botAt(x: number, memory: MemoryEntry[] = []): Bot {
     cooldown: 0,
     generation: 0,
     parentId: null,
+    fatherId: null,
+    sex: 'female',
     traits: { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1 },
     memory,
     intent: { kind: 'wander', targetId: null },

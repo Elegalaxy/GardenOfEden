@@ -30,15 +30,21 @@ const nursery: Preset = {
   height: 40,
   nodes: [{ kind: 'shelter', x: 20, y: 20 }],
   scatter: [],
-  bots: [{ x: 20, y: 20 }],
+  // A female and a male (founders alternate), so the shelter holds a breeding pair.
+  bots: [
+    { x: 20, y: 20 },
+    { x: 20, y: 20 },
+  ],
   scatterBots: 0,
 }
 
+/** One tick with a ready pair in the shelter: the world then holds the mother (0), the father (1) and the child (2). */
 function birthFrom(r: Rules, seed: string): World {
   const world = createWorld(seed, nursery, r)
-  const parent = world.bots[0]!
-  parent.energy = 90
-  parent.age = r.tuning.bot.adultAge + 100
+  for (const parent of world.bots) {
+    parent.energy = 90
+    parent.age = r.tuning.bot.adultAge + 100
+  }
   step(world, r)
   return world
 }
@@ -48,16 +54,16 @@ describe('inheritance', { timeout: 60_000 }, () => {
     const none = withMutation({ strength: 0 })
     for (const seed of ['a', 'b', 'c']) {
       const world = birthFrom(none, seed)
-      expect(world.bots).toHaveLength(2)
-      expect(world.bots[1]!.traits).toEqual(world.bots[0]!.traits)
-      expect(world.bots[1]!.traits).toEqual(rules.tuning.traits)
+      expect(world.bots).toHaveLength(3)
+      expect(world.bots[2]!.traits).toEqual(world.bots[0]!.traits)
+      expect(world.bots[2]!.traits).toEqual(rules.tuning.traits)
     }
   })
 
   it('changes at least one trait of some children when mutation is on', () => {
     const different = ['a', 'b', 'c', 'd', 'e', 'f'].filter((seed) => {
       const world = birthFrom(rules, seed)
-      return JSON.stringify(world.bots[1]!.traits) !== JSON.stringify(world.bots[0]!.traits)
+      return JSON.stringify(world.bots[2]!.traits) !== JSON.stringify(world.bots[0]!.traits)
     })
     expect(different.length).toBeGreaterThanOrEqual(5)
   })
@@ -189,8 +195,9 @@ describe('selection', () => {
 
   function lineages(seed: string, trait: TraitName, even: number, odd: number): { even: number; odd: number } {
     const world = createWorld(seed, edenPreset, noMutation)
+    // Founders alternate female, male, so give both values to both sexes: a pair of bots shares a value.
     world.bots.forEach((bot, index) => {
-      bot.traits[trait] = index % 2 === 0 ? even : odd
+      bot.traits[trait] = Math.floor(index / 2) % 2 === 0 ? even : odd
     })
     for (let i = 0; i < 4000; i += 1) step(world, noMutation)
     return {

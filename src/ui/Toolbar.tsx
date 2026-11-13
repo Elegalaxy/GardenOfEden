@@ -7,7 +7,7 @@
 // tool key), D and B fire a drought or a bounty at once (a refused one just says why).
 
 import { useEffect } from 'react'
-import { KIND_LETTER } from './labels.ts'
+import { KIND_LETTER, nextBotSexLabel } from './labels.ts'
 import { globalEventForKey } from './eventInfo.ts'
 import { dispatch, setTool, useWorldStore } from './store.ts'
 import { isTypingTarget } from './typing.ts'
@@ -93,12 +93,13 @@ export function Toolbar() {
 
 /** What the active tool does and what the last click did. Fixed height: see `.tool-status` in panels.css. */
 export function ToolStatus() {
-  const { tool, notice } = useWorldStore()
+  const { tool, notice, world } = useWorldStore()
   const active = toolInfo(tool)
   return (
     <section className="tool-status" aria-label="Tool help">
       <p className="tool-hint">
-        <strong>{active.label}.</strong> {active.hint} <span className="tool-hint-keys">Esc returns to Inspect.</span>
+        <strong>{active.label}.</strong> {active.hint}{' '}
+        {active.id === 'bot' ? <span className="figure">{nextBotSexLabel(world.bots)}.</span> : null} <span className="tool-hint-keys">Esc returns to Inspect.</span>
       </p>
       <p
         className={`tool-notice ${notice === null ? '' : notice.ok ? 'notice-ok' : 'notice-error'}`}

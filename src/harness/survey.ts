@@ -11,8 +11,9 @@
 // the ones the sim refused. `learned` is how many memory entries bots took from a
 // parent or child over the run (M10); `lineage` and `pruned` are the lineage records kept at the end and
 // dropped over the run (M11). `pAge` (M16) is the mean parent age at a birth: child.born - parent.born over
-// the kept lineage records whose parent record is also kept (a dash when there are none). `withoutFamily` gives the rules with that
-// sharing switched off, for an A/B comparison (`--no-family`).
+// the kept lineage records whose parent record is also kept (a dash when there are none; with sexes it is the
+// mother's age). `fem` (M17) is the number of females among the bots alive at the end. `withoutFamily` gives the rules with that
+// sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
@@ -40,6 +41,8 @@ export type SeedSurvey = {
   pruned: number
   /** Mean parent age at a birth over the kept lineage records (M16); null when none qualify. */
   parentAge: number | null
+  /** Females among the bots alive at the end (M17). */
+  females: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -68,6 +71,11 @@ export function parentAgeCell(value: number | null): string {
 export function ruinShareCell(eaten: Eaten): string {
   const total = eaten.resource + eaten.ruin
   return total <= 0 ? '-' : `${((100 * eaten.ruin) / total).toFixed(1)}`
+}
+
+/** The same rules with the two sexes off: every bot breeds alone, as before M17. */
+export function withoutSex(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, sex: { ...rules.tuning.sex, enabled: false } } }
 }
 
 /** The same rules with family knowledge sharing off: newborns start empty and nobody exchanges. */
@@ -119,13 +127,14 @@ export function surveySeed(
     lineage: world.lineage.length,
     pruned: world.lineagePruned,
     parentAge: meanParentAge(world),
+    females: world.bots.filter((bot) => bot.sex === 'female').length,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem']
     .map((c) => c.padStart(8))
     .join('')
   const lines = rows.map((r) =>
@@ -150,6 +159,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.lineage,
       r.pruned,
       parentAgeCell(r.parentAge),
+      r.females,
     ]
       .map((cell) => String(cell).padStart(8))
       .join(''),

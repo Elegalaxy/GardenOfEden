@@ -1,6 +1,6 @@
 // Choosing what to do. Each option gets a utility score from the bot's state
 // and what it remembers; the highest score wins. Ties go to the earlier option
-// in this order: flee, seek food, seek water, rest, reproduce, wander.
+// in this order: flee, seek food, seek water, rest, reproduce, seek mate, wander.
 //
 //   flee       rises with how close the bot is to a remembered danger, scaled by
 //              its caution trait and by how hurt it is. Full strength inside.
@@ -17,6 +17,9 @@
 //              avoidance on the way, the same bargain as food in a grove.
 //   rest       needs a remembered shelter and low health (with hysteresis).
 //   reproduce  needs the reproduction conditions (energy, fertility above 0, cooldown over) and a remembered shelter.
+//   seekMate   (M17, males only, sexes on) a ready male that senses a ready female within his sense radius
+//              (mating.ts, the one place bots perceive each other) walks toward the nearest; it outscores
+//              reproduce so that sight beats the trip to a shelter.
 //   wander     the fallback, with a small constant score.
 //
 // How low is "desperate" depends on the bot's caution trait (`desperateFraction`, M12): `desperateBelow`
@@ -26,6 +29,8 @@
 // random draws.
 
 import { chooseFood, chooseWater, distance, knownDangers, nearestKnown } from './perception.ts'
+import { nearestMate } from './mating.ts'
+import type { MateIndex } from './mating.ts'
 import { meetsReproductionNeeds } from './reproduction.ts'
 import type { Bot, Intent, IntentKind, Tuning, World } from './types.ts'
 
@@ -64,7 +69,7 @@ function threatOf(bot: Bot, tuning: Tuning): { threat: number; id: number | null
   return { threat, id }
 }
 
-export function decide(world: World, bot: Bot, tuning: Tuning): void {
+export function decide(world: World, bot: Bot, tuning: Tuning, mates: MateIndex | null = null): void {
   const t = tuning.bot
   const b = tuning.brain
   const energyFraction = bot.energy / t.maxEnergy
@@ -112,6 +117,12 @@ export function decide(world: World, bot: Bot, tuning: Tuning): void {
       (bot.intent.kind === 'rest' && bot.health < b.restUntil * t.maxHealth)
     if (needsRest) consider('rest', shelter.nodeId, b.restWeight * (1 - healthFraction))
     if (meetsReproductionNeeds(bot, tuning)) consider('reproduce', shelter.nodeId, b.reproduceScore)
+  }
+
+  // A ready male that senses a ready female walks to her (M17). The target is a bot id, not a node id.
+  if (mates !== null && bot.sex === 'male' && meetsReproductionNeeds(bot, tuning)) {
+    const mate = nearestMate(mates, bot, bot.traits.senseRadius)
+    if (mate !== null) consider('seekMate', mate.id, b.seekMateScore)
   }
 
   bot.intent = best

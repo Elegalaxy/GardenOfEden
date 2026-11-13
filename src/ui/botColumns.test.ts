@@ -47,19 +47,23 @@ describe('packBots / unpackBots', () => {
     expect(unpackBots(packed)).toEqual(world.bots.map(oldViewBot))
   })
 
-  it('encodes a missing parent and a missing target as -1 and decodes them back to null, every intent kind', () => {
+  it('encodes a missing parent, father and target as -1 and decodes them back to null, every intent kind', () => {
     const bots = crowd(world, INTENT_KINDS.length * 2)
     bots.forEach((bot, i) => {
       bot.intent = { kind: INTENT_KINDS[i % INTENT_KINDS.length] as IntentKind, targetId: i % 2 === 0 ? null : 12345 + i }
       bot.parentId = i % 3 === 0 ? null : i
+      bot.fatherId = i % 4 === 0 ? null : i + 100
+      bot.sex = i % 2 === 0 ? 'female' : 'male'
     })
     const packed = packBots(bots)
     for (let i = 0; i < bots.length; i += 1) {
       if (bots[i]!.parentId === null) expect(packed.i32[i * I32_STRIDE + 4]).toBe(-1)
       if (bots[i]!.intent.targetId === null) expect(packed.i32[i * I32_STRIDE + 6]).toBe(-1)
+      if (bots[i]!.fatherId === null) expect(packed.i32[i * I32_STRIDE + 9]).toBe(-1)
+      expect(packed.i32[i * I32_STRIDE + 10]).toBe(i % 2 === 0 ? 0 : 1)
     }
     expect(unpackBots(packed)).toEqual(bots.map(oldViewBot))
-    expect(INTENT_KINDS).toHaveLength(6)
+    expect(INTENT_KINDS).toHaveLength(7)
   })
 
   it('keeps large ids, ages and fractional floats exact', () => {

@@ -83,7 +83,7 @@ export type Traits = {
   metabolism: number
 }
 
-export type IntentKind = 'wander' | 'seekFood' | 'seekWater' | 'flee' | 'rest' | 'reproduce'
+export type IntentKind = 'wander' | 'seekFood' | 'seekWater' | 'flee' | 'rest' | 'reproduce' | 'seekMate'
 
 export type Intent = {
   kind: IntentKind
@@ -120,13 +120,19 @@ export type Bot = {
   /** Ticks left before the bot may reproduce again. */
   cooldown: number
   generation: number
+  /** The bearing parent: the mother, or the only parent when sex is off. Null for founders and placed bots. */
   parentId: number | null
+  /** The father (sexual mode); null for founders, placed bots and asexual births. */
+  fatherId: number | null
+  sex: Sex
   traits: Traits
   memory: MemoryEntry[]
   intent: Intent
   /** Radians. */
   heading: number
 }
+
+export type Sex = 'female' | 'male'
 
 export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'age'
 
@@ -208,6 +214,8 @@ export type ActiveEvent = {
 export type LineageRecord = {
   id: number
   parentId: number | null
+  fatherId: number | null
+  sex: Sex
   generation: number
   /** Tick it appeared (0 for a preset founder). */
   born: number
@@ -338,6 +346,20 @@ export type Tuning = {
     declineAge: number
     fertileUntil: number
   }
+  /**
+   * Two sexes (M17). With `enabled` a birth needs a female and a male standing in shelters within
+   * `mateRange` cells; the female bears the child and the male pays `maleCost` energy. Each child is
+   * female with chance `femaleChance`. Off: a bot breeds alone, as before M17.
+   */
+  sex: {
+    enabled: boolean
+    femaleChance: number
+    mateRange: number
+    /** Energy a father loses at a birth (burned, not handed on). */
+    maleCost: number
+    /** A father's cooldown after a birth, divided by his fertility and rounded up. */
+    maleCooldown: number
+  }
   brain: {
     /** Utility of seeking food is this times the missing energy fraction. */
     seekWeight: number
@@ -347,6 +369,8 @@ export type Tuning = {
     restWeight: number
     /** Utility of walking to a shelter to reproduce. */
     reproduceScore: number
+    /** Utility of walking toward a sensed ready female (males only, sexes on). Above `reproduceScore`, so sight beats the shelter. */
+    seekMateScore: number
     /** Utility of wandering, the fallback. */
     wanderScore: number
     /** Flee utility when inside danger, before caution and health terms. */

@@ -27,7 +27,7 @@ describe('labels', () => {
     const causes: DeathCause[] = ['starve', 'thirst', 'danger', 'plague', 'meteor', 'age']
     for (const cause of causes) expect(CAUSE_LABEL[cause].length).toBeGreaterThan(0)
     expect(CAUSE_LABEL.thirst).toBe('Thirst')
-    const intents: IntentKind[] = ['wander', 'seekFood', 'seekWater', 'flee', 'rest', 'reproduce']
+    const intents: IntentKind[] = ['wander', 'seekFood', 'seekWater', 'flee', 'rest', 'reproduce', 'seekMate']
     for (const intent of intents) expect(INTENT_LABEL[intent].length).toBeGreaterThan(0)
     expect(INTENT_LABEL.seekWater).toBe('Seeking water')
   })

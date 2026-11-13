@@ -9,18 +9,22 @@
 //   f64, F64_STRIDE = 12 per bot: x, y, px, py, energy, health, thirst, heading, then the four traits
 //        in `TRAIT_NAMES` order (senseRadius, caution, reproThreshold, metabolism). Float64 everywhere: positions feed picking and interpolation, and
 //        keeping every float exact means the page computes the same means and samples as the World.
-//   i32, I32_STRIDE = 9 per bot: id, age, cooldown, generation, parentId (-1 = none), intent kind
-//        (index into `INTENT_KINDS`), intent target id (-1 = none), memoryCount, learnedCount.
+//   i32, I32_STRIDE = 11 per bot: id, age, cooldown, generation, parentId (the mother; -1 = none), intent kind
+//        (index into `INTENT_KINDS`), intent target id (-1 = none), memoryCount, learnedCount,
+//        fatherId (-1 = none), sex (index into `SEX_CODES`).
 //        These are whole numbers (ids and ticks), so Int32 is exact up to 2,147,483,647.
 
-import type { Bot, IntentKind } from '../sim/types.ts'
+import type { Bot, IntentKind, Sex } from '../sim/types.ts'
 import type { PackedBots, ViewBot } from './protocol.ts'
 
 /** The code of each intent kind in the packed data is its index here. */
-export const INTENT_KINDS: readonly IntentKind[] = ['wander', 'seekFood', 'seekWater', 'flee', 'rest', 'reproduce']
+export const INTENT_KINDS: readonly IntentKind[] = ['wander', 'seekFood', 'seekWater', 'flee', 'rest', 'reproduce', 'seekMate']
+
+/** The code of each sex in the packed data is its index here. */
+export const SEX_CODES: readonly Sex[] = ['female', 'male']
 
 export const F64_STRIDE = 12
-export const I32_STRIDE = 9
+export const I32_STRIDE = 11
 
 /** Packs bots (any list of bots with a memory) into typed arrays. */
 export function packBots(bots: readonly Bot[]): PackedBots {
@@ -54,6 +58,8 @@ export function packBots(bots: readonly Bot[]): PackedBots {
     i32[n + 6] = bot.intent.targetId ?? -1
     i32[n + 7] = bot.memory.length
     i32[n + 8] = learned
+    i32[n + 9] = bot.fatherId ?? -1
+    i32[n + 10] = SEX_CODES.indexOf(bot.sex)
   }
   return { count, f64, i32 }
 }
@@ -67,6 +73,7 @@ export function unpackBots(packed: PackedBots): ViewBot[] {
     const n = i * I32_STRIDE
     const parent = i32[n + 4]!
     const target = i32[n + 6]!
+    const father = i32[n + 9]!
     out[i] = {
       id: i32[n]!,
       x: f64[f]!,
@@ -80,6 +87,8 @@ export function unpackBots(packed: PackedBots): ViewBot[] {
       cooldown: i32[n + 2]!,
       generation: i32[n + 3]!,
       parentId: parent < 0 ? null : parent,
+      fatherId: father < 0 ? null : father,
+      sex: SEX_CODES[i32[n + 10]!] ?? 'female',
       traits: { senseRadius: f64[f + 8]!, caution: f64[f + 9]!, reproThreshold: f64[f + 10]!, metabolism: f64[f + 11]! },
       intent: { kind: INTENT_KINDS[i32[n + 5]!] ?? 'wander', targetId: target < 0 ? null : target },
       heading: f64[f + 7]!,

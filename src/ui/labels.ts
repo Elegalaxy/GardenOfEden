@@ -3,6 +3,7 @@
 
 import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
 import { fertilityAt } from '../sim/reproduction.ts'
+import { autoSex } from '../sim/world.ts'
 import type { Tuning } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
 
@@ -12,6 +13,12 @@ export const KIND_LABEL: Record<NodeKind, string> = {
   shelter: 'shelter',
   ruin: 'ruin',
   water: 'water',
+}
+
+/** What the Add bot tool will place next, with the living count of each sex: "Next: female (20 F / 21 M alive)". */
+export function nextBotSexLabel(bots: readonly { sex: 'female' | 'male' }[]): string {
+  const females = bots.filter((bot) => bot.sex === 'female').length
+  return `Next: ${autoSex(bots)} (${females} F / ${bots.length - females} M alive)`
 }
 
 export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
@@ -54,7 +61,8 @@ export const INTENT_LABEL: Record<IntentKind, string> = {
   seekWater: 'Seeking water',
   flee: 'Fleeing danger',
   rest: 'Resting in shelter',
-  reproduce: 'Heading to shelter to reproduce',
+  reproduce: 'Heading to a shelter to wait for a mate',
+  seekMate: 'Walking to a mate',
 }
 
 /**

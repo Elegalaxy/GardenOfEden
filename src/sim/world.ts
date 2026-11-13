@@ -1,12 +1,13 @@
 // World creation and small read helpers. A new world is built from a seed, a
 // preset (the starting scene) and the rules (numbers from src/content). Fixed
 // items are placed first, then scattered ones, so a preset's layout does not
-// depend on how many things are scattered after it. Every founder gets a lineage record.
+// depend on how many things are scattered after it. Every founder gets a lineage record. Founders
+// alternate female, male, ... in creation order (preset bots first, then scattered ones).
 
 import { addRecord } from './lineage.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
-import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, SimEvent, Tuning, World, WorldNode } from './types.ts'
+import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
 
 const TWO_PI = Math.PI * 2
 
@@ -50,8 +51,17 @@ export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: 
   }
 }
 
+/** The sex there are fewer of among these bots; a tie gives female. No random draw. */
+export function autoSex(bots: readonly Pick<Bot, 'sex'>[]): Sex {
+  let females = 0
+  for (const bot of bots) {
+    if (bot.sex === 'female') females += 1
+  }
+  return females <= bots.length - females ? 'female' : 'male'
+}
+
 /** A bot with the default traits, full health and thirst, and an empty memory. */
-export function makeBot(id: number, x: number, y: number, heading: number, rules: Rules): Bot {
+export function makeBot(id: number, x: number, y: number, heading: number, rules: Rules, sex: Sex = 'female'): Bot {
   const { bot, traits } = rules.tuning
   return {
     id,
@@ -66,6 +76,8 @@ export function makeBot(id: number, x: number, y: number, heading: number, rules
     cooldown: 0,
     generation: 0,
     parentId: null,
+    fatherId: null,
+    sex,
     traits: { ...traits },
     memory: [],
     intent: { kind: 'wander', targetId: null },
@@ -170,21 +182,25 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     }
   }
 
+  // Founders alternate female, male, ... in creation order (no random draw).
+  let founderIndex = 0
   for (const spec of preset.bots) {
     assertInside(preset, spec.x, spec.y, 'preset bot')
     const heading = nextFloat(stream) * TWO_PI
-    const bot = makeBot(world.nextId, spec.x, spec.y, heading, rules)
+    const bot = makeBot(world.nextId, spec.x, spec.y, heading, rules, founderIndex % 2 === 0 ? 'female' : 'male')
+    founderIndex += 1
     world.bots.push(bot)
-    addRecord(world, bot.id, null, bot.generation, bot.traits)
+    addRecord(world, bot.id, null, null, bot.sex, bot.generation, bot.traits)
     world.nextId += 1
   }
   for (let i = 0; i < preset.scatterBots; i += 1) {
     const x = nextFloat(stream) * preset.width
     const y = nextFloat(stream) * preset.height
     const heading = nextFloat(stream) * TWO_PI
-    const bot = makeBot(world.nextId, x, y, heading, rules)
+    const bot = makeBot(world.nextId, x, y, heading, rules, founderIndex % 2 === 0 ? 'female' : 'male')
+    founderIndex += 1
     world.bots.push(bot)
-    addRecord(world, bot.id, null, bot.generation, bot.traits)
+    addRecord(world, bot.id, null, null, bot.sex, bot.generation, bot.traits)
     world.nextId += 1
   }
 

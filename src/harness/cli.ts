@@ -10,6 +10,8 @@
 // lineage records kept and the ones pruned so far (M11);
 // `pAge` (M16) is the mean parent age at a birth over the kept lineage records.
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
+// `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
+// survey column `fem` is the number of females alive at the end.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
 // form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
 // Same arguments always print the same output.
@@ -22,12 +24,13 @@ import { createWorld, totalDeaths, totalFood, totalRuinFood } from '../sim/world
 import type { World } from '../sim/types.ts'
 import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
-import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutFamily } from './survey.ts'
+import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutFamily, withoutSex } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
   '       npm run sim -- --seeds <seed,seed,...> --ticks <1-1000000> [--preset <id>] [--warmup <0-1000000>]',
   `       either form also takes ${EVENT_USAGE} and --no-family (no knowledge sharing between parent and child)`,
+  '       and --asexual (no two sexes: a bot breeds alone)',
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
 ].join('\n')
 const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
@@ -44,6 +47,7 @@ type Options = {
   every: number
   warmup: number
   noFamily: boolean
+  asexual: boolean
   script: ScriptedCommand[]
 }
 
@@ -63,6 +67,7 @@ function parseArgs(argv: string[]): Options {
   let preset = DEFAULT_PRESET
   let every = DEFAULT_EVERY
   let noFamily = false
+  let asexual = false
   const script: ScriptedCommand[] = []
   for (let i = 0; i < argv.length; i += 2) {
     const flag = argv[i]
@@ -70,6 +75,9 @@ function parseArgs(argv: string[]): Options {
     if (flag === '--no-family') {
       // The only flag without a value: step back so the loop's `i += 2` moves on by one.
       noFamily = true
+      i -= 1
+    } else if (flag === '--asexual') {
+      asexual = true
       i -= 1
     } else if (flag === '--seed') {
       if (value === undefined || !SEED_PATTERN.test(value)) {
@@ -102,7 +110,7 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup, noFamily, script }
+  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, script }
 }
 
 function row(world: World): string {
@@ -151,9 +159,11 @@ function main(argv: string[]): void {
   }
   const preset = findPreset(options.preset)
   if (preset === undefined) return
-  const active = options.noFamily ? withoutFamily(rules) : rules
+  const familyRules = options.noFamily ? withoutFamily(rules) : rules
+  const active = options.asexual ? withoutSex(familyRules) : familyRules
+  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}`
   if (options.survey) {
-    console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${options.noFamily ? ' no-family' : ''}`)
+    console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine())
     const rows = options.seeds.map((seed) => surveySeed(seed, preset, active, options.ticks, options.warmup, options.script))
     console.log(formatSurvey(rows))
@@ -162,7 +172,7 @@ function main(argv: string[]): void {
   }
   const seed = options.seeds[0]
   const world = createWorld(seed, preset, active)
-  console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${options.noFamily ? ' no-family' : ''}`)
+  console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${flags}`)
   console.log(foundersLine())
   console.log(
     ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']

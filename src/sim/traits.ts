@@ -9,6 +9,8 @@
 //               most +-strength of itself. Then it is clamped into its bounds
 //               (whether or not it changed). With strength 0 a child copies its
 //               parent, apart from that clamp.
+// crossTraits   uniform crossover for two parents: one draw per trait picks the mother's or the
+//               father's value (then mutateTraits runs on the result).
 // traitStats    mean, min and max of each trait over a list of bots.
 // meanTraits    just the means; what a stats Sample stores.
 //
@@ -31,6 +33,15 @@ export function mutateTraits(parent: Traits, mutation: Tuning['mutation'], strea
     if (roll < mutation.rate) value *= 1 + (2 * amount - 1) * mutation.strength
     const { min, max } = mutation.bounds[name]
     child[name] = Math.min(max, Math.max(min, value))
+  }
+  return child
+}
+
+/** A child's traits before mutation: for each trait, in TRAIT_NAMES order, one draw picks the mother's value (< 0.5) or the father's. */
+export function crossTraits(mother: Traits, father: Traits, stream: RngStream): Traits {
+  const child: Traits = { ...mother }
+  for (const name of TRAIT_NAMES) {
+    child[name] = nextFloat(stream) < 0.5 ? mother[name] : father[name]
   }
   return child
 }

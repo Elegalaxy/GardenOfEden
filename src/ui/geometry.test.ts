@@ -12,7 +12,7 @@ function node(id: number, kind: WorldNode['kind'], x: number, y: number, radius:
 
 function bot(id: number, x: number, y: number, px = x, py = y): Bot {
   return {
-    id, x, y, px, py, energy: 1, health: 1, thirst: 1, age: 0, cooldown: 0, generation: 0, parentId: null,
+    id, x, y, px, py, energy: 1, health: 1, thirst: 1, age: 0, cooldown: 0, generation: 0, parentId: null, fatherId: null, sex: 'female',
     traits: { senseRadius: 1, caution: 0, reproThreshold: 1, metabolism: 1 }, memory: [],
     intent: { kind: 'wander', targetId: null }, heading: 0,
   }

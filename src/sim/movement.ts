@@ -23,6 +23,7 @@
 
 import { atan2, cos, sin } from './exactMath.ts'
 import { isDesperate } from './brain.ts'
+import { findBotById } from './mating.ts'
 import { speedOf } from './metabolism.ts'
 import { drink, eat } from './nodes.ts'
 import { distance, knownDangers } from './perception.ts'
@@ -159,6 +160,15 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
         return walkToward(world, bot, target.x, target.y, dangers, rules)
       }
       break
+    case 'seekMate': {
+      const mate = bot.intent.targetId === null ? undefined : findBotById(world.bots, bot.intent.targetId)
+      if (mate !== undefined) {
+        // Stop within half the mating range: close enough to pair, not stacked on her.
+        if (distance(bot.x, bot.y, mate.x, mate.y) <= tuning.sex.mateRange / 2) return false
+        return walkToward(world, bot, mate.x, mate.y, dangers, rules)
+      }
+      break
+    }
     case 'wander':
       break
   }

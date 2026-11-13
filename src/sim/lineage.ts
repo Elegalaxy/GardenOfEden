@@ -10,8 +10,9 @@
 //   death    `recordDeath` sets `died` (the tick) and `cause`, next to every `deathsByCause` increment.
 //   pruning  `pruneLineage` runs once per tick after the children are added, and does nothing until
 //            there are more than `lineage.maxRecords` records. Then, in order:
-//              1. mark every record that has a living descendant: walk each living bot up its parent
-//                 chain, stopping at a record already marked (a living bot's own record is marked too);
+//              1. mark every record that has a living descendant: walk each living bot up both its
+//                 mother and father lines, stopping at a record already marked (a living bot's own
+//                 record is marked too);
 //              2. drop dead, unmarked records (extinct branches), the earliest `died` first, then the
 //                 lowest id, until `lineage.pruneTo` records remain;
 //              3. if still over, drop dead marked records (ancestors of living bots), lowest id first,
@@ -22,6 +23,8 @@
 //            runs once every few hundred births instead of every tick. `lineagePruned` counts the
 //            records dropped so far.
 //
+// A record has a mother (`parentId`, the bearing parent, or the only parent when sex is off) and a
+// `fatherId` (null for founders, placed bots and asexual births), plus its `sex`.
 // A record whose parent record is gone is valid: `parentId` keeps the id, `findRecord` just misses.
 // `children` is a lifetime count and is not lowered when a child record is pruned, so it can exceed
 // the number of kept child records.
@@ -33,7 +36,7 @@
 //                   no longer kept, each with its living and total descendant counts.
 // Both count descendants without the record itself.
 
-import type { DeathCause, LineageRecord, Traits, Tuning, World } from './types.ts'
+import type { DeathCause, LineageRecord, Sex, Traits, Tuning, World } from './types.ts'
 
 /** A record plus its descendants shown in a `familyView`. */
 export type FamilyNode = {
@@ -80,12 +83,16 @@ export function addRecord(
   world: World,
   id: number,
   parentId: number | null,
+  fatherId: number | null,
+  sex: Sex,
   generation: number,
   traits: Traits,
 ): LineageRecord {
   const record: LineageRecord = {
     id,
     parentId,
+    fatherId,
+    sex,
     generation,
     born: world.tick,
     died: null,
@@ -129,17 +136,23 @@ export function pruneLineage(world: World, tuning: Tuning): void {
   // 1. Records with a living descendant (a living bot's own record included).
   const marked = new Set<number>()
   for (const bot of world.bots) {
-    let next: number | null = bot.id
-    while (next !== null) {
+    // Walk up both parent lines (mother and father) with a stack; a record already marked is not walked again.
+    const stack: number[] = [bot.id]
+    while (stack.length > 0) {
+      const next = stack.pop() as number
       const record = findRecord(world, next)
       if (record === undefined) {
-        // The bot's own record is gone: carry on from its parent. Further up, a gap ends the walk.
-        next = next === bot.id ? bot.parentId : null
+        // The bot's own record is gone: carry on from its parents. Further up, a gap ends that walk.
+        if (next === bot.id) {
+          if (bot.parentId !== null) stack.push(bot.parentId)
+          if (bot.fatherId !== null) stack.push(bot.fatherId)
+        }
         continue
       }
-      if (marked.has(record.id)) break
+      if (marked.has(record.id)) continue
       marked.add(record.id)
-      next = record.parentId
+      if (record.parentId !== null) stack.push(record.parentId)
+      if (record.fatherId !== null) stack.push(record.fatherId)
     }
   }
 

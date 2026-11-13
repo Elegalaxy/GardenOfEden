@@ -31,14 +31,18 @@ export const tuning: Tuning = {
     drinkRate: 5,
     hungryBelow: 0.6,
     satedAbove: 0.9,
-    eatRate: 5,
+    // 10 since M17 (was 5): with two sexes only half the bots bear children and a male has to find a
+    // female, so a bot needs more spare time and energy; at 5 or 8 the weakest seeds died out (alone,
+    // or after a drought or plague) because births could not keep up with starvation.
+    eatRate: 10,
     energyPerUnit: 2,
     healthRegen: 0.02,
     maxAge: 3000,
     adultAge: 200,
-    reproCooldown: 300,
+    // 100 since M17 (was 300): only females bear, so each needs to be ready twice as often.
+    reproCooldown: 100,
     childEnergyShare: 0.4,
-    birthCost: 20,
+    birthCost: 10,
     spawnSpread: 1.5,
   },
   // Fertility by age (M16): 0 below bot.adultAge, `startFraction` at adultAge rising linearly to 1 at
@@ -52,11 +56,23 @@ export const tuning: Tuning = {
     declineAge: 1800,
     fertileUntil: 2600,
   },
+  // Two sexes (M17): a birth needs a ready female standing in a shelter and a ready male within mateRange
+  // cells of her (a male finds her by sensing, see brain.seekMateScore and mating.ts). The mother pays
+  // childEnergyShare + birthCost and waits reproCooldown / fertility; the father pays maleCost and waits
+  // maleCooldown / fertility. Each child is female with chance femaleChance (a plain coin flip).
+  sex: {
+    enabled: true,
+    femaleChance: 0.5,
+    mateRange: 4,
+    maleCost: 0,
+    maleCooldown: 50,
+  },
   brain: {
     seekWeight: 1.25,
     thirstWeight: 1.25,
     restWeight: 1.4,
     reproduceScore: 0.5,
+    seekMateScore: 0.6,
     wanderScore: 0.15,
     fleeBase: 0.4,
     fleeCaution: 1.2,
@@ -85,7 +101,8 @@ export const tuning: Tuning = {
   traits: {
     senseRadius: 6,
     caution: 0.5,
-    reproThreshold: 80,
+    // 65 since M17 (was 80); the population mean settles near 60 either way.
+    reproThreshold: 65,
     metabolism: 1,
   },
   mutation: {
