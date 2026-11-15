@@ -465,6 +465,47 @@ h4 {
   line-height: 1.4;
 }
 
+/* The last click's notice and, beside it, the bulk "Place" choice. The row is as tall as the 44px buttons. */
+.tool-notice-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-top: 2px;
+}
+
+/* Bulk placing (M19): how many a click places. It sits beside the hint and notice, keeps its room while hidden
+   (visibility, so it is out of the tab order too) and its height never exceeds the two text lines it replaces. */
+.place-count {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.place-label {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.place-options {
+  display: flex;
+  gap: 4px;
+}
+
+.place-option {
+  min-width: 44px;
+  padding-inline: 8px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.place-option[aria-pressed='true'] {
+  background: #26324a;
+  border-color: #9ec1ff;
+  box-shadow: inset 0 -3px 0 #9ec1ff;
+}
+
 .tool-hint {
   min-height: 2.8em; /* two lines */
   margin: 0;
@@ -477,8 +518,10 @@ h4 {
 }
 
 .tool-notice {
+  flex: 1 1 14rem;
+  min-width: 0;
   min-height: 2.8em; /* two lines: the longest notice, a meteor strike, is about 90 characters */
-  margin: 2px 0 0;
+  margin: 0;
 }
 
 .notice-ok {
@@ -1977,6 +2020,15 @@ button.fam-founder-button:hover:not(:disabled) {
   background-color: #141a24; /* the map's colour: the step's translucent white is drawn over it, as on the map */
   border: 1px solid #6a738c;
   border-radius: 3px;
+}
+
+.heat-readout-mark {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: baseline;
 }
 
 .heat-readout {

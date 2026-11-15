@@ -8,6 +8,11 @@
 //                           data too (the page sets it while paused). At most one is in flight (the
 //                           page's clock waits for the frame), so a slow worker throttles itself.
 //   command{reqId, cmd}     apply a player command between two ticks, in message order.
+//   commands{reqId, cmds}   place many nodes or bots at once (bulk placing, M19): applied one after another in order with
+//                           applyCommand, so each is recorded exactly as a single command would be (saves, replays and
+//                           hashes are the same as for the same commands sent one by one). Only placeNode and placeBot
+//                           are accepted, at most MAX_BATCH (simHost.ts) per message. One frame, one heat snapshot and one
+//                           commandsResult answer the whole batch.
 //   reset{seed, presetId?}  start a new world (the eden preset when no preset is given).
 //   load{save}              rebuild a saved run in slices; progress comes back as messages.
 //   cancelLoad              stop that load; the current run is kept.
@@ -22,6 +27,7 @@
 //   ready                   the worker started (the page falls back to running the host itself if it never comes).
 //   frame{frame, ack?}      the picture of the world (see Frame). `ack: 'advance'` answers an advance.
 //   commandResult{...}      the command's result (the frame showing its effect is sent just before).
+//   commandsResult{...}     one result per command of a batch, in order (the one frame showing the effect is sent just before).
 //   loadProgress, loadDone  the load's progress, and how it ended (a loaded run's frame is sent just before).
 //   heatSnapshot{heat}      one layer of the heat grid (6,144 numbers) with its summary. Sent only while a layer is
 //                           on: right after a `heat` request, a command, a reset or a load, whenever an advance asks
@@ -132,6 +138,7 @@ export type HeatRequest = { layer: HeatLayer | null; range: HeatRange }
 export type ToWorker =
   | { type: 'advance'; ticks: number; slow?: boolean }
   | { type: 'command'; reqId: number; cmd: Command }
+  | { type: 'commands'; reqId: number; cmds: Command[] }
   | { type: 'reset'; seed: string; presetId?: string }
   | { type: 'load'; save: Save }
   | { type: 'cancelLoad' }
@@ -145,6 +152,7 @@ export type FromWorker =
   | { type: 'ready' }
   | { type: 'frame'; frame: Frame; ack?: 'advance' }
   | { type: 'commandResult'; reqId: number; result: CommandResult; meteorKills: number }
+  | { type: 'commandsResult'; reqId: number; results: CommandResult[] }
   | { type: 'loadProgress'; tick: number; target: number }
   | { type: 'loadDone'; outcome: LoadResult }
   | { type: 'heatSnapshot'; heat: HeatSnapshot }

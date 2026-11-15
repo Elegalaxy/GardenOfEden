@@ -47,6 +47,11 @@ export function toolInfo(id: Tool): ToolInfo {
   return TOOLS.find((tool) => tool.id === id) ?? EVENT_TOOLS.find((tool) => tool.id === id) ?? TOOLS[0]!
 }
 
+/** True for the tools that put bots or nodes on the map, the ones the "Place" count applies to. */
+export function placesThings(id: Tool): boolean {
+  return id === 'bot' || toolInfo(id).nodeKind !== undefined
+}
+
 /** The tool a pressed key selects, or null. Esc is inspect. */
 export function toolForKey(key: string): Tool | null {
   if (key === 'Escape') return 'inspect'

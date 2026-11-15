@@ -20,7 +20,7 @@ import {
   scaleFor,
 } from './heat.ts'
 import type { HeatLayer, HeatRange } from './heat.ts'
-import { heatBinColor } from './heatRender.ts'
+import { heatBinColor, heatHue } from './heatRender.ts'
 import { cycleHeatLayer, setHeatLayer, setHeatRange, useHoverCell, useStoreValue } from './store.ts'
 import { isTypingTarget } from './typing.ts'
 
@@ -149,7 +149,7 @@ export function HeatLegend() {
         <ol className="heat-bins" aria-label="Colour steps from palest to brightest, and the values in each">
           {bins.map((bin) => (
             <li key={bin.bin} className={`heat-bin${bin.empty ? ' heat-bin-empty' : ''}`}>
-              <span className="heat-swatch" style={{ backgroundImage: `linear-gradient(${heatBinColor(bin.bin)}, ${heatBinColor(bin.bin)})` }} aria-hidden="true" />
+              <span className="heat-swatch" style={{ backgroundImage: `linear-gradient(${heatBinColor(layer, bin.bin)}, ${heatBinColor(layer, bin.bin)})` }} aria-hidden="true" />
               <span className="figure">{bin.label}</span>
             </li>
           ))}
@@ -197,7 +197,10 @@ export function HeatLegend() {
         </span>
       </div>
       <div className="heat-body">{body}</div>
-      <p className="heat-readout figure">{readout}</p>
+      <p className="heat-readout figure">
+        {layer !== null && heat !== null && <span className="heat-readout-mark" style={{ backgroundColor: heatHue(layer) }} aria-hidden="true" />}
+        {readout}
+      </p>
     </section>
   )
 }

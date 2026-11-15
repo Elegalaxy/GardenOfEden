@@ -1,34 +1,48 @@
-// Drawing a heat layer (M15) under the nodes and bots. One neutral warm-white ramp serves every layer, so it never
-// clashes with the node colours (green, red, blue, purple, cyan) and the layer is named by the controls and the legend,
-// not by a colour: HEAT_BIN_COUNT steps of growing opacity, with an empty cell left clear. The snapshot becomes a small
+// Drawing a heat layer (M15) under the nodes and bots. Each layer has its own hue (M19) in the same HEAT_BIN_COUNT steps of
+// growing opacity, with an empty cell left clear. The hues avoid the node colours on the map (green resource, red danger,
+// blue water, purple ruin, cyan shelter): amber for traffic, pink for births, orange for deaths. Colour is never the only
+// cue: the controls and the legend name the layer. The snapshot becomes a small
 // offscreen canvas (one pixel per map cell) once per snapshot, so at most about four times a second; every frame only
 // stretches that canvas over the map with smoothing off, which keeps the cells square. The canvas is reused while the
 // snapshot object stays the same.
 
 import type { Cell, Layout } from './geometry.ts'
 import { HEAT_BIN_COUNT, heatBin, scaleFor } from './heat.ts'
-import type { HeatSnapshot } from './heat.ts'
+import type { HeatLayer, HeatSnapshot } from './heat.ts'
 
-/** The ramp colour (warm white) and the opacity of each bin, 1 to HEAT_BIN_COUNT. Index 0 is an empty cell. */
-export const HEAT_RGB = [255, 238, 196] as const
+/** The hue of each layer, as red, green, blue. */
+export const HEAT_RGB: Record<HeatLayer, readonly [number, number, number]> = {
+  traffic: [255, 168, 40],
+  births: [255, 128, 190],
+  deaths: [255, 92, 56],
+}
+/** The opacity of each bin, 1 to HEAT_BIN_COUNT, the same for every layer. Index 0 is an empty cell. */
 export const HEAT_BIN_ALPHA = [0, 0.2, 0.34, 0.48, 0.62, 0.78] as const
 
-/** The CSS colour of a bin, for the legend swatches. */
-export function heatBinColor(bin: number): string {
+/** The CSS colour of a layer's bin, for the legend swatches and the readout. */
+export function heatBinColor(layer: HeatLayer, bin: number): string {
   const alpha = HEAT_BIN_ALPHA[Math.min(HEAT_BIN_COUNT, Math.max(0, bin))] ?? 0
-  return `rgba(${HEAT_RGB[0]}, ${HEAT_RGB[1]}, ${HEAT_RGB[2]}, ${alpha})`
+  const [r, g, b] = HEAT_RGB[layer]
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
+/** The solid CSS colour of a layer's hue (full opacity), for the readout's marker. */
+export function heatHue(layer: HeatLayer): string {
+  const [r, g, b] = HEAT_RGB[layer]
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 /** RGBA pixels (one per cell) for a snapshot. Pure, so the picture can be checked without a canvas. */
 export function heatPixels(snapshot: Pick<HeatSnapshot, 'cells' | 'layer' | 'max'>, into?: Uint8ClampedArray): Uint8ClampedArray {
   const pixels = into ?? new Uint8ClampedArray(snapshot.cells.length * 4)
   const scale = scaleFor(snapshot.layer)
+  const [r, g, b] = HEAT_RGB[snapshot.layer]
   for (let i = 0; i < snapshot.cells.length; i += 1) {
     const bin = heatBin(snapshot.cells[i]!, snapshot.max, scale)
     const o = i * 4
-    pixels[o] = HEAT_RGB[0]
-    pixels[o + 1] = HEAT_RGB[1]
-    pixels[o + 2] = HEAT_RGB[2]
+    pixels[o] = r
+    pixels[o + 1] = g
+    pixels[o + 2] = b
     pixels[o + 3] = Math.round(HEAT_BIN_ALPHA[bin]! * 255)
   }
   return pixels

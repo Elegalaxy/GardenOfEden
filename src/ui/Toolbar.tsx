@@ -9,9 +9,10 @@
 import { useEffect } from 'react'
 import { KIND_LETTER, nextBotSexLabel } from './labels.ts'
 import { globalEventForKey } from './eventInfo.ts'
-import { dispatch, setTool, useWorldStore } from './store.ts'
+import { PLACE_COUNTS } from './bulk.ts'
+import { dispatch, setPlaceCount, setTool, useWorldStore } from './store.ts'
 import { isTypingTarget } from './typing.ts'
-import { TOOLS, toolForKey, toolInfo } from './tools.ts'
+import { TOOLS, placesThings, toolForKey, toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 
 /** The little badge on a tool button: the same R/W/D/S keys as the map legend (water is a droplet shape). */
@@ -91,6 +92,33 @@ export function Toolbar() {
   )
 }
 
+/**
+ * How many a click of a placement tool places (bulk placing, M19). It keeps its room, hidden, while another tool is
+ * active, so choosing a tool never moves the page; hidden means it is not in the tab order either.
+ */
+function PlaceCount() {
+  const { tool, placeCount } = useWorldStore()
+  const shown = placesThings(tool)
+  return (
+    <div className="place-count" role="group" aria-label="Place how many per click" style={shown ? undefined : { visibility: 'hidden' }}>
+      <span className="place-label">Place</span>
+      <div className="place-options">
+        {PLACE_COUNTS.map((count) => (
+          <button
+            key={count}
+            type="button"
+            className="secondary place-option"
+            aria-pressed={placeCount === count}
+            onClick={() => setPlaceCount(count)}
+          >
+            {count}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** What the active tool does and what the last click did. Fixed height: see `.tool-status` in panels.css. */
 export function ToolStatus() {
   const { tool, notice, world } = useWorldStore()
@@ -101,19 +129,22 @@ export function ToolStatus() {
         <strong>{active.label}.</strong> {active.hint}{' '}
         {active.id === 'bot' ? <span className="figure">{nextBotSexLabel(world.bots)}.</span> : null} <span className="tool-hint-keys">Esc returns to Inspect.</span>
       </p>
-      <p
-        className={`tool-notice ${notice === null ? '' : notice.ok ? 'notice-ok' : 'notice-error'}`}
-        role="status"
-        aria-live="polite"
-      >
-        {notice === null ? (
-          ' '
-        ) : (
-          <>
-            <span aria-hidden="true">{notice.ok ? '✓' : '⚠'}</span> {notice.text}
-          </>
-        )}
-      </p>
+      <div className="tool-notice-row">
+        <p
+          className={`tool-notice ${notice === null ? '' : notice.ok ? 'notice-ok' : 'notice-error'}`}
+          role="status"
+          aria-live="polite"
+        >
+          {notice === null ? (
+            ' '
+          ) : (
+            <>
+              <span aria-hidden="true">{notice.ok ? '✓' : '⚠'}</span> {notice.text}
+            </>
+          )}
+        </p>
+        <PlaceCount />
+      </div>
     </section>
   )
 }

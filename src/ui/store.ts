@@ -37,8 +37,10 @@ import { SIM_VERSION, edenPreset, rules } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
-import type { Command, DeathsByCause } from '../sim/types.ts'
+import type { Command, DeathsByCause, NodeKind } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
+import { DEFAULT_PLACE_COUNT, batchNotice, bulkCommands } from './bulk.ts'
+import type { BatchResult, PlaceCount } from './bulk.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
@@ -46,7 +48,7 @@ import { nextHeatLayer } from './heat.ts'
 import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
 import { formatPoint } from './labels.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
-import { DEFAULT_SEED, LOADING_REASON, checkLoad, isValidSeed } from './simHost.ts'
+import { DEFAULT_SEED, LOADING_REASON, MAX_BATCH, checkLoad, isValidSeed } from './simHost.ts'
 import { createInlineClient, createWorkerClient } from './simClient.ts'
 import type { SimClient } from './simClient.ts'
 import { toolInfo } from './tools.ts'
@@ -126,6 +128,8 @@ export type WorldSnapshot = {
    * arrived yet). Replaced about four times a second while running; its identity says when it changed.
    */
   heat: HeatSnapshot | null
+  /** How many the placement tools put down per click (bulk placing, M19); 1 is a plain click. */
+  placeCount: PlaceCount
 }
 
 type Listener = () => void
@@ -145,6 +149,7 @@ let load: (LoadProgress & { sim: number; done: (outcome: LoadOutcome) => void })
 let heatLayer: HeatLayer | null = null
 let heatRange: HeatRange = 'all'
 let heat: HeatSnapshot | null = null
+let placeCount: PlaceCount = DEFAULT_PLACE_COUNT
 
 // The clock's side of the conversation with the worker.
 /** Ticks that fell due while an advance was in flight. */
@@ -188,6 +193,7 @@ function makeSnapshot(): WorldSnapshot {
     heatRange,
     // A snapshot of the run before a reset or a load is not shown for the new one.
     heat: heat !== null && heat.runId === view.runId ? heat : null,
+    placeCount,
   }
 }
 
@@ -323,6 +329,7 @@ function onMessage(msg: FromWorker): void {
       onFrame(msg.frame, msg.ack === 'advance')
       return
     case 'commandResult':
+    case 'commandsResult':
     case 'save':
     case 'queryResult':
     case 'synced': {
@@ -466,6 +473,13 @@ export function useHoverCell(): Cell | null {
   )
 }
 
+/** How many bots or nodes a click of a placement tool places. */
+export function setPlaceCount(next: PlaceCount): void {
+  if (next === placeCount) return
+  placeCount = next
+  publish()
+}
+
 export function setTool(next: Tool): void {
   if (next === tool) return
   tool = next
@@ -513,6 +527,39 @@ export function dispatch(cmd: Command): Promise<CommandResult> {
 }
 
 /**
+ * Places many bots or nodes in one message (bulk placing, M19): the worker applies them in order, each recorded as a
+ * single command would be, and answers once. Lists longer than `MAX_BATCH` go in several messages, one after the other.
+ * Leaves one notice for the whole batch. `noun` is the plural word the notice uses ("bots", "danger nodes").
+ */
+export async function dispatchBatch(cmds: Command[], noun: string): Promise<BatchResult> {
+  const result: BatchResult = { total: cmds.length, placed: 0, refused: 0, firstReason: null }
+  if (load !== null) {
+    say(false, LOADING_REASON)
+    publish()
+    return { ...result, refused: cmds.length, firstReason: LOADING_REASON }
+  }
+  for (let start = 0; start < cmds.length; start += MAX_BATCH) {
+    const chunk = cmds.slice(start, start + MAX_BATCH)
+    const msg = await ask((reqId) => ({ type: 'commands', reqId, cmds: chunk }))
+    if (msg.type !== 'commandsResult') {
+      result.refused += chunk.length
+      result.firstReason ??= 'No answer.'
+      continue
+    }
+    for (const one of msg.results) {
+      if (one.ok) result.placed += 1
+      else {
+        result.refused += 1
+        result.firstReason ??= one.reason
+      }
+    }
+  }
+  say(result.placed > 0, batchNotice(noun, result))
+  publish()
+  return result
+}
+
+/**
  * What a click at map position (x, y) does for the active tool. Placements snap to the centre of the
  * clicked cell. `reach` is how far (in cells) an inspect click may miss a bot.
  */
@@ -531,9 +578,18 @@ export function clickMap(x: number, y: number, reach: number): void {
     case 'water':
     case 'danger':
     case 'shelter':
+      if (placeCount > 1) {
+        const kind = toolInfo(tool).nodeKind ?? tool
+        void dispatchBatch(bulkCommands(kind as NodeKind, placeCount, view.width, view.height, Math.random), `${kind} nodes`)
+        return
+      }
       void dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })
       return
     case 'bot':
+      if (placeCount > 1) {
+        void dispatchBatch(bulkCommands(null, placeCount, view.width, view.height, Math.random), 'bots')
+        return
+      }
       void dispatch({ type: 'placeBot', x: centre.x, y: centre.y })
       return
     case 'plague':
@@ -650,6 +706,7 @@ export function setSimClient(next: SimClient): void {
   heatLayer = null
   heatRange = 'all'
   heat = null
+  placeCount = DEFAULT_PLACE_COUNT
   settleIdle()
   connect(next)
   publish()

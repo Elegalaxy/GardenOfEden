@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { tuning } from '../content/index.ts'
 import { stateHash } from '../sim/hash.ts'
 import type { FromWorker, ToWorker } from './protocol.ts'
+import { MAX_BATCH } from './simHost.ts'
 import { createInlineClient } from './simClient.ts'
 import type { SimClient } from './simClient.ts'
 import {
@@ -10,6 +11,7 @@ import {
   advance,
   clickMap,
   dispatch,
+  dispatchBatch,
   exportSave,
   getSnapshot,
   isValidSeed,
@@ -18,6 +20,7 @@ import {
   resetWorld,
   select,
   setPaused,
+  setPlaceCount,
   setSimClient,
   setTool,
   settled,
@@ -30,6 +33,7 @@ import {
 beforeEach(async () => {
   setPaused(false)
   setTool('inspect')
+  setPlaceCount(1)
   resetWorld('store-test')
   await settled()
 })
@@ -342,5 +346,48 @@ describe('queries', () => {
     const lines = await queryFounders()
     expect(lines.length).toBeGreaterThan(0)
     expect(lines[0]!.record.parentId).toBeNull()
+  })
+})
+
+describe('dispatchBatch (bulk placing)', () => {
+  it('places many bots with one notice and one answer, recorded as ordinary commands', async () => {
+    const before = getSnapshot()
+    const commands = Array.from({ length: 20 }, (_, i) => ({ type: 'placeBot' as const, x: 10.5 + i, y: 10.5 }))
+    const result = await dispatchBatch(commands, 'bots')
+    expect(result).toEqual({ total: 20, placed: 20, refused: 0, firstReason: null })
+    const snap = getSnapshot()
+    expect(snap.population).toBe(before.population + 20)
+    expect(snap.commandCount).toBe(before.commandCount + 20)
+    expect(snap.notice).toMatchObject({ ok: true, text: 'Placed 20 of 20 bots.' })
+  })
+
+  it('stops at the node cap and says so', async () => {
+    const max = tuning.player.maxNodes
+    const commands = Array.from({ length: max + 10 }, (_, i) => ({ type: 'placeNode' as const, kind: 'danger' as const, x: (i % 90) + 0.5, y: Math.floor(i / 90) * 2 + 0.5 }))
+    const result = await dispatchBatch(commands, 'danger nodes')
+    expect(result.placed + result.refused).toBe(max + 10)
+    expect(result.placed).toBeGreaterThan(0)
+    expect(result.refused).toBeGreaterThan(0)
+    expect(getSnapshot().notice?.text).toContain('cap reached')
+  })
+
+  it('splits a list longer than one batch and still counts it all', async () => {
+    const commands = Array.from({ length: MAX_BATCH + 100 }, (_, i) => ({ type: 'placeBot' as const, x: (i % 96) + 0.5, y: Math.floor(i / 96) + 0.5 }))
+    const result = await dispatchBatch(commands, 'bots')
+    expect(result.placed + result.refused).toBe(MAX_BATCH + 100)
+    expect(getSnapshot().commandCount).toBe(result.placed)
+  })
+
+  it('a click with a count above 1 places that many, a count of 1 places one', async () => {
+    setTool('bot')
+    setPlaceCount(10)
+    const before = getSnapshot().population
+    clickMap(5.5, 5.5, 1)
+    await settled()
+    expect(getSnapshot().population).toBe(before + 10)
+    setPlaceCount(1)
+    clickMap(5.5, 5.5, 1)
+    await settled()
+    expect(getSnapshot().population).toBe(before + 11)
   })
 })

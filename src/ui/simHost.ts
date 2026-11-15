@@ -65,6 +65,10 @@ const SLICE_TICKS = 200
 export const LOAD_SLICE_MS = 40
 /** How often (ms) a heat snapshot is sent while the clock runs and a layer is on. */
 export const HEAT_INTERVAL_MS = 250
+/** Most commands one `commands` message may carry; the rest of a longer list is refused. */
+export const MAX_BATCH = 500
+export const BATCH_KIND_REASON = 'A batch can only place nodes and bots.'
+export const BATCH_SIZE_REASON = `A batch holds at most ${MAX_BATCH} commands.`
 /** Largest answer to a family query, whatever the page asks. */
 const MAX_QUERY_NODES = 2000
 const MAX_QUERY_DEPTH = 50
@@ -240,6 +244,21 @@ export function createSimHost(options: HostOptions = {}): SimHost {
           { type: 'commandResult', reqId: msg.reqId, result, meteorKills: world.deathsByCause.meteor - meteorBefore },
           ...heatMessages(true),
         ]
+      }
+      case 'commands': {
+        // Bulk placing (M19): the same applyCommand as a single command, so every command is recorded as usual; the
+        // frame, the heat observation and the heat snapshot are done once for the whole batch.
+        let anyApplied = false
+        const results: CommandResult[] = msg.cmds.map((cmd, index): CommandResult => {
+          if (load !== null) return { ok: false, reason: LOADING_REASON }
+          if (index >= MAX_BATCH) return { ok: false, reason: BATCH_SIZE_REASON }
+          if (cmd.type !== 'placeNode' && cmd.type !== 'placeBot') return { ok: false, reason: BATCH_KIND_REASON }
+          const result = applyCommand(world, rules, cmd)
+          if (result.ok) anyApplied = true
+          return result
+        })
+        if (anyApplied) observeWorld(heat, world)
+        return [{ type: 'frame', frame: frame(true) }, { type: 'commandsResult', reqId: msg.reqId, results }, ...heatMessages(true)]
       }
       case 'reset': {
         const preset = findPreset(msg.presetId ?? edenPreset.id)
