@@ -152,7 +152,7 @@ describe('plague', () => {
     const world = createWorld('a', scene({ bots: [{ x: 20, y: 20 }] }), rules)
     const bot = world.bots[0]
     bot.health = 0
-    const exposure = { damage: 1, plague: 1, heal: 0, drainMult: 1, shelterId: null }
+    const exposure = { damage: 1, plague: 1, predator: 0, predatorId: null, heal: 0, drainMult: 1, shelterId: null }
     expect(deathCause(bot, exposure)).toBe('danger')
     expect(deathCause(bot, { ...exposure, plague: 1.5 })).toBe('plague')
     expect(deathCause(bot, { ...exposure, damage: 0, plague: 0 })).toBe('danger')

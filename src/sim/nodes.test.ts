@@ -5,7 +5,7 @@ import { createRng } from './rng.ts'
 import type { ActiveEvent, World, WorldNode } from './types.ts'
 
 function node(id: number, kind: WorldNode['kind'], x: number, over: Partial<WorldNode> = {}): WorldNode {
-  return { id, kind, x, y: 10, radius: 3, amount: 0, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0, ...over }
+  return { id, kind, x, y: 10, radius: 3, amount: 0, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0, hunt: null, ...over }
 }
 
 function worldWith(nodes: WorldNode[]): World {
@@ -21,7 +21,7 @@ function worldWith(nodes: WorldNode[]): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, predator: 0, age: 0 },
     events: [],
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,

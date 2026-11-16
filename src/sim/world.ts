@@ -49,6 +49,10 @@ export function makeNode(id: number, kind: NodeKind, x: number, y: number, def: 
     drainMult: def.drainMult,
     decay: def.decay,
     expires: 0,
+    hunt:
+      kind === 'predator'
+        ? { px: x, py: y, heading: 0, homeX: x, homeY: y, targetId: null, chase: 0, restUntil: 0, kills: 0 }
+        : null,
   }
 }
 
@@ -107,11 +111,11 @@ export function totalRuinFood(world: Pick<World, 'nodes'>): number {
   return total
 }
 
-/** Nodes the player counts against `player.maxNodes`: everything except ruins and meteor craters. */
+/** Nodes the player counts against `player.maxNodes`: everything except ruins, meteor craters and predators (those have their own cap, `predator.maxCount`). */
 export function placedNodeCount(world: Pick<World, 'nodes'>): number {
   let count = 0
   for (const node of world.nodes) {
-    if (node.kind !== 'ruin' && node.expires === 0) count += 1
+    if (node.kind !== 'ruin' && node.kind !== 'predator' && node.expires === 0) count += 1
   }
   return count
 }
@@ -124,7 +128,7 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
 
 export function totalDeaths(world: Pick<World, 'deathsByCause'>): number {
   const d = world.deathsByCause
-  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.age
+  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age
 }
 
 /** One stats row for the world as it stands now. */
@@ -160,7 +164,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, predator: 0, age: 0 },
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,
     events: [],

@@ -5,7 +5,7 @@
 
 // RNG stream names, in splitmix32 expansion order. Do not reorder: the sequence
 // for a seed depends on this order.
-export const RNG_STREAM_NAMES = ['world', 'ai', 'birth', 'gene'] as const
+export const RNG_STREAM_NAMES = ['world', 'ai', 'birth', 'gene', 'predator'] as const
 
 export type RngStreamName = (typeof RNG_STREAM_NAMES)[number]
 
@@ -29,12 +29,13 @@ export type RngStream = {
   spare?: number
 }
 
-/** The four named streams for one run. Plain JSON, no hidden generator. */
+/** The five named streams for one run. Plain JSON, no hidden generator. */
 export type RngState = {
   world: RngStream
   ai: RngStream
   birth: RngStream
   gene: RngStream
+  predator: RngStream
 }
 
 /** One choice for `pickWeighted`. `weight` must be finite and >= 0. */
@@ -43,7 +44,7 @@ export type Weighted<T> = {
   weight: number
 }
 
-export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water'
+export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water' | 'predator'
 
 /**
  * One purposeful spot on the map. Only the fields a kind uses matter; the
@@ -55,6 +56,9 @@ export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water'
  *   eaten; the node is removed at 0. Made by the sim only (ruins.ts), never by a preset.
  * - water: a permanent spring. A bot within `radius` drinks `Tuning.bot.drinkRate` thirst per tick.
  *   It is never used up, so it has no amount: `amount` and `capacity` stay 0.
+ * - predator (M21a): a moving hunter. `radius` is its threat radius (what bots remember and avoid), `damage` the
+ *   bite per tick to a bot within `Tuning.predator.biteRange` of its centre. Its state is in `hunt` (predators.ts).
+ *   `amount`, `capacity`, `regen`, `heal`, `decay` stay 0 and `drainMult` 1. Its x and y move every tick.
  * Any node may be temporary: `expires` is the tick at the end of which it is removed (0 = permanent).
  * Only the meteor event makes one (a danger crater, see worldEvents.ts).
  */
@@ -74,6 +78,25 @@ export type WorldNode = {
   decay: number
   /** Last tick the node exists (it is removed at the end of that tick); 0 for a permanent node. */
   expires: number
+  /** Predators only (null for every other kind): what the hunter is doing. */
+  hunt: PredatorState | null
+}
+
+/**
+ * A predator's state (M21a, see predators.ts). `px`, `py` are where it stood at the start of its last turn
+ * (for smooth drawing). `targetId` is the bot it is chasing, `chase` the ticks spent chasing it, `restUntil`
+ * the last tick it rests (it moves again after; 0 = not resting) and `kills` the bots it has killed.
+ */
+export type PredatorState = {
+  px: number
+  py: number
+  heading: number
+  homeX: number
+  homeY: number
+  targetId: number | null
+  chase: number
+  restUntil: number
+  kills: number
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -141,7 +164,7 @@ export type Bot = {
 
 export type Sex = 'female' | 'male'
 
-export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'age'
+export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age'
 
 /** `event` is the sim announcing that a world event ended (its start is the player's `command`). */
 export type SimEventType = 'birth' | 'death' | 'command' | 'event'
@@ -446,6 +469,8 @@ export type Tuning = {
     cap: number
     /** Extra entries kept for water only, so a crowd of food and ruins cannot push the springs out. */
     waterCap: number
+    /** Extra entries kept for predator sightings only (a third class), so they never push food out. */
+    predatorCap: number
     /** A remembered-empty resource is worth another look after this many ticks. */
     retryTicks: number
   }
@@ -530,6 +555,34 @@ export type Tuning = {
       /** ...and stays this many ticks. */
       craterTicks: number
     }
+  }
+  /**
+   * Predators (M21a, see predators.ts). Each takes one `predator`-stream draw per tick (a wander turn). A predator
+   * hunts the nearest living bot outside every shelter within `senseRadius`, bites a bot within `biteRange` for the
+   * node's `damage` per tick, and rests `digestTicks` after a kill or `giveUpRest` after `chaseTicks` of chasing.
+   * It never enters a shelter's radius. Predators do not count toward `player.maxNodes`.
+   */
+  predator: {
+    /** Most predators the world may hold (placeNode refuses beyond it). */
+    maxCount: number
+    /** A predator hunts a bot whose centre is this close to it (cells); a bot senses one by its centre within its own sense radius. */
+    senseRadius: number
+    /** Cells per tick. */
+    speed: number
+    /** A bot this close (cells) to a resting-free predator's centre is bitten. */
+    biteRange: number
+    /** Ticks of chasing one target before giving up. */
+    chaseTicks: number
+    /** Ticks of rest after giving up. */
+    giveUpRest: number
+    /** Ticks of rest after a kill. */
+    digestTicks: number
+    /** A bot forgets a predator sighting after this many ticks (it expects the hunter to have moved). */
+    memoryTicks: number
+    /** A wandering predator is steered back when farther than this (cells) from where it was placed. */
+    homeRange: number
+    /** Radians between the headings tried when steering around a shelter. */
+    steerStep: number
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

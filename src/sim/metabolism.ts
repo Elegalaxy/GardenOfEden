@@ -15,7 +15,8 @@
 // come first, and the health causes before everything because they are done to
 // the bot. If health ran out and the bot took plague damage this tick, the cause is
 // plague when the plague damage was larger than the danger damage, otherwise danger
-// (a tie goes to danger). A meteor's cause, 'meteor', is only recorded by the command that
+// (a tie goes to danger). Predator bites (M21a) are a third health source: the cause is 'predator' only when
+// the bite damage was strictly larger than both the danger and the plague damage (a tie goes to the older rules). A meteor's cause, 'meteor', is only recorded by the command that
 // strikes (worldEvents.ts); a bot never dies of it inside `deathCause`.
 
 import { pow } from './exactMath.ts'
@@ -34,13 +35,16 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   bot.energy -= (t.baseDrain + sensing + (moved ? t.moveDrain : 0)) * bot.traits.metabolism * exposure.drainMult
   const thirstLoss = t.thirstDrain * pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
-  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage - exposure.plague)
+  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage - exposure.plague - exposure.predator)
   bot.age += 1
   if (bot.cooldown > 0) bot.cooldown -= 1
 }
 
 export function deathCause(bot: Bot, exposure: Exposure): DeathCause | null {
-  if (bot.health <= 0) return exposure.plague > exposure.damage ? 'plague' : 'danger'
+  if (bot.health <= 0) {
+    if (exposure.predator > exposure.damage && exposure.predator > exposure.plague) return 'predator'
+    return exposure.plague > exposure.damage ? 'plague' : 'danger'
+  }
   if (bot.thirst <= 0) return 'thirst'
   if (bot.energy <= 0) return 'starve'
   if (bot.age >= bot.lifespan) return 'age'

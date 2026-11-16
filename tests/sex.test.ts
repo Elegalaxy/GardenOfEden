@@ -313,8 +313,8 @@ describe('asexual control', () => {
   // Captured before any M17 edit (the Stage 1 tree): eden at 5,000 ticks. With sexes off and the pre-M17
   // numbers (`stage1`) the world must behave exactly as it did.
   const expected = {
-    a: { births: 214, bots: 48, deaths: { starve: 184, thirst: 9, danger: 0, plague: 0, meteor: 0, age: 13 } },
-    b: { births: 223, bots: 57, deaths: { starve: 186, thirst: 3, danger: 0, plague: 0, meteor: 0, age: 17 } },
+    a: { births: 214, bots: 48, deaths: { starve: 184, thirst: 9, danger: 0, plague: 0, meteor: 0, predator: 0, age: 13 } },
+    b: { births: 223, bots: 57, deaths: { starve: 186, thirst: 3, danger: 0, plague: 0, meteor: 0, predator: 0, age: 17 } },
   }
 
   it.each(['a', 'b'] as const)('reproduces the pre-M17 numbers on seed %s', { timeout: 60_000 }, (seed) => {

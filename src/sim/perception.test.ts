@@ -7,12 +7,13 @@ import type { Bot, MemoryEntry, Tuning, World, WorldNode } from './types.ts'
 // Only the numbers perception reads are filled in.
 const tuning = {
   bot: { eatRate: 5 },
-  memory: { cap: 3, waterCap: 2, retryTicks: 300 },
+  memory: { cap: 3, waterCap: 2, predatorCap: 2, retryTicks: 300 },
+  predator: { memoryTicks: 400 },
   brain: { avoidMargin: 0.75 },
 } as unknown as Tuning
 
 function node(id: number, kind: WorldNode['kind'], x: number, over: Partial<WorldNode> = {}): WorldNode {
-  return { id, kind, x, y: 10, radius: 2, amount: 100, capacity: 100, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0, ...over }
+  return { id, kind, x, y: 10, radius: 2, amount: 100, capacity: 100, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0, hunt: null, ...over }
 }
 
 function worldWith(nodes: WorldNode[], tick = 1): World {
@@ -28,7 +29,7 @@ function worldWith(nodes: WorldNode[], tick = 1): World {
     samples: [],
     log: [],
     commands: [],
-    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, age: 0 },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, predator: 0, age: 0 },
     events: [],
     eaten: { resource: 0, ruin: 0 },
     totalBirths: 0,

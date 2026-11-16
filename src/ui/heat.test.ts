@@ -36,7 +36,7 @@ function fake(tick: number, bots: { x: number; y: number }[], log: SimEvent[] = 
     bots: bots as unknown as Bot[],
     log,
     totalBirths,
-    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, age: 0, ...deaths },
+    deathsByCause: { starve: 0, thirst: 0, danger: 0, plague: 0, meteor: 0, predator: 0, age: 0, ...deaths },
   }
 }
 

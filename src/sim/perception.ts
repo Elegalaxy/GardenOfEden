@@ -12,6 +12,13 @@
 // it is only worth walking to while it held a bite when last seen. Danger entries keep their radius so a bot can steer
 // around them without seeing them again.
 //
+// A predator (M21a) is sensed by its centre (not its edge) within the sense radius, since it moves and its
+// radius is a threat zone rather than a place. A sighting keeps the position where it was seen and is dropped
+// after `predator.memoryTicks` (`remember`), so a bot stops fearing a spot the hunter has surely left. Predator
+// sightings have their own memory slots (`memory.predatorCap`), as water does. `knownDangers` returns danger
+// entries and predator sightings alike, so fleeing, steering and the food and water choices avoid both.
+// Memory is always trimmed and aged in `remember`, before any decision, so a predator entry read there is fresh.
+//
 // Since M10 a bot's memory can also hold sightings copied from its parent or child (family.ts);
 // `learnedFrom` names the source, and seeing the node itself clears it.
 
@@ -26,16 +33,23 @@ export function distance(ax: number, ay: number, bx: number, by: number): number
 export function perceive(world: World, bot: Bot): WorldNode[] {
   const sensed: WorldNode[] = []
   for (const node of world.nodes) {
-    if (distance(bot.x, bot.y, node.x, node.y) - node.radius <= bot.traits.senseRadius) sensed.push(node)
+    const d = distance(bot.x, bot.y, node.x, node.y)
+    if ((node.kind === 'predator' ? d : d - node.radius) <= bot.traits.senseRadius) sensed.push(node)
   }
   return sensed
 }
 
-/** Index of the entry of the wanted kind class (water or not) to forget first: oldest sighting, then lowest node id. -1 if none. */
-function oldestEntry(memory: MemoryEntry[], water: boolean): number {
+type SlotClass = 'water' | 'predator' | 'other'
+
+function slotClass(kind: NodeKind): SlotClass {
+  return kind === 'water' ? 'water' : kind === 'predator' ? 'predator' : 'other'
+}
+
+/** Index of the entry of the wanted slot class to forget first: oldest sighting, then lowest node id. -1 if none. */
+function oldestEntry(memory: MemoryEntry[], slot: SlotClass): number {
   let worst = -1
   for (let i = 0; i < memory.length; i += 1) {
-    if ((memory[i].kind === 'water') !== water) continue
+    if (slotClass(memory[i].kind) !== slot) continue
     if (worst < 0) {
       worst = i
       continue
@@ -49,7 +63,10 @@ function oldestEntry(memory: MemoryEntry[], water: boolean): number {
 
 /** Refresh what the bot sees, forget removed nodes, and stay within the memory cap. */
 export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tuning, live: Set<number>): void {
-  const memory = bot.memory.filter((entry) => live.has(entry.nodeId))
+  const { memoryTicks } = tuning.predator
+  const memory = bot.memory.filter(
+    (entry) => live.has(entry.nodeId) && (entry.kind !== 'predator' || world.tick - entry.seenTick <= memoryTicks),
+  )
   for (const node of sensed) {
     const found = memory.find((entry) => entry.nodeId === node.id)
     if (found) {
@@ -78,19 +95,23 @@ export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tu
 
 /** Forgets entries (in place) until the memory fits its caps: oldest sighting first, ties to the lower node id. */
 export function trimMemory(memory: MemoryEntry[], tuning: Tuning): void {
-  // Two separate caps: `cap` for everything but water, `waterCap` for water.
+  // Three separate caps: `cap` for everything but water and predators, `waterCap` for water, `predatorCap` for predators.
   const waterCount = memory.filter((entry) => entry.kind === 'water').length
-  for (let over = memory.length - waterCount - tuning.memory.cap; over > 0; over -= 1) {
-    memory.splice(oldestEntry(memory, false), 1)
+  const predatorCount = memory.filter((entry) => entry.kind === 'predator').length
+  for (let over = memory.length - waterCount - predatorCount - tuning.memory.cap; over > 0; over -= 1) {
+    memory.splice(oldestEntry(memory, 'other'), 1)
   }
   for (let over = waterCount - tuning.memory.waterCap; over > 0; over -= 1) {
-    memory.splice(oldestEntry(memory, true), 1)
+    memory.splice(oldestEntry(memory, 'water'), 1)
+  }
+  for (let over = predatorCount - tuning.memory.predatorCap; over > 0; over -= 1) {
+    memory.splice(oldestEntry(memory, 'predator'), 1)
   }
 }
 
-/** Remembered danger nodes. */
+/** Remembered danger nodes and predator sightings (fresh: `remember` has already dropped the old ones). */
 export function knownDangers(bot: Bot): MemoryEntry[] {
-  return bot.memory.filter((entry) => entry.kind === 'danger')
+  return bot.memory.filter((entry) => entry.kind === 'danger' || entry.kind === 'predator')
 }
 
 /** True when a point is inside any remembered danger's edge plus `margin`. */

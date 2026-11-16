@@ -114,7 +114,7 @@ function parseArgs(argv: string[]): Options {
 }
 
 function row(world: World): string {
-  const { starve, thirst, danger, plague, meteor, age } = world.deathsByCause
+  const { starve, thirst, danger, plague, meteor, predator, age } = world.deathsByCause
   const traits = meanTraits(world.bots)
   const cells = [
     world.tick,
@@ -126,6 +126,7 @@ function row(world: World): string {
     danger,
     plague,
     meteor,
+    predator,
     age,
     totalFood(world).toFixed(1),
     totalRuinFood(world).toFixed(1),
@@ -175,7 +176,7 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${flags}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
       .map((cell) => cell.padStart(8))
       .join(''),
   )

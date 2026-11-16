@@ -64,6 +64,7 @@ describe('status wording', () => {
       danger: 'Danger',
       plague: 'Plague',
       meteor: 'Meteor',
+      predator: 'Predator',
       age: 'Old age',
     }
     for (const cause of Object.keys(labels) as DeathCause[]) {

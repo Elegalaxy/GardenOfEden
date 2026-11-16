@@ -1,4 +1,5 @@
-// One tick of the world. Bots act in id order, and each bot goes through the
+// One tick of the world. First the tick counter goes up and the predators move (predators.ts, M21a; one `predator`
+// draw each, none when there are none). Then bots act in id order, and each bot goes through the
 // same phases: perceive -> memory -> decide -> act -> metabolise -> death check
 // (then, if it lived, a reproduction check: fertility, M16). Bots never read each other, with one
 // exception: a parent and its own child share what they remember (family.ts, M10), and two bots
@@ -22,7 +23,7 @@
 //
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
 // reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
-// given. Random draws: the `ai` stream (one per wandering bot per tick) and
+// given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick) and
 // the `birth` stream (eleven per asexual child, sixteen per sexual one). Ruins, family sharing and lineage records draw nothing.
 
 import { decide } from './brain.ts'
@@ -33,6 +34,7 @@ import { deathCause, metabolise } from './metabolism.ts'
 import { act } from './movement.ts'
 import { exposureAt, regrow } from './nodes.ts'
 import { perceive, remember } from './perception.ts'
+import { creditKill, movePredators } from './predators.ts'
 import { conceive, meetsReproductionNeeds, pairMates, spawnChildren } from './reproduction.ts'
 import type { Conception } from './reproduction.ts'
 import { decayRuins, leaveRuin } from './ruins.ts'
@@ -43,6 +45,7 @@ import { expireEvents } from './worldEvents.ts'
 export function step(world: World, rules: Rules): void {
   const { tuning } = rules
   world.tick += 1
+  movePredators(world, rules)
 
   const live = new Set<number>()
   const nodesById = new Map<number, WorldNode>()
@@ -63,7 +66,7 @@ export function step(world: World, rules: Rules): void {
     remember(world, bot, sensed, tuning, live)
     decide(world, bot, tuning, mates)
     const moved = act(world, bot, rules, nodesById)
-    const exposure = exposureAt(world, bot.x, bot.y)
+    const exposure = exposureAt(world, bot.x, bot.y, tuning)
     metabolise(bot, moved, exposure, tuning)
     const cause = deathCause(bot, exposure)
     if (cause !== null) {
@@ -71,6 +74,7 @@ export function step(world: World, rules: Rules): void {
       fallen.push(bot)
       world.deathsByCause[cause] += 1
       recordDeath(world, bot.id, cause)
+      if (cause === 'predator' && exposure.predatorId !== null) creditKill(world, exposure.predatorId, world.tick, tuning)
       pushEvent(world, tuning, { tick: world.tick, type: 'death', botId: bot.id, cause, x: bot.x, y: bot.y })
       continue
     }

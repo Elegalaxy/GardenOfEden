@@ -5,7 +5,9 @@
 // nodes heal everything standing inside their radius; `exposureAt` adds up
 // what one spot receives from the real nodes (not from any bot's memory), and
 // from any plague zone covering it (a world event, see worldEvents.ts). A drought
-// or bounty scales how fast resources regrow (`regrowthMultiplier`).
+// or bounty scales how fast resources regrow (`regrowthMultiplier`). A predator (M21a) bites a bot outside
+// every shelter that stands within `predator.biteRange` of its centre while it is not resting; pass the
+// tuning to `exposureAt` to count it (without, predators are ignored).
 
 import { hypot } from './exactMath.ts'
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
@@ -16,6 +18,10 @@ export type Exposure = {
   damage: number
   /** Total health damage from active plague events covering the spot (kept apart so a death can be told apart). */
   plague: number
+  /** Total bite damage from predators in biting range (0 inside a shelter; kept apart so a death can be told apart). */
+  predator: number
+  /** The predator that gets the credit for a kill: the lowest id among those biting, or null. */
+  predatorId: number | null
   /** Total health healed by shelter nodes covering the spot. */
   heal: number
   /** Energy-loss multiplier: the lowest `drainMult` of any covering shelter, else 1. */
@@ -24,10 +30,18 @@ export type Exposure = {
   shelterId: number | null
 }
 
-export function exposureAt(world: World, x: number, y: number): Exposure {
-  const exposure: Exposure = { damage: 0, plague: 0, heal: 0, drainMult: 1, shelterId: null }
+export function exposureAt(world: World, x: number, y: number, tuning: Pick<Tuning, 'predator'> | null = null): Exposure {
+  const exposure: Exposure = { damage: 0, plague: 0, predator: 0, predatorId: null, heal: 0, drainMult: 1, shelterId: null }
   let shelterDistance = Infinity
+  const biters: WorldNode[] = []
   for (const node of world.nodes) {
+    if (node.kind === 'predator') {
+      const hunt = node.hunt
+      if (tuning !== null && hunt !== null && world.tick > hunt.restUntil && hypot(x - node.x, y - node.y) <= tuning.predator.biteRange) {
+        biters.push(node)
+      }
+      continue
+    }
     if (node.kind !== 'danger' && node.kind !== 'shelter') continue
     const d = hypot(x - node.x, y - node.y)
     if (d > node.radius) continue
@@ -40,6 +54,13 @@ export function exposureAt(world: World, x: number, y: number): Exposure {
         shelterDistance = d
         exposure.shelterId = node.id
       }
+    }
+  }
+  if (exposure.shelterId === null) {
+    // Nodes are in ascending id order, so the first biter has the lowest id.
+    for (const node of biters) {
+      exposure.predator += node.damage
+      if (exposure.predatorId === null) exposure.predatorId = node.id
     }
   }
   for (const event of world.events) {

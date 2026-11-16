@@ -13,6 +13,7 @@ export const KIND_LABEL: Record<NodeKind, string> = {
   shelter: 'shelter',
   ruin: 'ruin',
   water: 'water',
+  predator: 'predator',
 }
 
 /** What the Add bot tool will place next, with the living count of each sex: "Next: female (20 F / 21 M alive)". */
@@ -21,7 +22,7 @@ export function nextBotSexLabel(bots: readonly { sex: 'female' | 'male' }[]): st
   return `Next: ${autoSex(bots)} (${females} F / ${bots.length - females} M alive)`
 }
 
-export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
+export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W', predator: 'V' }
 
 export const CAUSE_LABEL: Record<DeathCause, string> = {
   starve: 'Starved',
@@ -29,6 +30,7 @@ export const CAUSE_LABEL: Record<DeathCause, string> = {
   danger: 'Danger',
   plague: 'Plague',
   meteor: 'Meteor',
+  predator: 'Predator',
   age: 'Old age',
 }
 
@@ -39,6 +41,7 @@ export const CAUSE_SENTENCE: Record<DeathCause, string> = {
   danger: 'Killed by danger',
   plague: 'Killed by plague',
   meteor: 'Killed by a meteor',
+  predator: 'Killed by a predator',
   age: 'Died of old age',
 }
 

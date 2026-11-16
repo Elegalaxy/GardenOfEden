@@ -5,7 +5,8 @@
 // the recorded list always reproduces the run.
 //
 // Ruins are made by the sim when a bot dies, so the player cannot place them
-// (they can remove one). Ruins and meteor craters do not count toward `player.maxNodes`.
+// (they can remove one). Ruins, meteor craters and predators do not count toward `player.maxNodes`;
+// predators have their own cap, `predator.maxCount` (M21a).
 // `triggerEvent` starts a world event (drought, bounty, plague, meteor); the rules
 // are in worldEvents.ts.
 //
@@ -39,7 +40,13 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
     case 'placeNode': {
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
       if (cmd.kind === 'ruin') return 'Ruins are left by dead bots. They cannot be placed.'
-      if (placedNodeCount(world) >= tuning.player.maxNodes) {
+      if (cmd.kind === 'predator') {
+        let predators = 0
+        for (const node of world.nodes) {
+          if (node.kind === 'predator') predators += 1
+        }
+        if (predators >= tuning.predator.maxCount) return `Too many predators (${tuning.predator.maxCount}).`
+      } else if (placedNodeCount(world) >= tuning.player.maxNodes) {
         return `The map is full (${tuning.player.maxNodes} nodes).`
       }
       for (const node of world.nodes) {

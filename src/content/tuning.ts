@@ -137,6 +137,8 @@ export const tuning: Tuning = {
   memory: {
     cap: 8,
     waterCap: 2,
+    // Predator sightings get their own slots (M21a), so a crowd of them never pushes food out.
+    predatorCap: 2,
     retryTicks: 300,
   },
   // Family knowledge sharing (M10): only a parent and its own child, never siblings or strangers (they
@@ -147,7 +149,7 @@ export const tuning: Tuning = {
     inherit: true,
     shareRadius: 3,
     shareEvery: 10,
-    shareKinds: ['resource', 'water', 'shelter', 'danger'],
+    shareKinds: ['resource', 'water', 'shelter', 'danger', 'predator'],
   },
   // Lineage records (M11): a small record per bot that ever lived, for the family tree. At about
   // 130 bytes of JSON each, 3000 records add roughly 0.4 MB to a save hash. A 60,000-tick eden run has
@@ -192,6 +194,19 @@ export const tuning: Tuning = {
     bounty: { duration: 1000, regrowMult: 3 },
     plague: { duration: 800, radius: 14, damage: 0.8 },
     meteor: { radius: 6, damage: 200, craterRadius: 3, craterDamage: 2, craterTicks: 600 },
+  },
+  // Predators (M21a). Start values are guesses; the retune is M21b. None exist in the eden preset yet.
+  predator: {
+    maxCount: 8,
+    senseRadius: 8,
+    speed: 0.9,
+    biteRange: 1,
+    chaseTicks: 40,
+    giveUpRest: 60,
+    digestTicks: 300,
+    memoryTicks: 400,
+    homeRange: 10,
+    steerStep: 0.5,
   },
   logCap: 500,
 }

@@ -58,7 +58,7 @@ export type Overlay = {
 /** A heat layer to draw, and the cell under the pointer (outlined while a layer is on). */
 export type HeatOverlay = { snapshot: HeatSnapshot; cell: Cell | null }
 
-export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W' }
+export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W', predator: 'V' }
 
 export const COLORS = {
   background: '#0e1118',
@@ -70,6 +70,7 @@ export const COLORS = {
   shelter: '#58a6ff',
   ruin: '#bc8cff',
   water: '#4dd0e1',
+  predator: '#ff9d5c',
   plague: '#ff7ab6',
   meteor: '#ff9f43',
   bot: '#f2cc60',
@@ -88,6 +89,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
   shelter: COLORS.shelter,
   ruin: COLORS.ruin,
   water: COLORS.water,
+  predator: COLORS.predator,
 }
 
 const GHOST_LETTER = { plague: 'P', meteor: 'M' } as const
@@ -210,6 +212,23 @@ function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   ctx.strokeStyle = COLORS.ruin
   ctx.stroke()
   drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
+}
+
+/** A predator (M21a): a plain circle with a V. Placeholder art; the real drawing is M21c. */
+function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
+  const cx = layout.offsetX + node.x * layout.scale
+  const cy = layout.offsetY + node.y * layout.scale
+  const r = Math.max(4, layout.scale * 0.8)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.globalAlpha = 0.6
+  ctx.fillStyle = COLORS.predator
+  ctx.fill()
+  ctx.globalAlpha = 1
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.predator
+  ctx.stroke()
+  drawLetter(ctx, NODE_LETTER.predator, cx, cy, layout.scale * 1.1)
 }
 
 /**
@@ -483,6 +502,9 @@ export function drawWorld(
   }
   for (const node of world.nodes) {
     if (node.kind === 'ruin') drawRuin(ctx, node, layout)
+  }
+  for (const node of world.nodes) {
+    if (node.kind === 'predator') drawPredator(ctx, node, layout)
   }
 
   const adultAge = tuning.bot.adultAge
