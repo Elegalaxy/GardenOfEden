@@ -12,7 +12,7 @@
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
 // survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
-// `--no-seasons` (either form) switches seasonal regrowth off (S1; off in Eden for now, so it changes nothing yet).
+// `--no-seasons` (either form) switches seasonal regrowth off (S1; seasons are on in Eden since S2, so this gives the pre-season control).
 // `--set seasons.amplitude=0.4` (repeatable, either form) replaces one existing number or boolean of the tuning for this run only
 // (an unknown path is an error), so a sweep needs no edit to tuning.ts; applied after the other switches, in order.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either

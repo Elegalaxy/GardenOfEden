@@ -48,7 +48,7 @@ export function neutralTraits(rules: Rules): Rules {
   }
 }
 
-/** The same rules with the seasons switched off (they are off in Eden already; this keeps a test honest if that changes). */
+/** The same rules with the seasons switched off (they are on in Eden since S2; control tests that pin pre-season numbers or read exact amounts run on this). */
 export function noSeasons(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
 }

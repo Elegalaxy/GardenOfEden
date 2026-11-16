@@ -11,6 +11,7 @@ import type { Command, Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld, placedNodeCount } from '../src/sim/world.ts'
 import { activeEntries } from '../src/sim/worldEvents.ts'
 import { surveySeed } from '../src/harness/survey.ts'
+import { noSeasons } from './variants.ts'
 
 // World events (M8): drought, bounty, plague, meteor. They need the real numbers
 // from src/content, so the tests live here and not next to src/sim.
@@ -22,8 +23,8 @@ function scene(over: Partial<Preset>): Preset {
   return { id: 'test', label: 'Test scene', width: 40, height: 40, nodes: [], scatter: [], bots: [], scatterBots: 0, ...over }
 }
 
-function advanceTo(world: World, tick: number): void {
-  while (world.tick < tick) step(world, rules)
+function advanceTo(world: World, tick: number, active: Rules = rules): void {
+  while (world.tick < tick) step(world, active)
 }
 
 function trigger(world: World, event: 'drought' | 'bounty'): void
@@ -33,9 +34,9 @@ function trigger(world: World, event: 'drought' | 'bounty' | 'plague' | 'meteor'
   expect(result.ok, JSON.stringify(result)).toBe(true)
 }
 
-/** Rules where a resource never fills up and regrows 1 per tick, so the multiplier can be read off exactly. */
+/** Rules where a resource never fills up and regrows 1 per tick, so the multiplier can be read off exactly (no seasons: they would move it). */
 const slowRules: Rules = {
-  ...rules,
+  ...noSeasons(rules),
   nodeDefs: { ...rules.nodeDefs, resource: { ...rules.nodeDefs.resource, capacity: 1_000_000, regen: 1 } },
 }
 
@@ -81,7 +82,7 @@ describe('drought and bounty', () => {
     const world = emptyResourceWorld()
     trigger(world, 'drought')
     const last = ev.drought.duration
-    advanceTo(world, last - 1)
+    advanceTo(world, last - 1, slowRules)
     expect(world.events).toHaveLength(1)
     step(world, slowRules)
     expect(world.tick).toBe(last)

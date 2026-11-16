@@ -236,10 +236,11 @@ export const tuning: Tuning = {
     homeRange: 11,
     steerStep: 0.5,
   },
-  // Seasons (S1): first guesses, S2 retunes them. Off for now, so Eden is unchanged. Food regrowth is multiplied by
+  // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by
   // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the
-  // summer surplus, so a base of 1 gives less food over a year than the old fixed rate; if intake drops by more
-  // than 5%, raise base to 1.05 before lowering amplitude. amplitude may not exceed 0.5.
-  seasons: { enabled: false, period: 4000, amplitude: 0.3, base: 1 },
+  // summer surplus, so a base of 1 gives less food over a year than the old fixed rate; S2 found 1.02 enough to
+  // bring intake back within a few percent. amplitude may not exceed 0.5. Retuned in S2 (doc/GAME_DESIGN.md
+  // changelog has the sweep): a 3,000-tick year with a 0.4 swing gives clear waves and no more lost runs than before.
+  seasons: { enabled: true, period: 3000, amplitude: 0.4, base: 1.02 },
   logCap: 500,
 }

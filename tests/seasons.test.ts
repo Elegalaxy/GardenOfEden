@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { edenPreset, rules } from '../src/content/index.ts'
 import { parseOverride, withOverrides } from '../src/harness/overrides.ts'
-import { surveySeed } from '../src/harness/survey.ts'
 import { applyCommand } from '../src/sim/commands.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { replayWorld } from '../src/sim/replay.ts'
@@ -12,8 +11,8 @@ import type { Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { noSeasons } from './variants.ts'
 
-// Seasons (S1): food regrowth swings with the tick. They are off in Eden for now, so these tests switch them on
-// where they need to. The scene tests use a resource that never fills up and regrows 1 per tick, so the multiplier
+// Seasons (S1): food regrowth swings with the tick. They are on in Eden since S2; most tests here build their own season numbers
+// (period 4000, amplitude 0.3, base 1) so they do not move when Eden is retuned. The scene tests use a resource that never fills up and regrows 1 per tick, so the multiplier
 // can be read off the amount exactly.
 
 const { tuning } = rules
@@ -90,8 +89,8 @@ describe('seasonAt', () => {
     expect(() => seasonAt(1, withSeasons({ enabled: false, period: 0 }).tuning)).toThrow(RangeError)
   })
 
-  it('ships off, with the first-guess numbers', () => {
-    expect(tuning.seasons).toEqual({ enabled: false, period: 4000, amplitude: 0.3, base: 1 })
+  it('ships on, with the S2 numbers', () => {
+    expect(tuning.seasons).toEqual({ enabled: true, period: 3000, amplitude: 0.4, base: 1.02 })
   })
 })
 
@@ -149,19 +148,45 @@ describe('switched off', () => {
     expect(stateHash(flat)).toBe(stateHash(off))
   })
 
-  it('changes nothing in Eden as shipped: the default rules match the explicit off rules', () => {
-    const a = surveySeed('a', edenPreset, rules, 1500, 500)
-    const b = surveySeed('a', edenPreset, noSeasons(rules), 1500, 500)
-    expect(a).toEqual(b)
-  })
-
-  it('differs from a run with seasons on (the switch does something)', () => {
-    const on = withSeasons({})
-    const control = createWorld('a', edenPreset, rules)
-    const seasonal = createWorld('a', edenPreset, on)
-    runTo(control, rules, 1500)
-    runTo(seasonal, on, 1500)
+  it('Eden as shipped has seasons on, so it differs from the explicit off rules (the switch does something)', () => {
+    const off = noSeasons(rules)
+    const control = createWorld('a', edenPreset, off)
+    const seasonal = createWorld('a', edenPreset, rules)
+    runTo(control, off, 1500)
+    runTo(seasonal, rules, 1500)
     expect(stateHash(seasonal)).not.toBe(stateHash(control))
+  })
+})
+
+// Waves (S2): with the shipped numbers the population rises through summer and falls through winter. Compared at the
+// end of each season (the last quarter of summer against the last quarter of winter), since the population lags the food.
+describe('population waves in Eden', () => {
+  const SEEDS = ['a', 'b', 'c', 'd', 'e']
+  const TICKS = 12_000
+
+  function seasonEnds(seed: string): { summer: number; winter: number } {
+    const world = createWorld(seed, edenPreset, rules)
+    const period = rules.tuning.seasons.period
+    const total = { summer: 0, winter: 0 }
+    const count = { summer: 0, winter: 0 }
+    while (world.tick < TICKS) {
+      step(world, rules)
+      const phase = (world.tick - Math.floor(world.tick / period) * period) / period
+      if (phase >= 0.4375 && phase < 0.5) {
+        total.summer += world.bots.length
+        count.summer += 1
+      } else if (phase >= 0.9375) {
+        total.winter += world.bots.length
+        count.winter += 1
+      }
+    }
+    return { summer: total.summer / count.summer, winter: total.winter / count.winter }
+  }
+
+  it('has more bots at the end of summer than at the end of winter on at least 4 of 5 seeds', { timeout: 120_000 }, () => {
+    const results = SEEDS.map((seed) => ({ seed, ...seasonEnds(seed) }))
+    const wins = results.filter((r) => r.summer > r.winter).length
+    expect(wins, JSON.stringify(results)).toBeGreaterThanOrEqual(4)
   })
 })
 
@@ -180,8 +205,11 @@ describe('replay with seasons on', () => {
 describe('harness --set overrides', () => {
   it('replaces an existing number or boolean in a copy and leaves the original alone', () => {
     const changed = withOverrides(rules, [parseOverride('seasons.amplitude=0.4'), parseOverride('seasons.enabled=true')])
-    expect(changed.tuning.seasons).toEqual({ enabled: true, period: 4000, amplitude: 0.4, base: 1 })
-    expect(tuning.seasons.enabled).toBe(false)
+    expect(changed.tuning.seasons).toEqual({ ...tuning.seasons, enabled: true, amplitude: 0.4 })
+    expect(changed.tuning.seasons).not.toBe(tuning.seasons)
+    expect(tuning.seasons.amplitude).toBe(0.4)
+    expect(withOverrides(rules, [parseOverride('seasons.amplitude=0.25')]).tuning.seasons.amplitude).toBe(0.25)
+    expect(tuning.seasons.amplitude).toBe(0.4)
     expect(withOverrides(rules, [parseOverride('bot.eatRate=3')]).tuning.bot.eatRate).toBe(3)
   })
 
