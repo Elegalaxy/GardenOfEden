@@ -258,6 +258,8 @@
 .area-heat {
   grid-area: heat;
   min-width: 0;
+  display: grid;
+  gap: 12px;
 }
 
 .area-events {
@@ -2087,5 +2089,111 @@ button.fam-founder-button:hover:not(:disabled) {
 
   .heat-readout {
     min-height: 2.9em; /* "Under cursor (34, 12): 3.4 deaths, recent" no longer fits on one line */
+  }
+}
+
+/* Bloodline swatch (M20): a small decorative chip beside a bot id or a "hue 212°" text; the text carries the meaning. */
+.hue-swatch {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  margin-right: 5px;
+  border: 1px solid #6a738c;
+  border-radius: 2px;
+  vertical-align: baseline;
+}
+
+/* "Colour bots by" (M20), the first panel of the `heat` grid area. Same radio buttons as the heat layers. The trait picker is
+   always laid out (hidden with visibility outside Trait mode) and the legend line keeps its room, so switching modes moves
+   nothing. The legend wraps to more lines as the column narrows, so it reserves that many. */
+.colour-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+  padding: 6px 10px;
+}
+
+.colour-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+}
+
+.colour-label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.colour-trait {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.colour-trait select {
+  width: auto;
+  min-height: 44px;
+}
+
+.colour-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 1.45rem;
+  margin: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.colour-legend strong {
+  color: var(--text-strong);
+}
+
+.colour-note {
+  color: var(--text-muted);
+}
+
+.colour-ramp {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.colour-step {
+  width: 18px;
+  height: 14px;
+  border: 1px solid #6a738c;
+  border-radius: 3px;
+}
+
+.colour-sex {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+@media (max-width: 640px) {
+  .colour-label {
+    flex: 1 1 100%;
+  }
+
+  .colour-controls .heat-group {
+    flex: 1 1 100%;
+  }
+
+  .colour-legend {
+    min-height: 3rem;
+  }
+}
+
+@media (max-width: 340px) {
+  /* The bloodline note and the trait legend wrap to four lines here. */
+  .colour-legend {
+    min-height: 4.8rem;
   }
 }

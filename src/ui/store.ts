@@ -29,6 +29,9 @@
 // `heatSnapshot` only while one is; the latest matching one is `snapshot.heat`. The cell under the pointer is kept in a
 // small store of its own (`setHoverCell`, `useHoverCell`) so moving the mouse does not wake every panel.
 //
+// Bot colour (M20): `setBotColour` / `cycleBotColour` (key C) say how the map colours bots (plain, bloodline, sex or one trait,
+// see botColour.ts). It is a view setting of the page only: not sent to the worker, not saved, kept across a new world.
+//
 // Everything that changes the run is a message, so it is answered later: tests use
 // `settled()` to wait until every earlier message has been answered.
 
@@ -44,6 +47,8 @@ import type { BatchResult, PlaceCount } from './bulk.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
+import { DEFAULT_BOT_COLOUR, nextBotColourMode } from './botColour.ts'
+import type { BotColour } from './botColour.ts'
 import { nextHeatLayer } from './heat.ts'
 import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
 import { formatPoint } from './labels.ts'
@@ -130,6 +135,8 @@ export type WorldSnapshot = {
   heat: HeatSnapshot | null
   /** How many the placement tools put down per click (bulk placing, M19); 1 is a plain click. */
   placeCount: PlaceCount
+  /** How the map colours the bots (M20): a mode, and the trait for the trait mode. A new object whenever it changes. */
+  botColour: BotColour
 }
 
 type Listener = () => void
@@ -150,6 +157,7 @@ let heatLayer: HeatLayer | null = null
 let heatRange: HeatRange = 'all'
 let heat: HeatSnapshot | null = null
 let placeCount: PlaceCount = DEFAULT_PLACE_COUNT
+let botColour: BotColour = DEFAULT_BOT_COLOUR
 
 // The clock's side of the conversation with the worker.
 /** Ticks that fell due while an advance was in flight. */
@@ -194,6 +202,7 @@ function makeSnapshot(): WorldSnapshot {
     // A snapshot of the run before a reset or a load is not shown for the new one.
     heat: heat !== null && heat.runId === view.runId ? heat : null,
     placeCount,
+    botColour,
   }
 }
 
@@ -471,6 +480,19 @@ export function useHoverCell(): Cell | null {
     () => hoverCell,
     () => hoverCell,
   )
+}
+
+/** Chooses how the map colours the bots (a page setting only). A change of mode or trait publishes; the same value does nothing. */
+export function setBotColour(next: Partial<BotColour>): void {
+  const merged: BotColour = { ...botColour, ...next }
+  if (merged.mode === botColour.mode && merged.trait === botColour.trait) return
+  botColour = merged
+  publish()
+}
+
+/** The C key: plain, bloodline, sex, trait, round again. */
+export function cycleBotColour(): void {
+  setBotColour({ mode: nextBotColourMode(botColour.mode) })
 }
 
 /** How many bots or nodes a click of a placement tool places. */

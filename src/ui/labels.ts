@@ -158,6 +158,11 @@ export function fertilityLabel(age: number, tuning: Pick<Tuning, 'bot' | 'fertil
   return { percent, phase: 'declining' }
 }
 
+/** A bloodline hue as text: "hue 212°" (whole degrees). */
+export function hueLabel(hue: number): string {
+  return `hue ${Math.round(hue) % 360}°`
+}
+
 /** The inbreeding score (M18, 0 to 1) as words: "no" at 0, else the percent (1 = parent and child or full siblings). */
 export function inbreedingLabel(score: number): string {
   if (score <= 0) return 'No'

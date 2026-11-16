@@ -47,6 +47,14 @@ describe('packBots / unpackBots', () => {
     expect(out).toEqual(oldViewBot(bot))
   })
 
+  it('carries the bloodline hue as a float', () => {
+    const bot = structuredClone(world.bots[0]!)
+    bot.hue = 212.3456789
+    const packed = packBots([bot])
+    expect(packed.f64[F64_STRIDE - 1]).toBe(212.3456789)
+    expect(unpackBots(packed)[0]!.hue).toBe(212.3456789)
+  })
+
   it('round-trips every bot exactly as the old ViewBot', () => {
     expect(world.bots.length).toBeGreaterThan(5)
     const packed = packBots(world.bots)

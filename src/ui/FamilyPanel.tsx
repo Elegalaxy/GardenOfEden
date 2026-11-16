@@ -40,8 +40,9 @@ import {
   treeMove,
 } from './familyMath.ts'
 import type { NodeRow, TreeKey, TreeRow } from './familyMath.ts'
+import { HueSwatch } from './HueSwatch.tsx'
 import { focusRecord, pinFocusFor, useFamilyFocus } from './familyFocus.ts'
-import { TRAIT_LABEL, formatTrait, inbreedingLabel } from './labels.ts'
+import { TRAIT_LABEL, formatTrait, hueLabel, inbreedingLabel } from './labels.ts'
 import { select, useStoreValue } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
 import { useFamilyData } from './useFamilyData.ts'
@@ -88,6 +89,9 @@ function FocusCard({ view, titleRef }: { view: FamilyView; titleRef: RefObject<H
       <details className="fam-details">
         <summary>Record details</summary>
         <dl className="kv">
+          <DetailRow label="Bloodline">
+            <HueSwatch hue={focus.hue} /> {hueLabel(focus.hue)}
+          </DetailRow>
           <DetailRow label="Born">tick {formatCount(focus.born)}</DetailRow>
           <DetailRow label="Status">{statusText(focus)}</DetailRow>
           <DetailRow label="Mother">
@@ -158,7 +162,9 @@ function Ancestors({ view, older, onOlder }: { view: FamilyView; older: boolean;
                 aria-label={`${index === 0 ? 'Mother' : `Ancestor ${index + 1}`}: ${rowLabel(record)}. Focus the tree here`}
                 onClick={() => focusRecord(record.id)}
               >
-                <span className="fam-chip-id">#{record.id}</span>
+                <span className="fam-chip-id">
+                  <HueSwatch hue={record.hue} />#{record.id}
+                </span>
                 <span className="fam-chip-meta figure">
                   <span aria-hidden="true">{statusGlyph(record)}</span> gen {record.generation}
                 </span>
@@ -269,7 +275,9 @@ function Tree({ view, rows, omitted, cap, activeId, selectedId, onActive, onTogg
                 onClick={() => onPick(record)}
               >
                 <span className="fam-line">
-                  <strong>#{record.id}</strong>
+                  <strong>
+                    <HueSwatch hue={record.hue} />#{record.id}
+                  </strong>
                   <span className="fam-meta figure">gen {record.generation}</span>
                   {deeper > 0 && (
                     <span className="fam-deeper figure" title={`${deeper} level${deeper === 1 ? '' : 's'} deeper than the indentation shows`}>

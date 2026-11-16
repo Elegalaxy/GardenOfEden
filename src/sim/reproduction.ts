@@ -31,6 +31,7 @@
 // trait: mother's or father's value, see traits.ts); then eight mutation draws (two per trait).
 // That is 16 draws per sexual child and 11 per asexual child (whose sex is autoSex, no draw).
 // A child inherits traits (crossed, then mutated), clamped into the bounds in `tuning.mutation`.
+// Its bloodline hue (genes.ts, M20) comes from the separate `gene` stream: two draws per sexual child, one per asexual child.
 // Its generation is one more than the older parent's. It starts with the shareable part of its
 // mother's memory as it was at conception, then its father's merged in (`family.inheritFromParents`,
 // see family.ts); that draws no random numbers. Each child also gets a lineage record, and both
@@ -38,6 +39,7 @@
 
 import { cos, sin } from './exactMath.ts'
 import { inheritFromParents, inheritMemory } from './family.ts'
+import { childHue } from './genes.ts'
 import { addRecord, findRecord, relatedness } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import { distance } from './perception.ts'
@@ -57,6 +59,10 @@ export type Conception = {
   generation: number
   traits: Traits
   fatherTraits: Traits | null
+  /** The mother's bloodline hue (M20). */
+  hue: number
+  /** The father's hue; null when sex is off. */
+  fatherHue: number | null
   /** Copy of the mother's memory at conception (family.ts picks what the child keeps). */
   memory: MemoryEntry[]
   /** Copy of the father's memory (empty when sex is off). */
@@ -112,6 +118,8 @@ export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning:
     generation: bot.generation,
     traits: { ...bot.traits },
     fatherTraits: null,
+    hue: bot.hue,
+    fatherHue: null,
     memory: bot.memory.map((entry) => ({ ...entry })),
     fatherMemory: [],
     x: bot.x,
@@ -151,6 +159,8 @@ export function pairMates(candidates: readonly Bot[], roomLeft: number, tuning: 
       generation: Math.max(female.generation, male.generation),
       traits: { ...female.traits },
       fatherTraits: { ...male.traits },
+      hue: female.hue,
+      fatherHue: male.hue,
       memory: female.memory.map((entry) => ({ ...entry })),
       fatherMemory: male.memory.map((entry) => ({ ...entry })),
       x: female.x,
@@ -181,6 +191,8 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       sex = autoSex(world.bots)
     }
     const traits = mutateTraits(crossed, tuning.mutation, stream)
+    // Bloodline hue (M20): from the separate `gene` stream, so the birth draws above are untouched.
+    const hue = childHue(c.hue, c.fatherHue, tuning, world.rng.gene)
     // Inbreeding (M18): scored from the parents' lineage records, no draw.
     const inbreeding = c.fatherId === null ? 0 : relatedness(world, c.parentId, c.fatherId)
     const loss = tuning.inbreeding
@@ -203,6 +215,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       sex,
       inbreeding,
       lifespan: Math.round(tuning.bot.maxAge * (1 - loss.lifespanLoss * inbreeding)),
+      hue,
       traits,
       memory: [],
       intent: { kind: 'wander', targetId: null },
@@ -219,7 +232,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
     world.familyLearned += child.memory.length
     world.nextId += 1
     world.bots.push(child)
-    addRecord(world, child.id, child.parentId, child.fatherId, child.sex, child.generation, child.traits, inbreeding)
+    addRecord(world, child.id, child.parentId, child.fatherId, child.sex, child.generation, child.traits, hue, inbreeding)
     const parentRecord = c.parentId === null ? undefined : findRecord(world, c.parentId)
     if (parentRecord !== undefined) parentRecord.children += 1
     const fatherRecord = c.fatherId === null ? undefined : findRecord(world, c.fatherId)

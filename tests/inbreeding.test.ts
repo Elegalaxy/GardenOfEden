@@ -37,7 +37,7 @@ const traits = tuning.traits
 /** A world with only hand-made lineage records: add(id, mother, father, sex). */
 function lineageWorld(records: [number, number | null, number | null, Sex][]): World {
   const world = createWorld('t', scene({}), rules)
-  for (const [id, mother, father, sex] of records) addRecord(world, id, mother, father, sex, 0, traits)
+  for (const [id, mother, father, sex] of records) addRecord(world, id, mother, father, sex, 0, traits, 0)
   return world
 }
 

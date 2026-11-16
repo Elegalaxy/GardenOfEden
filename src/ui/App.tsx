@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { DeathCauses } from './DeathCauses.tsx'
+import { BotColourControl } from './BotColourControl.tsx'
 import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
 import { FamilyPanel } from './FamilyPanel.tsx'
@@ -54,7 +55,7 @@ function Legend() {
       </li>
       <li>
         <span className="key key-bot" aria-hidden="true" /> Bot
-        <span className="legend-note">small = child, ringed = fleeing</span>
+        <span className="legend-note">small = child, ringed = fleeing; colour: see Bot colour</span>
       </li>
     </ul>
   )
@@ -112,6 +113,7 @@ export default function App() {
             <ToolStatus />
           </div>
           <div className="area-heat">
+            <BotColourControl />
             <HeatLegend />
           </div>
           <div className="area-legend">

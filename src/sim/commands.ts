@@ -21,6 +21,7 @@ import { hypot } from './exactMath.ts'
 import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
+import { goldenHue } from './genes.ts'
 import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
 import type { CheckableWorld } from './worldEvents.ts'
@@ -102,9 +103,9 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       world.nextId += 1
       const heading = nextFloat(world.rng.world) * Math.PI * 2
       // New ids are the largest so far, so pushing keeps `bots` in ascending id order.
-      const bot = makeBot(id, cmd.x, cmd.y, heading, rules, autoSex(world.bots))
+      const bot = makeBot(id, cmd.x, cmd.y, heading, rules, autoSex(world.bots), goldenHue(id))
       world.bots.push(bot)
-      addRecord(world, id, null, null, bot.sex, bot.generation, bot.traits)
+      addRecord(world, id, null, null, bot.sex, bot.generation, bot.traits, bot.hue)
       pushEvent(world, tuning, {
         tick: world.tick,
         type: 'command',

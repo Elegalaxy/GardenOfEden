@@ -6,7 +6,7 @@
 // kind never relies on colour alone: R resource, D danger (dashed edge),
 // S shelter, U ruin (a diamond, not a circle), W water (a droplet with a point
 // at the top). A water node is a permanent spring, so it has no fill level. A resource also has a ring that
-// fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring.
+// fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring. Their fill follows the page's colour mode (botColour.ts, M20: plain, bloodline, sex, one trait); in sex mode males are diamonds.
 // Bot positions blend from where the bot was at the start of its last turn
 // (px, py) to where it is now (x, y), by `alpha`.
 //
@@ -26,6 +26,8 @@
 // banners over the map, in WorldCanvas.
 
 import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
+import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
+import type { BotColour } from './botColour.ts'
 import { botPosition, findBot, findNode } from './geometry.ts'
 import type { Cell, Layout } from './geometry.ts'
 import { drawHeat, drawHeatCursor } from './heatRender.ts'
@@ -444,6 +446,7 @@ export function drawWorld(
   tuning: Tuning,
   overlay?: Overlay,
   heat?: HeatOverlay | null,
+  botColour: BotColour = DEFAULT_BOT_COLOUR,
 ): void {
   const layout = computeLayout(size, world)
   const { scale, offsetX, offsetY } = layout
@@ -483,14 +486,25 @@ export function drawWorld(
   }
 
   const adultAge = tuning.bot.adultAge
+  const { mode, trait } = botColour
+  const range = mode === 'trait' ? traitRange(world.bots, trait) : null
   for (const bot of world.bots) {
     const position = botPosition(bot, alpha)
     const x = offsetX + position.x * scale
     const y = offsetY + position.y * scale
     const radius = Math.max(3, scale * (bot.age < adultAge ? 0.38 : 0.55))
     ctx.beginPath()
-    ctx.arc(x, y, radius, 0, Math.PI * 2)
-    ctx.fillStyle = COLORS.bot
+    if (botShape(bot, mode) === 'diamond') {
+      const r = radius * 1.25
+      ctx.moveTo(x, y - r)
+      ctx.lineTo(x + r, y)
+      ctx.lineTo(x, y + r)
+      ctx.lineTo(x - r, y)
+      ctx.closePath()
+    } else {
+      ctx.arc(x, y, radius, 0, Math.PI * 2)
+    }
+    ctx.fillStyle = botFill(bot, mode, trait, range)
     ctx.fill()
     ctx.lineWidth = 1
     ctx.strokeStyle = COLORS.botEdge

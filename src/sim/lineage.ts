@@ -96,6 +96,7 @@ export function addRecord(
   sex: Sex,
   generation: number,
   traits: Traits,
+  hue: number,
   inbreeding = 0,
 ): LineageRecord {
   const record: LineageRecord = {
@@ -104,6 +105,7 @@ export function addRecord(
     fatherId,
     sex,
     inbreeding,
+    hue,
     generation,
     born: world.tick,
     died: null,

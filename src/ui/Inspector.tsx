@@ -10,12 +10,13 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, inbreedingLabel } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
 import type { Selection } from './tools.ts'
 import type { ViewWorld } from './viewWorld.ts'
+import { HueSwatch } from './HueSwatch.tsx'
 import { TREND_GLYPH, signedDelta, trendOf } from './traitMath.ts'
 
 const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(1)
@@ -123,6 +124,9 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         </Row>
         <Row label="Lifespan">{bot.lifespan} ticks</Row>
         <Row label="Inbred">{inbreedingLabel(bot.inbreeding)}</Row>
+        <Row label="Bloodline">
+          <HueSwatch hue={bot.hue} /> {hueLabel(bot.hue)}
+        </Row>
         <Row label="Sex">{bot.sex === 'female' ? 'Female' : 'Male'}</Row>
         <Row label="Generation">{bot.generation}</Row>
         <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>

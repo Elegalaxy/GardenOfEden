@@ -35,6 +35,7 @@ function rec(id: number, parentId: number | null, died: number | null = null): L
     fatherId: null,
     sex: 'female',
     inbreeding: 0,
+    hue: 0,
     generation: 0,
     born: 0,
     died,
@@ -84,6 +85,7 @@ describe('records', () => {
         fatherId: null,
         sex: bot.sex,
         inbreeding: 0,
+        hue: bot.hue,
         generation: 0,
         born: 0,
         died: null,
@@ -160,10 +162,10 @@ describe('records', () => {
 
   it('addRecord inserts an out-of-order id in place and ignores a repeated one', () => {
     const world = createWorld('a', scene({}), rules)
-    addRecord(world, 5, null, null, 'female', 0, tuning.traits)
-    addRecord(world, 9, 5, null, 'female', 1, tuning.traits)
-    addRecord(world, 7, 5, null, 'female', 1, tuning.traits)
-    const again = addRecord(world, 7, null, null, 'female', 0, tuning.traits)
+    addRecord(world, 5, null, null, 'female', 0, tuning.traits, 0)
+    addRecord(world, 9, 5, null, 'female', 1, tuning.traits, 0)
+    addRecord(world, 7, 5, null, 'female', 1, tuning.traits, 0)
+    const again = addRecord(world, 7, null, null, 'female', 0, tuning.traits, 0)
     expect(ids(world.lineage)).toEqual([5, 7, 9])
     expect(again.parentId).toBe(5)
     recordDeath(world, 7, 'age')

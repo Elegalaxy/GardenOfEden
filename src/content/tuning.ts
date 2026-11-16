@@ -79,6 +79,11 @@ export const tuning: Tuning = {
     energyLoss: 0,
     healthLoss: 0.2,
   },
+  // Bloodline colour (M20): a child takes its mother's or father's hue and drifts it by up to this many
+  // degrees either way (genes.ts, `gene` stream). Cosmetic: no rule reads it.
+  gene: {
+    drift: 6,
+  },
   brain: {
     seekWeight: 1.25,
     thirstWeight: 1.25,

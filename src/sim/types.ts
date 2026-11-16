@@ -5,7 +5,7 @@
 
 // RNG stream names, in splitmix32 expansion order. Do not reorder: the sequence
 // for a seed depends on this order.
-export const RNG_STREAM_NAMES = ['world', 'ai', 'birth'] as const
+export const RNG_STREAM_NAMES = ['world', 'ai', 'birth', 'gene'] as const
 
 export type RngStreamName = (typeof RNG_STREAM_NAMES)[number]
 
@@ -29,11 +29,12 @@ export type RngStream = {
   spare?: number
 }
 
-/** The three named streams for one run. Plain JSON, no hidden generator. */
+/** The four named streams for one run. Plain JSON, no hidden generator. */
 export type RngState = {
   world: RngStream
   ai: RngStream
   birth: RngStream
+  gene: RngStream
 }
 
 /** One choice for `pickWeighted`. `weight` must be finite and >= 0. */
@@ -129,6 +130,8 @@ export type Bot = {
   inbreeding: number
   /** Age in ticks at which it dies of old age: `Tuning.bot.maxAge`, shortened by `inbreeding`. */
   lifespan: number
+  /** Bloodline colour gene (M20): degrees, 0 up to 360. Handed down with a small drift; changes no rule (genes.ts). */
+  hue: number
   traits: Traits
   memory: MemoryEntry[]
   intent: Intent
@@ -222,6 +225,8 @@ export type LineageRecord = {
   sex: Sex
   /** The bot's inbreeding score at birth (see `Bot.inbreeding`). */
   inbreeding: number
+  /** The bot's bloodline hue at birth (see `Bot.hue`). */
+  hue: number
   generation: number
   /** Tick it appeared (0 for a preset founder). */
   born: number
@@ -377,6 +382,10 @@ export type Tuning = {
     lifespanLoss: number
     energyLoss: number
     healthLoss: number
+  }
+  /** Bloodline colour gene (M20): a child's hue drifts up to this many degrees from the parent hue it takes. */
+  gene: {
+    drift: number
   }
   brain: {
     /** Utility of seeking food is this times the missing energy fraction. */

@@ -70,7 +70,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     return () => observer.disconnect()
   }, [])
 
-  const { world, alpha, tool, selection, heat } = snapshot
+  const { world, alpha, tool, selection, heat, botColour } = snapshot
   const layout = useMemo(
     () => (size.width < 1 || size.height < 1 ? null : computeLayout(size, world)),
     [size, world],
@@ -112,7 +112,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     const ctx = canvas.getContext('2d')
     if (ctx === null) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell })
+    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell }, botColour)
   })
 
   // The heatmap legend reads the cell under the pointer (or the keyboard cursor) from the store.
