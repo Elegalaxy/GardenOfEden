@@ -107,7 +107,8 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
   }
   if (awayX === 0 && awayY === 0) return false
   const heading = atan2(awayY, awayX)
-  const next = stepAlong(world, bot, heading, speedOf(bot, rules.tuning))
+  // M22: a fleeing bot runs at `sprint` times its normal speed.
+  const next = stepAlong(world, bot, heading, speedOf(bot, rules.tuning) * bot.traits.sprint)
   if (next.x === bot.x && next.y === bot.y) return false
   bot.x = next.x
   bot.y = next.y

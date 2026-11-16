@@ -63,7 +63,8 @@ function oldestEntry(memory: MemoryEntry[], slot: SlotClass): number {
 
 /** Refresh what the bot sees, forget removed nodes, and stay within the memory cap. */
 export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tuning, live: Set<number>): void {
-  const { memoryTicks } = tuning.predator
+  // M22: a wary bot remembers a predator sighting `wariness` times as long.
+  const memoryTicks = tuning.predator.memoryTicks * bot.traits.wariness
   const memory = bot.memory.filter(
     (entry) => live.has(entry.nodeId) && (entry.kind !== 'predator' || world.tick - entry.seenTick <= memoryTicks),
   )
@@ -109,9 +110,17 @@ export function trimMemory(memory: MemoryEntry[], tuning: Tuning): void {
   }
 }
 
-/** Remembered danger nodes and predator sightings (fresh: `remember` has already dropped the old ones). */
+/**
+ * Remembered danger nodes and predator sightings (fresh: `remember` has already dropped the old ones). A predator
+ * sighting comes back as a copy whose radius is times the bot's `wariness` (M22); memory itself is not changed.
+ */
 export function knownDangers(bot: Bot): MemoryEntry[] {
-  return bot.memory.filter((entry) => entry.kind === 'danger' || entry.kind === 'predator')
+  const found: MemoryEntry[] = []
+  for (const entry of bot.memory) {
+    if (entry.kind === 'danger') found.push(entry)
+    else if (entry.kind === 'predator') found.push({ ...entry, radius: entry.radius * bot.traits.wariness })
+  }
+  return found
 }
 
 /** True when a point is inside any remembered danger's edge plus `margin`. */

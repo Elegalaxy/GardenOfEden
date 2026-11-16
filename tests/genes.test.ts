@@ -9,7 +9,7 @@ import { step } from '../src/sim/step.ts'
 import type { Tuning, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { applyCommand } from '../src/sim/commands.ts'
-import { asexual, edenWithDanger } from './variants.ts'
+import { asexual, edenWithDanger, neutralTraits } from './variants.ts'
 
 // Bloodline colour gene (M20): hue helpers, founders, inheritance with drift, replay, and proof that
 // the gene stream changes no behaviour (Eden seeds a and b match the numbers recorded before M20).
@@ -165,13 +165,16 @@ describe('hues in a world', () => {
   it('leaves behaviour alone: Eden at 5000 ticks matches the numbers from before M20', () => {
     // On Eden as it was before M21b (`edenWithDanger`): the recorded numbers belong to that map.
     const old = (seed: string): World => {
-      const world = createWorld(seed, edenWithDanger(), rules)
-      for (let i = 0; i < 5000; i += 1) step(world, rules)
+      const neutral = neutralTraits(rules)
+      const world = createWorld(seed, edenWithDanger(), neutral)
+      for (let i = 0; i < 5000; i += 1) step(world, neutral)
       return world
     }
+    // Re-pinned in M22 on `neutralTraits` (was [70, 299] and [67, 277]): the four new traits have no effect there,
+    // but the birth stream takes 12 more draws per child, so the world is a different roll of the same rules.
     const a = old('a')
-    expect([a.bots.length, a.totalBirths]).toEqual([70, 299])
+    expect([a.bots.length, a.totalBirths]).toEqual([66, 300])
     const b = old('b')
-    expect([b.bots.length, b.totalBirths]).toEqual([67, 277])
+    expect([b.bots.length, b.totalBirths]).toEqual([75, 294])
   })
 })

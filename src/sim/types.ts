@@ -106,6 +106,14 @@ export type Traits = {
   caution: number
   reproThreshold: number
   metabolism: number
+  /** M22: speed multiplier while fleeing (costs upkeep every tick, see `Tuning.bot.sprintUpkeep`). */
+  sprint: number
+  /** M22: scales lifespan and the whole fertility curve (a long life starts breeding later). */
+  longevity: number
+  /** M22: health damage from every source is divided by this (costs energy, see `Tuning.bot.hardinessDrain`). */
+  hardiness: number
+  /** M22: scales how far a predator's threat reaches and how long a sighting is remembered. */
+  wariness: number
 }
 
 export type IntentKind = 'wander' | 'seekFood' | 'seekWater' | 'flee' | 'rest' | 'reproduce' | 'seekMate'
@@ -328,6 +336,15 @@ export type Tuning = {
      * Times `traits.metabolism`. This is what stops evolution from maximising sight.
      */
     senseDrain: number
+    /**
+     * M22: energy lost per tick for each point of `sprint` above 1 (a sprint below 1 saves the same), times
+     * `traits.metabolism`. A step taken while fleeing also costs `moveDrain` times `sprint`.
+     */
+    sprintUpkeep: number
+    /** M22: the whole energy drain is multiplied by `1 + hardinessDrain * (hardiness - 1)`. */
+    hardinessDrain: number
+    /** M22: the whole energy drain is multiplied by `1 + longevityDrain * (longevity - 1)`. */
+    longevityDrain: number
     /**
      * How much `traits.metabolism` changes walking speed: speed is `speed` times
      * `1 + metabolismSpeed * (metabolism - 1)`. A hotter bot burns more but moves faster.

@@ -5,12 +5,16 @@ import { createRng, nextFloat } from './rng.ts'
 import { TRAIT_NAMES, meanTraits, mutateTraits, traitStats } from './traits.ts'
 import type { Bot, Traits, Tuning } from './types.ts'
 
-const parent: Traits = { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1 }
+const parent: Traits = { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
 const bounds: Tuning['mutation']['bounds'] = {
   senseRadius: { min: 3, max: 12 },
   caution: { min: 0.05, max: 1.5 },
   reproThreshold: { min: 55, max: 90 },
   metabolism: { min: 0.7, max: 1.6 },
+  sprint: { min: 0.8, max: 1.8 },
+  longevity: { min: 0.7, max: 1.4 },
+  hardiness: { min: 0.7, max: 1.6 },
+  wariness: { min: 0.5, max: 2 },
 }
 
 function mutation(rate: number, strength: number): Tuning['mutation'] {
@@ -50,9 +54,9 @@ describe('mutateTraits', () => {
 
   it('clamps into the bounds even when the parent is outside them', () => {
     const stream = createRng('m').birth
-    const wild: Traits = { senseRadius: 40, caution: -3, reproThreshold: 10, metabolism: 9 }
+    const wild: Traits = { senseRadius: 40, caution: -3, reproThreshold: 10, metabolism: 9, sprint: 9, longevity: 0.1, hardiness: 9, wariness: -1 }
     const child = mutateTraits(wild, mutation(0, 0), stream)
-    expect(child).toEqual({ senseRadius: 12, caution: 0.05, reproThreshold: 55, metabolism: 1.6 })
+    expect(child).toEqual({ senseRadius: 12, caution: 0.05, reproThreshold: 55, metabolism: 1.6, sprint: 1.8, longevity: 0.7, hardiness: 1.6, wariness: 0.5 })
   })
 
   it('stays inside the bounds over many generations of strong mutation', () => {
@@ -86,8 +90,8 @@ describe('mutateTraits', () => {
 
 describe('traitStats and meanTraits', () => {
   const bots = [
-    botWith({ senseRadius: 4, caution: 0.2, reproThreshold: 60, metabolism: 0.8 }),
-    botWith({ senseRadius: 8, caution: 0.6, reproThreshold: 80, metabolism: 1.2 }),
+    botWith({ senseRadius: 4, caution: 0.2, reproThreshold: 60, metabolism: 0.8, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }),
+    botWith({ senseRadius: 8, caution: 0.6, reproThreshold: 80, metabolism: 1.2, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }),
   ]
 
   it('reports mean, min and max of each trait', () => {

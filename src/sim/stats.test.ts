@@ -8,7 +8,7 @@ function sample(tick: number, pop: number, births: number, deaths: number, food 
 }
 
 function withSense(tick: number, senseRadius: number | null): Sample {
-  const traits = senseRadius === null ? null : { senseRadius, caution: 0.5, reproThreshold: 80, metabolism: 1 }
+  const traits = senseRadius === null ? null : { senseRadius, caution: 0.5, reproThreshold: 80, metabolism: 1, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
   return sample(tick, senseRadius === null ? 0 : 5, 0, 0, 0, traits)
 }
 

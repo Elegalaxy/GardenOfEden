@@ -33,7 +33,7 @@ import {
 import type { FocusOverride, NodeRow, TreeRow } from './familyMath.ts'
 import { advance, queryFamily, setSimClient, settled } from './store.ts'
 
-const traits = { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1 }
+const traits = { senseRadius: 6, caution: 0.5, reproThreshold: 80, metabolism: 1, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
 
 function record(id: number, parentId: number | null, extra: Partial<LineageRecord> = {}): LineageRecord {
   return { id, parentId, fatherId: null, sex: 'female', inbreeding: 0, hue: 0, generation: parentId === null ? 0 : 1, born: id * 10, died: null, cause: null, children: 0, traits, ...extra }

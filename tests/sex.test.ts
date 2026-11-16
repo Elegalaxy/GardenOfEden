@@ -8,7 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Bot, Preset, Rules, Sex, World } from '../src/sim/types.ts'
 import { autoSex, createWorld } from '../src/sim/world.ts'
-import { edenWithDanger, stage1 } from './variants.ts'
+import { edenWithDanger, neutralTraits, stage1 } from './variants.ts'
 
 // Two sexes (M17): founders alternate, children get a sex, and a birth needs a ready female and a ready
 // male in shelters within mateRange. The one-tick scenes use rules with speed 0, so nobody walks and
@@ -215,8 +215,8 @@ describe('pairing', () => {
         bot.age = tuning.bot.adultAge + 100
       })
       const [mother, father] = world.bots as [Bot, Bot]
-      mother.traits = { senseRadius: 5, caution: 0.2, reproThreshold: 60, metabolism: 0.8 }
-      father.traits = { senseRadius: 7, caution: 0.8, reproThreshold: 70, metabolism: 1.2 }
+      mother.traits = { senseRadius: 5, caution: 0.2, reproThreshold: 60, metabolism: 0.8, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
+      father.traits = { senseRadius: 7, caution: 0.8, reproThreshold: 70, metabolism: 1.2, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
       step(world, r)
       const child = births(world)[0]!
       for (const name of ['senseRadius', 'caution', 'reproThreshold', 'metabolism'] as const) {
@@ -314,12 +314,13 @@ describe('asexual control', () => {
   // Captured before any M17 edit (the Stage 1 tree): eden at 5,000 ticks. With sexes off and the pre-M17
   // numbers (`stage1`) the world must behave exactly as it did.
   const expected = {
-    a: { births: 214, bots: 48, deaths: { starve: 184, thirst: 9, danger: 0, plague: 0, meteor: 0, predator: 0, age: 13 } },
-    b: { births: 223, bots: 57, deaths: { starve: 186, thirst: 3, danger: 0, plague: 0, meteor: 0, predator: 0, age: 17 } },
+    // Re-pinned in M22 on `neutralTraits` (was a: 214 / 48 and b: 223 / 57): same rules, different birth-stream rolls.
+    a: { births: 193, bots: 55, deaths: { starve: 149, thirst: 9, danger: 0, plague: 0, meteor: 0, predator: 0, age: 20 } },
+    b: { births: 188, bots: 46, deaths: { starve: 163, thirst: 3, danger: 1, plague: 0, meteor: 0, predator: 0, age: 15 } },
   }
 
   it.each(['a', 'b'] as const)('reproduces the pre-M17 numbers on seed %s', { timeout: 60_000 }, (seed) => {
-    const old = stage1(rules)
+    const old = stage1(neutralTraits(rules))
     // Eden as it was before M21b (`edenWithDanger`): the numbers belong to that map.
     const world = createWorld(seed, edenWithDanger(), old)
     for (let i = 0; i < 5000; i += 1) step(world, old)

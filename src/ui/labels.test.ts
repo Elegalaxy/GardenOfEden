@@ -115,6 +115,11 @@ describe('chordWidth', () => {
     expect(fertilityLabel(declineAge, tuning)).toEqual({ percent: 100, phase: 'declining' })
     expect(fertilityLabel((declineAge + fertileUntil) / 2, tuning)).toEqual({ percent: 50, phase: 'declining' })
     expect(fertilityLabel(fertileUntil, tuning)).toEqual({ percent: 0, phase: 'past' })
+    // M22: a longevity of 1.2 stretches every threshold, so the same age is earlier in life.
+    expect(fertilityLabel(adultAge, tuning, 1.2)).toEqual({ percent: 0, phase: 'young' })
+    expect(fertilityLabel(adultAge * 1.2, tuning, 1.2)).toEqual({ percent: Math.round(100 * tuning.fertility.startFraction), phase: 'rising' })
+    expect(fertilityLabel(fertileUntil, tuning, 1.2).phase).toBe('declining')
+    expect(fertilityLabel(fertileUntil * 1.2, tuning, 1.2)).toEqual({ percent: 0, phase: 'past' })
   })
 
   it('labels the inbreeding score', () => {

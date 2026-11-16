@@ -6,7 +6,7 @@ import { fertilityAt, meetsReproductionNeeds } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { asexual, edenWithDanger, stage1 } from './variants.ts'
+import { asexual, edenWithDanger, neutralTraits, stage1 } from './variants.ts'
 
 // Aging fertility (M16): the curve, the breeding gate, the cooldown after a birth, and a control
 // run showing that neutral settings give back the pre-M16 world bit for bit.
@@ -88,7 +88,7 @@ describe('breeding gate and cooldown', () => {
 
 describe('neutral control', () => {
   it('with neutral fertility, eden seed a at 3,000 ticks has the pre-M16 hash', () => {
-    const old = stage1(rules)
+    const old = stage1(neutralTraits(rules))
     const neutral: Rules = {
       ...old,
       tuning: {
@@ -101,9 +101,11 @@ describe('neutral control', () => {
     for (let i = 0; i < 3000; i += 1) step(world, neutral)
     // Captured before any M16 edit (npx tsx on the unchanged tree): 125 births, 34 bots. The state hash of
     // that run was e1069c163c8bf330; it can no longer match because bots and lineage records gained keys
-    // (sex, fatherId) in M17, so the behaviour is pinned by these counts (stage1 = asexual, pre-M17 numbers).
-    expect(world.totalBirths).toBe(125)
-    expect(world.bots).toHaveLength(34)
+    // (sex, fatherId) in M17, so the behaviour was pinned by these counts (stage1 = asexual, pre-M17 numbers).
+    // Re-pinned in M22 on `neutralTraits` (the four new traits have no effect, but the birth stream takes 8 more
+    // draws per asexual child, so the old 125 / 34 cannot come back): 128 births, 39 bots.
+    expect(world.totalBirths).toBe(128)
+    expect(world.bots).toHaveLength(39)
     expect(stateHash(world)).toHaveLength(16)
   })
 })

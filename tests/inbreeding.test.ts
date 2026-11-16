@@ -177,6 +177,18 @@ describe('the penalty at birth', () => {
     expect(child.health).toBeCloseTo(tuning.bot.maxHealth * (1 - 0.1), 9)
   })
 
+  it('multiplies the longevity trait into the lifespan, with the inbreeding cut on top (M22)', () => {
+    const r = still()
+    for (const [related, loss] of [[false, 0], [true, 0.2]] as const) {
+      const world = pair(r, related)
+      for (const bot of world.bots) bot.traits.longevity = 1.2
+      step(world, r)
+      const child = onlyChild(world)
+      expect(child.traits.longevity).toBe(1.2)
+      expect(child.lifespan).toBe(Math.round(tuning.bot.maxAge * 1.2 * (1 - loss)))
+    }
+  })
+
   it('applies no cut when every loss is 0', () => {
     const r = still({ lifespanLoss: 0, energyLoss: 0, healthLoss: 0 })
     const world = pair(r, true)
@@ -214,7 +226,8 @@ describe('whole runs', () => {
     for (const bot of live.bots) {
       const record = live.lineage.find((r) => r.id === bot.id)
       expect(record?.inbreeding).toBe(bot.inbreeding)
-      expect(bot.lifespan).toBe(Math.round(tuning.bot.maxAge * (1 - tuning.inbreeding.lifespanLoss * bot.inbreeding)))
+      // M22: longevity scales the lifespan too (the founders' 1 leaves it at maxAge).
+      expect(bot.lifespan).toBe(Math.round(tuning.bot.maxAge * bot.traits.longevity * (1 - tuning.inbreeding.lifespanLoss * bot.inbreeding)))
     }
     expect(stateHash(replayWorld('a', edenPreset, rules, live.commands, live.tick))).toBe(stateHash(live))
   })
@@ -225,7 +238,7 @@ describe('whole runs', () => {
     for (let i = 0; i < 3000; i += 1) step(world, asexual)
     expect(world.totalBirths).toBeGreaterThan(50)
     expect(world.inbredBirths).toBe(0)
-    expect(world.bots.every((bot) => bot.inbreeding === 0 && bot.lifespan === tuning.bot.maxAge)).toBe(true)
+    expect(world.bots.every((bot) => bot.inbreeding === 0 && bot.lifespan === Math.round(tuning.bot.maxAge * bot.traits.longevity))).toBe(true)
   })
 
   it('matches the stage-1 control rules when the penalty is off (same run as the sexes-off build)', () => {

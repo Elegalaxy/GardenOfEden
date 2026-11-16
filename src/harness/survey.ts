@@ -139,8 +139,8 @@ export function surveySeed(
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb']
-    .map((c) => c.padStart(8))
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb']
+    .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
     [
@@ -160,6 +160,10 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       traitCell(r.traits, 'caution'),
       traitCell(r.traits, 'reproThreshold'),
       traitCell(r.traits, 'metabolism'),
+      traitCell(r.traits, 'sprint'),
+      traitCell(r.traits, 'longevity'),
+      traitCell(r.traits, 'hardiness'),
+      traitCell(r.traits, 'wariness'),
       ruinShareCell(r.eaten),
       r.learned,
       r.lineage,
@@ -168,7 +172,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.females,
       r.inbred,
     ]
-      .map((cell) => String(cell).padStart(8))
+      .map((cell) => String(cell).padStart(9))
       .join(''),
   )
   return [head, ...lines].join('\n')

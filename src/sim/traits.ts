@@ -20,7 +20,16 @@ import { nextFloat } from './rng.ts'
 import type { Bot, RngStream, TraitName, Traits, Tuning } from './types.ts'
 
 /** Every trait, in the order used for mutation draws. Do not reorder: it changes every hash. */
-export const TRAIT_NAMES: readonly TraitName[] = ['senseRadius', 'caution', 'reproThreshold', 'metabolism']
+export const TRAIT_NAMES: readonly TraitName[] = [
+  'senseRadius',
+  'caution',
+  'reproThreshold',
+  'metabolism',
+  'sprint',
+  'longevity',
+  'hardiness',
+  'wariness',
+]
 
 export type TraitStat = { mean: number; min: number; max: number }
 
@@ -74,5 +83,9 @@ export function meanTraits(bots: readonly Pick<Bot, 'traits'>[]): Traits | null 
     caution: stats.caution.mean,
     reproThreshold: stats.reproThreshold.mean,
     metabolism: stats.metabolism.mean,
+    sprint: stats.sprint.mean,
+    longevity: stats.longevity.mean,
+    hardiness: stats.hardiness.mean,
+    wariness: stats.wariness.mean,
   }
 }

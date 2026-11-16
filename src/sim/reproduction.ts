@@ -27,9 +27,10 @@
 // `childEnergyShare` of the mother's energy into a `Conception`, so the energy is already
 // lower when the next step runs. `spawnChildren` runs after the loop and creates the bots, using
 // the `birth` random stream. Draws per child, in order: angle, distance, heading; sexual mode
-// only: the child's sex (female when below `sex.femaleChance`) and four crossover draws (one per
-// trait: mother's or father's value, see traits.ts); then eight mutation draws (two per trait).
-// That is 16 draws per sexual child and 11 per asexual child (whose sex is autoSex, no draw).
+// only: the child's sex (female when below `sex.femaleChance`) and eight crossover draws (one per
+// trait: mother's or father's value, see traits.ts); then sixteen mutation draws (two per trait; eight traits since M22).
+// That is 28 draws per sexual child and 19 per asexual child (whose sex is autoSex, no draw).
+// Longevity (M22) scales the child's `lifespan` and, through `fertilityAt`'s scale, every age threshold of its fertility.
 // A child inherits traits (crossed, then mutated), clamped into the bounds in `tuning.mutation`.
 // Its bloodline hue (genes.ts, M20) comes from the separate `gene` stream: two draws per sexual child, one per asexual child.
 // Its generation is one more than the older parent's. It starts with the shareable part of its
@@ -78,9 +79,13 @@ export type Conception = {
  * segment is skipped: primeAge <= adultAge means 1 from adultAge; fertileUntil <= declineAge means 1
  * until fertileUntil, then 0.
  */
-export function fertilityAt(age: number, tuning: Pick<Tuning, 'bot' | 'fertility'>): number {
-  const { adultAge } = tuning.bot
-  const { startFraction, primeAge, declineAge, fertileUntil } = tuning.fertility
+export function fertilityAt(age: number, tuning: Pick<Tuning, 'bot' | 'fertility'>, scale = 1): number {
+  // M22: every age threshold is multiplied by the bot's `longevity` (`scale`), so a long-lived bot matures and ages later.
+  const adultAge = tuning.bot.adultAge * scale
+  const primeAge = tuning.fertility.primeAge * scale
+  const declineAge = tuning.fertility.declineAge * scale
+  const fertileUntil = tuning.fertility.fertileUntil * scale
+  const { startFraction } = tuning.fertility
   if (age < adultAge || age >= fertileUntil) return 0
   if (age < primeAge) {
     return startFraction + ((1 - startFraction) * (age - adultAge)) / (primeAge - adultAge)
@@ -91,21 +96,21 @@ export function fertilityAt(age: number, tuning: Pick<Tuning, 'bot' | 'fertility
 
 /** The bot-only conditions: energy, fertility and cooldown. Shelter and cap are checked by the caller. */
 export function meetsReproductionNeeds(bot: Bot, tuning: Tuning): boolean {
-  return bot.energy >= bot.traits.reproThreshold && fertilityAt(bot.age, tuning) > 0 && bot.cooldown <= 0
+  return bot.energy >= bot.traits.reproThreshold && fertilityAt(bot.age, tuning, bot.traits.longevity) > 0 && bot.cooldown <= 0
 }
 
 /** The mother's side of a birth: takes the child's energy (returned) plus the birth cost, and starts her cooldown. */
 export function payMother(bot: Bot, tuning: Tuning): number {
   const energy = bot.energy * tuning.bot.childEnergyShare
   bot.energy -= energy + tuning.bot.birthCost
-  bot.cooldown = Math.ceil(tuning.bot.reproCooldown / fertilityAt(bot.age, tuning))
+  bot.cooldown = Math.ceil(tuning.bot.reproCooldown / fertilityAt(bot.age, tuning, bot.traits.longevity))
   return energy
 }
 
 /** The father's side of a birth: burns `sex.maleCost` energy and starts his (shorter) cooldown. */
 export function payFather(bot: Bot, tuning: Tuning): void {
   bot.energy -= tuning.sex.maleCost
-  bot.cooldown = Math.ceil(tuning.sex.maleCooldown / fertilityAt(bot.age, tuning))
+  bot.cooldown = Math.ceil(tuning.sex.maleCooldown / fertilityAt(bot.age, tuning, bot.traits.longevity))
 }
 
 /** Asexual mode: takes the child's energy from the parent and starts its cooldown; null when the bot is not eligible. */
@@ -214,7 +219,7 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
       fatherId: c.fatherId,
       sex,
       inbreeding,
-      lifespan: Math.round(tuning.bot.maxAge * (1 - loss.lifespanLoss * inbreeding)),
+      lifespan: Math.round(tuning.bot.maxAge * traits.longevity * (1 - loss.lifespanLoss * inbreeding)),
       hue,
       traits,
       memory: [],

@@ -1,7 +1,7 @@
 // Trait averages over time: one small line chart per trait (small multiples),
 // each with the population mean now and how far it has drifted since the first
 // sample. Each trait has its own line style and end marker (solid circle,
-// dashed square, dotted triangle, dash-dot diamond) and its own labelled
+// dashed square, dotted triangle, dash-dot diamond; M22 adds plus, ring, hexagon and cross with their own dashes) and its own labelled
 // panel, so nothing depends on colour.
 //
 // The vertical axis of a chart spans the trait's allowed range (the mutation
@@ -26,12 +26,16 @@ const HEIGHT = 96
 const MARGIN = { left: 34, right: 12, top: 8, bottom: 8 }
 const numberFormat = new Intl.NumberFormat('en-US')
 
-type Shape = 'circle' | 'square' | 'triangle' | 'diamond'
+type Shape = 'circle' | 'square' | 'triangle' | 'diamond' | 'plus' | 'cross' | 'ring' | 'hexagon'
 const SHAPE: Record<TraitName, Shape> = {
   senseRadius: 'circle',
   caution: 'square',
   reproThreshold: 'triangle',
   metabolism: 'diamond',
+  sprint: 'plus',
+  longevity: 'ring',
+  hardiness: 'hexagon',
+  wariness: 'cross',
 }
 
 /** An end-of-line marker centred on (x, y). */
@@ -46,6 +50,19 @@ function Marker({ shape, x, y }: { shape: Shape; x: number; y: number }) {
       return <polygon points={`${x},${y - r - 1} ${x + r + 1},${y + r} ${x - r - 1},${y + r}`} className="trait-dot" />
     case 'diamond':
       return <polygon points={`${x},${y - r - 1} ${x + r + 1},${y} ${x},${y + r + 1} ${x - r - 1},${y}`} className="trait-dot" />
+    case 'plus':
+      return <path d={`M${x - r - 1},${y} H${x + r + 1} M${x},${y - r - 1} V${y + r + 1}`} className="trait-mark" />
+    case 'cross':
+      return <path d={`M${x - r},${y - r} L${x + r},${y + r} M${x + r},${y - r} L${x - r},${y + r}`} className="trait-mark" />
+    case 'ring':
+      return <circle cx={x} cy={y} r={r} className="trait-ring" />
+    case 'hexagon':
+      return (
+        <polygon
+          points={`${x - r - 1},${y} ${x - r / 2},${y - r - 1} ${x + r / 2},${y - r - 1} ${x + r + 1},${y} ${x + r / 2},${y + r + 1} ${x - r / 2},${y + r + 1}`}
+          className="trait-dot"
+        />
+      )
   }
 }
 

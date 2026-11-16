@@ -17,6 +17,18 @@ export const tuning: Tuning = {
     baseDrain: 0.25,
     moveDrain: 0.25,
     senseDrain: 0.02,
+    // M22 trait prices (see the retune log in doc/GAME_DESIGN.md). Each multiplies or adds to the energy drain, which
+    // is very sensitive: in a lineage race (mutation off) a hardiness of 1.4 at a drain of 0.1 (4% more energy
+    // burned, no benefit in a predator-free world) left about half the descendants of a plain bot, so the numbers
+    // stay small. Sprint: `sprintUpkeep` x (sprint - 1) energy per tick (times metabolism) and a flee step costs
+    // moveDrain x sprint; 0.03 and above pushed the mean to the lower bound, 0.01 keeps it near 1. Hardiness: the
+    // whole drain x (1 + hardinessDrain x (hardiness - 1)); 0.25 and 0.1 sank the mean to 0.8 to 0.85 because
+    // predator bites are only about 5% of deaths, 0.01 leaves it near 0.9 to 1. Longevity: the same shape; at 0 the
+    // mean climbed to 1.15 (a long life costs only a later start), at 0.1 it sank to 0.8 (the lower bound is 0.7), 0.03 holds
+    // it near 1.05.
+    sprintUpkeep: 0.01,
+    hardinessDrain: 0.01,
+    longevityDrain: 0.03,
     metabolismSpeed: 2,
     thirstDrain: 0.25,
     // Why a steep power, and why only above 1: speed is `1 + 2 x (metabolism - 1)` times the base, so a
@@ -121,6 +133,13 @@ export const tuning: Tuning = {
     // 65 since M17 (was 80); the population mean settles near 60 either way.
     reproThreshold: 65,
     metabolism: 1,
+    // M22: founders sit at 1, not at a bound (mutation is multiplicative). Bounds: sprint 0.8 to 1.8 (speed while
+    // fleeing, a predator moves at 0.9 and a bot at 0.6, so 1.5 matches it), longevity 0.7 to 1.4 (lifespan and the
+    // fertility curve), hardiness 0.7 to 1.6 (damage divisor), wariness 0.5 to 2 (threat radius and memory window).
+    sprint: 1,
+    longevity: 1,
+    hardiness: 1,
+    wariness: 1,
   },
   mutation: {
     rate: 0.5,
@@ -132,6 +151,10 @@ export const tuning: Tuning = {
       // would breed while still hungry.
       reproThreshold: { min: 55, max: 90 },
       metabolism: { min: 0.7, max: 1.6 },
+      sprint: { min: 0.8, max: 1.8 },
+      longevity: { min: 0.7, max: 1.4 },
+      hardiness: { min: 0.7, max: 1.6 },
+      wariness: { min: 0.5, max: 2 },
     },
   },
   memory: {
@@ -198,7 +221,9 @@ export const tuning: Tuning = {
   // Predators (M21a, retuned in M21b for the eden preset's three). A predator spends most of its time resting after a kill:
   // `digestTicks` 1300 (was a first guess of 300) puts predator deaths at about 5% of all deaths and keeps a small colony alive
   // after a drought or plague; at 300 they were 15 to 30% and killed the survivors of a crash (see the changelog in
-  // doc/GAME_DESIGN.md for every setting tried). `speed` 0.9 is unchanged from M21a.
+  // doc/GAME_DESIGN.md for every setting tried). `speed` 0.9 is unchanged from M21a. `homeRange` 11 (was 10) is the one M22 change: the
+  // new traits added draws and so moved every run, and with 10 the metabolism lineage race in tests/traits.test.ts lost on two of its six
+  // seeds; the retune log in doc/GAME_DESIGN.md lists every non-trait number tried (digestTicks, chaseTicks, giveUpRest, memoryTicks).
   predator: {
     maxCount: 8,
     senseRadius: 8,
@@ -208,7 +233,7 @@ export const tuning: Tuning = {
     giveUpRest: 60,
     digestTicks: 1300,
     memoryTicks: 400,
-    homeRange: 10,
+    homeRange: 11,
     steerStep: 0.5,
   },
   logCap: 500,

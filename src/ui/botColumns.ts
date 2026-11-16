@@ -6,8 +6,8 @@
 // `ViewBot` objects from the rows (`unpackBots`), so no panel, picker or drawing routine changes.
 //
 // Layout (row-major, one row per bot, in the world's order, ascending id):
-//   f64, F64_STRIDE = 14 per bot: x, y, px, py, energy, health, thirst, heading, then the four traits
-//        in `TRAIT_NAMES` order (senseRadius, caution, reproThreshold, metabolism), then the inbreeding score, then the bloodline hue (M20, degrees). Float64 everywhere: positions feed picking and interpolation, and
+//   f64, F64_STRIDE = 18 per bot: x, y, px, py, energy, health, thirst, heading, then the four traits
+//        in `TRAIT_NAMES` order (senseRadius, caution, reproThreshold, metabolism), then the inbreeding score, then the bloodline hue (M20, degrees), then the four M22 traits (sprint, longevity, hardiness, wariness; columns 14-17). Float64 everywhere: positions feed picking and interpolation, and
 //        keeping every float exact means the page computes the same means and samples as the World.
 //   i32, I32_STRIDE = 12 per bot: id, age, cooldown, generation, parentId (the mother; -1 = none), intent kind
 //        (index into `INTENT_KINDS`), intent target id (-1 = none), memoryCount, learnedCount,
@@ -23,7 +23,7 @@ export const INTENT_KINDS: readonly IntentKind[] = ['wander', 'seekFood', 'seekW
 /** The code of each sex in the packed data is its index here. */
 export const SEX_CODES: readonly Sex[] = ['female', 'male']
 
-export const F64_STRIDE = 14
+export const F64_STRIDE = 18
 export const I32_STRIDE = 12
 
 /** Packs bots (any list of bots with a memory) into typed arrays. */
@@ -48,6 +48,10 @@ export function packBots(bots: readonly Bot[]): PackedBots {
     f64[f + 11] = bot.traits.metabolism
     f64[f + 12] = bot.inbreeding
     f64[f + 13] = bot.hue
+    f64[f + 14] = bot.traits.sprint
+    f64[f + 15] = bot.traits.longevity
+    f64[f + 16] = bot.traits.hardiness
+    f64[f + 17] = bot.traits.wariness
     let learned = 0
     for (const entry of bot.memory) if (entry.learnedFrom !== null) learned += 1
     const n = i * I32_STRIDE
@@ -95,7 +99,16 @@ export function unpackBots(packed: PackedBots): ViewBot[] {
       inbreeding: f64[f + 12]!,
       lifespan: i32[n + 11]!,
       hue: f64[f + 13]!,
-      traits: { senseRadius: f64[f + 8]!, caution: f64[f + 9]!, reproThreshold: f64[f + 10]!, metabolism: f64[f + 11]! },
+      traits: {
+        senseRadius: f64[f + 8]!,
+        caution: f64[f + 9]!,
+        reproThreshold: f64[f + 10]!,
+        metabolism: f64[f + 11]!,
+        sprint: f64[f + 14]!,
+        longevity: f64[f + 15]!,
+        hardiness: f64[f + 16]!,
+        wariness: f64[f + 17]!,
+      },
       intent: { kind: INTENT_KINDS[i32[n + 5]!] ?? 'wander', targetId: target < 0 ? null : target },
       heading: f64[f + 7]!,
       memoryCount: i32[n + 7]!,

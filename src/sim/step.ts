@@ -24,7 +24,7 @@
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
 // reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick) and
-// the `birth` stream (eleven per asexual child, sixteen per sexual one). Ruins, family sharing and lineage records draw nothing.
+// the `birth` stream (nineteen per asexual child, twenty-eight per sexual one). Ruins, family sharing and lineage records draw nothing.
 
 import { decide } from './brain.ts'
 import { buildMateIndex } from './mating.ts'

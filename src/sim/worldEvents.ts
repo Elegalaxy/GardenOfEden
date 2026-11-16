@@ -151,7 +151,7 @@ function strike(world: World, rules: Rules, x: number, y: number): number {
   for (const bot of world.bots) {
     const d = hypot(bot.x - x, bot.y - y)
     if (d >= m.radius) continue
-    bot.health -= m.damage * (1 - d / m.radius)
+    bot.health -= (m.damage * (1 - d / m.radius)) / bot.traits.hardiness
     if (bot.health <= 0) killed.push(bot)
   }
   if (killed.length > 0) {

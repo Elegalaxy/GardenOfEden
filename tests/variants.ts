@@ -27,6 +27,27 @@ export function edenWithDanger(): Preset {
   }
 }
 
+/**
+ * M22 traits with no effect: the four new traits are pinned at 1 (bounds min = max = 1) and their costs are 0, so a bot
+ * behaves as before M22 but the `birth` stream still takes its 12 extra draws per sexual child (8 per asexual one). Control
+ * tests that pin counts re-pin them on this variant (the pre-M22 numbers cannot come back, the draws moved).
+ */
+export function neutralTraits(rules: Rules): Rules {
+  const one = { min: 1, max: 1 }
+  const { tuning } = rules
+  return {
+    ...rules,
+    tuning: {
+      ...tuning,
+      bot: { ...tuning.bot, sprintUpkeep: 0, hardinessDrain: 0, longevityDrain: 0 },
+      mutation: {
+        ...tuning.mutation,
+        bounds: { ...tuning.mutation.bounds, sprint: one, longevity: one, hardiness: one, wariness: one },
+      },
+    },
+  }
+}
+
 export function stage1(rules: Rules): Rules {
   const { tuning } = rules
   return {

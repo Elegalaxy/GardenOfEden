@@ -131,6 +131,10 @@ export const TRAIT_LABEL: Record<TraitName, string> = {
   caution: 'Caution',
   reproThreshold: 'Repro threshold',
   metabolism: 'Metabolism',
+  sprint: 'Sprint',
+  longevity: 'Longevity',
+  hardiness: 'Hardiness',
+  wariness: 'Wariness',
 }
 
 /** One line on what a trait does, for tooltips. */
@@ -139,6 +143,10 @@ export const TRAIT_HELP: Record<TraitName, string> = {
   caution: 'How strongly a bot flees predators and craters instead of seeking food.',
   reproThreshold: 'Energy a bot needs before it reproduces. Low is early but risky for the parent.',
   metabolism: 'Scales energy loss, thirst and walking speed. Higher burns more and thirsts much more, but moves faster.',
+  sprint: 'How much faster a bot runs while fleeing. Costs energy every tick, more the higher it is.',
+  longevity: 'Scales lifespan and the whole fertility curve: lives longer but matures and breeds later.',
+  hardiness: 'Divides all health damage (bites, plague, craters, meteors). Costs extra energy every tick.',
+  wariness: 'How far a bot keeps from predators and how long it remembers one. Wary bots lose access to food and water near haunts.',
 }
 
 /** A trait value with its unit: "6.4 cells", "0.45", "62.0 energy", "×1.05". */
@@ -153,6 +161,11 @@ export function formatTrait(name: TraitName, value: number): string {
       return `×${text}`
     case 'caution':
       return text
+    case 'sprint':
+    case 'longevity':
+    case 'hardiness':
+    case 'wariness':
+      return `×${text}`
   }
 }
 
@@ -176,10 +189,16 @@ export function chordWidth(r: number, dy: number): number {
 export type FertilityPhase = 'young' | 'rising' | 'prime' | 'declining' | 'past'
 
 /** Fertility at an age as a whole percent plus a phase word for the inspector (M16). */
-export function fertilityLabel(age: number, tuning: Pick<Tuning, 'bot' | 'fertility'>): { percent: number; phase: FertilityPhase } {
-  const percent = Math.round(100 * fertilityAt(age, tuning))
-  const { primeAge, declineAge, fertileUntil } = tuning.fertility
-  if (age < tuning.bot.adultAge) return { percent, phase: 'young' }
+export function fertilityLabel(
+  age: number,
+  tuning: Pick<Tuning, 'bot' | 'fertility'>,
+  scale = 1,
+): { percent: number; phase: FertilityPhase } {
+  const percent = Math.round(100 * fertilityAt(age, tuning, scale))
+  const primeAge = tuning.fertility.primeAge * scale
+  const declineAge = tuning.fertility.declineAge * scale
+  const fertileUntil = tuning.fertility.fertileUntil * scale
+  if (age < tuning.bot.adultAge * scale) return { percent, phase: 'young' }
   if (age >= fertileUntil) return { percent, phase: 'past' }
   if (age < primeAge) return { percent, phase: 'rising' }
   if (age < declineAge) return { percent, phase: 'prime' }

@@ -10,6 +10,10 @@ export const TRAIT_DECIMALS: Record<TraitName, number> = {
   caution: 2,
   reproThreshold: 1,
   metabolism: 2,
+  sprint: 2,
+  longevity: 2,
+  hardiness: 2,
+  wariness: 2,
 }
 
 /** The number only, rounded for its trait: "6.4", "0.45". */

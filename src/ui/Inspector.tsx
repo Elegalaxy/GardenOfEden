@@ -107,8 +107,10 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   const target = intent.targetId === null || intent.kind === 'seekMate' ? undefined : findNode(world, intent.targetId)
   const mother = bot.parentId === null ? undefined : findBot(world, bot.parentId)
   const father = bot.fatherId === null ? undefined : findBot(world, bot.fatherId)
-  const stage = bot.age < tuning.bot.adultAge ? 'child' : bot.age >= tuning.fertility.fertileUntil ? 'elder' : 'adult'
-  const fertility = fertilityLabel(bot.age, tuning)
+  const lifeScale = bot.traits.longevity
+  const stage =
+    bot.age < tuning.bot.adultAge * lifeScale ? 'child' : bot.age >= tuning.fertility.fertileUntil * lifeScale ? 'elder' : 'adult'
+  const fertility = fertilityLabel(bot.age, tuning, lifeScale)
   const children = world.bots.filter((other) => other.parentId === bot.id || other.fatherId === bot.id)
   // The bot is alive, so the population is never empty here.
   const mean = meanTraits(world.bots) ?? bot.traits

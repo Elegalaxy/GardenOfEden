@@ -16,7 +16,7 @@ import {
 } from './botColour.ts'
 import type { ColourBot } from './botColour.ts'
 
-const traits = { senseRadius: 6, caution: 0.5, reproThreshold: 65, metabolism: 1 }
+const traits = { senseRadius: 6, caution: 0.5, reproThreshold: 65, metabolism: 1, sprint: 1, longevity: 1, hardiness: 1, wariness: 1 }
 const bot = (over: Partial<ColourBot> = {}): ColourBot => ({ hue: 100, sex: 'female', traits, ...over })
 
 /** Relative luminance of #rrggbb, and the contrast ratio against the map colour. */

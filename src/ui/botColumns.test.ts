@@ -47,11 +47,20 @@ describe('packBots / unpackBots', () => {
     expect(out).toEqual(oldViewBot(bot))
   })
 
+  it('carries the four M22 traits as floats in columns 14 to 17', () => {
+    expect(F64_STRIDE).toBe(18)
+    const bot = structuredClone(world.bots[0]!)
+    bot.traits = { ...bot.traits, sprint: 1.2345678, longevity: 0.8765432, hardiness: 1.1111111, wariness: 1.9999999 }
+    const packed = packBots([bot])
+    expect([packed.f64[14], packed.f64[15], packed.f64[16], packed.f64[17]]).toEqual([1.2345678, 0.8765432, 1.1111111, 1.9999999])
+    expect(unpackBots(packed)[0]!.traits).toEqual(bot.traits)
+  })
+
   it('carries the bloodline hue as a float', () => {
     const bot = structuredClone(world.bots[0]!)
     bot.hue = 212.3456789
     const packed = packBots([bot])
-    expect(packed.f64[F64_STRIDE - 1]).toBe(212.3456789)
+    expect(packed.f64[13]).toBe(212.3456789)
     expect(unpackBots(packed)[0]!.hue).toBe(212.3456789)
   })
 

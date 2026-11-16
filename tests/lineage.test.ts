@@ -439,9 +439,10 @@ describe('over a long run', () => {
   it.each(['a', 'b'])('seed %s keeps the store within maxRecords and never loses a living bot', (seed) => {
     const founders = foundersIn(edenPreset)
     const world = createWorld(seed, edenPreset, rules)
-    // 80,000 ticks: with predators (M21b) a 60,000-tick eden run makes about 2,400 to 3,300 births, so it does not always
-    // pass the 3,000-record cap; 80,000 always does.
-    for (let i = 0; i < 80_000; i += 1) {
+    // 100,000 ticks: with predators (M21b) a 60,000-tick eden run makes about 2,400 to 3,300 births, so it does not always
+    // pass the 3,000-record cap. 80,000 did until M22 (the new trait costs lower births a little: seed b made 2,894 by 80,000);
+    // 100,000 passes it with room to spare.
+    for (let i = 0; i < 100_000; i += 1) {
       step(world, rules)
       expect(world.lineage.length).toBeLessThanOrEqual(tuning.lineage.maxRecords)
       if (world.tick % 1500 === 0) expectConsistent(world, founders + world.totalBirths)

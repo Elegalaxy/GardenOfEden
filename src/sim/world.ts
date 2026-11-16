@@ -84,7 +84,7 @@ export function makeBot(id: number, x: number, y: number, heading: number, rules
     fatherId: null,
     sex,
     inbreeding: 0,
-    lifespan: bot.maxAge,
+    lifespan: Math.round(bot.maxAge * traits.longevity),
     hue,
     traits: { ...traits },
     memory: [],

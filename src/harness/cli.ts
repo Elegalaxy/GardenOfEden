@@ -134,18 +134,22 @@ function row(world: World): string {
     traitCell(traits, 'caution'),
     traitCell(traits, 'reproThreshold'),
     traitCell(traits, 'metabolism'),
+    traitCell(traits, 'sprint'),
+    traitCell(traits, 'longevity'),
+    traitCell(traits, 'hardiness'),
+    traitCell(traits, 'wariness'),
     ruinShareCell(world.eaten),
     world.familyLearned,
     world.lineage.length,
     world.lineagePruned,
     parentAgeCell(meanParentAge(world)),
   ]
-  return cells.map((cell) => String(cell).padStart(8)).join('')
+  return cells.map((cell) => String(cell).padStart(9)).join('')
 }
 
 function foundersLine(): string {
   const t = rules.tuning.traits
-  return `founders: sense=${t.senseRadius} caution=${t.caution} reproAt=${t.reproThreshold} metab=${t.metabolism}`
+  return `founders: sense=${t.senseRadius} caution=${t.caution} reproAt=${t.reproThreshold} metab=${t.metabolism} sprint=${t.sprint} longev=${t.longevity} hardy=${t.hardiness} wary=${t.wariness}`
 }
 
 function main(argv: string[]): void {
@@ -176,8 +180,8 @@ function main(argv: string[]): void {
   console.log(`seed=${seed} preset=${options.preset} ticks=${options.ticks}${flags}`)
   console.log(foundersLine())
   console.log(
-    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
-      .map((cell) => cell.padStart(8))
+    ['tick', 'pop', 'births', 'deaths', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'food', 'ruins', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge']
+      .map((cell) => cell.padStart(9))
       .join(''),
   )
   console.log(row(world))

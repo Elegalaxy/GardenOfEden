@@ -561,7 +561,7 @@ export function drawWorld(
     const position = botPosition(bot, alpha)
     const x = offsetX + position.x * scale
     const y = offsetY + position.y * scale
-    const radius = Math.max(3, scale * (bot.age < adultAge ? 0.38 : 0.55))
+    const radius = Math.max(3, scale * (bot.age < adultAge * bot.traits.longevity ? 0.38 : 0.55))
     ctx.beginPath()
     if (botShape(bot, mode) === 'diamond') {
       const r = radius * 1.25

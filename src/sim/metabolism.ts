@@ -18,6 +18,8 @@
 // (a tie goes to danger). Predator bites (M21a) are a third health source: the cause is 'predator' only when
 // the bite damage was strictly larger than both the danger and the plague damage (a tie goes to the older rules). A meteor's cause, 'meteor', is only recorded by the command that
 // strikes (worldEvents.ts); a bot never dies of it inside `deathCause`.
+// M22 traits: every health damage (danger, plague, predator bite) is divided by the bot's `hardiness`; the energy drain gains
+// a sprint upkeep (`sprintUpkeep` x (sprint - 1), so a slow sprint saves) and is scaled by hardiness and longevity costs.
 
 import { pow } from './exactMath.ts'
 import type { Exposure } from './nodes.ts'
@@ -31,11 +33,17 @@ export function speedOf(bot: Bot, tuning: Tuning): number {
 
 export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning: Tuning): void {
   const t = tuning.bot
+  const { sprint, longevity, hardiness } = bot.traits
   const sensing = t.senseDrain * (bot.traits.senseRadius - tuning.traits.senseRadius)
-  bot.energy -= (t.baseDrain + sensing + (moved ? t.moveDrain : 0)) * bot.traits.metabolism * exposure.drainMult
+  // M22: sprint pays upkeep every tick and a flee step costs more; hardiness and longevity scale the whole drain.
+  const upkeep = t.sprintUpkeep * (sprint - 1)
+  const step = moved ? t.moveDrain * (bot.intent.kind === 'flee' ? sprint : 1) : 0
+  const traitMult = 1 + t.hardinessDrain * (hardiness - 1) + t.longevityDrain * (longevity - 1)
+  bot.energy -= (t.baseDrain + sensing + upkeep + step) * bot.traits.metabolism * exposure.drainMult * traitMult
   const thirstLoss = t.thirstDrain * pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
-  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - exposure.damage - exposure.plague - exposure.predator)
+  const harm = (exposure.damage + exposure.plague + exposure.predator) / hardiness
+  bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - harm)
   bot.age += 1
   if (bot.cooldown > 0) bot.cooldown -= 1
 }
