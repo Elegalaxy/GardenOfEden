@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { AUTOSAVE_KEY, clearAutosave, readAutosave, writeAutosave } from './autosave.ts'
+import { AUTOSAVE_KEY, clearAutosave, inspectAutosave, readAutosave, writeAutosave } from './autosave.ts'
 import type { KeyValueStore } from './autosave.ts'
 import { SAVE_VERSION } from './save.ts'
 import type { Save } from './save.ts'
@@ -62,5 +62,21 @@ describe('autosave', () => {
     expect(writeAutosave(broken, run)).toBe(false)
     expect(readAutosave(broken)).toBeNull()
     expect(clearAutosave(broken)).toBe(false)
+  })
+
+  it('says why a stored run cannot be opened, and keeps it', () => {
+    const storage = memory()
+    expect(inspectAutosave(storage)).toEqual({ save: null, problem: null })
+    const withDanger = { ...run, version: 2, commands: [{ tick: 3, cmd: { type: 'placeNode', kind: 'danger', x: 5, y: 5, radius: 3 } }] }
+    storage.setItem(AUTOSAVE_KEY, JSON.stringify(withDanger))
+    const read = inspectAutosave(storage)
+    expect(read.save).toBeNull()
+    expect(read.problem?.code).toBe('retired-kind')
+    expect(readAutosave(storage)).toBeNull()
+    expect(storage.getItem(AUTOSAVE_KEY)).not.toBeNull() // reading never deletes
+    storage.setItem(AUTOSAVE_KEY, 'garbage')
+    expect(inspectAutosave(storage).problem?.code).toBe('not-json')
+    expect(inspectAutosave(broken)).toEqual({ save: null, problem: null })
+    expect(inspectAutosave(null)).toEqual({ save: null, problem: null })
   })
 })

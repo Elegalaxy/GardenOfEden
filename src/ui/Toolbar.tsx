@@ -12,6 +12,7 @@ import { globalEventForKey } from './eventInfo.ts'
 import { PLACE_COUNTS } from './bulk.ts'
 import { dispatch, setPlaceCount, setTool, useWorldStore } from './store.ts'
 import { isTypingTarget } from './typing.ts'
+import { PredatorKey } from './PredatorKey.tsx'
 import { TOOLS, placesThings, toolForKey, toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 
@@ -24,8 +25,9 @@ function ToolBadge({ id }: { id: Tool }) {
           <span>{KIND_LETTER.water}</span>
         </span>
       )
-    case 'resource':
     case 'predator':
+      return <PredatorKey />
+    case 'resource':
     case 'shelter':
       return (
         <span className={`key key-${id}`} aria-hidden="true">

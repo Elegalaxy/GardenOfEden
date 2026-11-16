@@ -18,7 +18,7 @@ import { MAX_SAVE_CHARS, decodeSave, encodeSave, makeSave, saveFileName } from '
 import type { Save } from '../persist/save.ts'
 import { encodeShare } from '../persist/share.ts'
 import type { ShareEncoding } from '../persist/share.ts'
-import { clearStoredRun, useAutosave } from './autosave.ts'
+import { clearStoredRun, unreadableAutosaveText, useAutosave } from './autosave.ts'
 import { downloadText } from './download.ts'
 import { shareUrl } from './shareLink.ts'
 import { cancelLoad, exportSave, reportSave, startLoad, useWorldStore } from './store.ts'
@@ -182,8 +182,8 @@ export function SavePanel() {
             <button
               type="button"
               className="secondary"
-              disabled={saved === null}
-              title={saved === null ? 'No autosaved run to clear' : 'Remove the autosaved run from this browser'}
+              disabled={saved === null && autosave.unreadable === null}
+              title={saved === null && autosave.unreadable === null ? 'No autosaved run to clear' : 'Remove the autosaved run from this browser'}
               onClick={onClearAutosave}
             >
               Clear
@@ -191,7 +191,9 @@ export function SavePanel() {
             <span className="save-autosave">
               {saved !== null
                 ? `Autosaved: ${describe(saved)}.`
-                : autosave.available
+                : autosave.unreadable !== null
+                  ? `${unreadableAutosaveText(autosave.unreadable)} Clear removes it.`
+                  : autosave.available
                   ? 'No autosaved run yet. Your run is kept here once you place something or start a world.'
                   : 'Autosave is unavailable in this browser.'}
             </span>

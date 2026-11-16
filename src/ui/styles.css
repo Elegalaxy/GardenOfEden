@@ -227,22 +227,26 @@ button:disabled {
   border-style: dashed;
 }
 
-/* Dashed threat ring around a light chevron with a dark V, as on the map. */
+/* Dashed threat ring around a light chevron with a dark edge, as on the map (an inline SVG, so the chevron keeps its size). */
 .key-predator {
-  position: relative;
-  border-color: var(--predator);
-  border-style: dashed;
-  color: #0e1118;
-  isolation: isolate;
+  border: 0;
+  border-radius: 0;
+  box-sizing: border-box;
+  overflow: visible;
 }
 
-.key-predator::before {
-  content: '';
-  position: absolute;
-  inset: 2px;
-  z-index: -1;
-  background: #e6e6ee;
-  clip-path: polygon(100% 50%, 10% 95%, 38% 50%, 10% 5%);
+.key-predator circle {
+  fill: none;
+  stroke: var(--predator);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2.4;
+}
+
+.key-predator path {
+  fill: #e6e6ee;
+  stroke: #0e1118;
+  stroke-width: 1;
+  stroke-linejoin: round;
 }
 
 .key-shelter {

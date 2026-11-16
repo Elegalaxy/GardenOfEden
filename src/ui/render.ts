@@ -195,7 +195,7 @@ function drawResource(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
 }
 
 /** A ruin is a diamond (a circle's corners pulled out), filled in by how much food is left. */
-function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
+function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout, covered: boolean): void {
   const cx = layout.offsetX + node.x * layout.scale
   const cy = layout.offsetY + node.y * layout.scale
   // A diamond with the circle's radius would look smaller than a circle of the same radius.
@@ -207,14 +207,22 @@ function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   ctx.lineTo(cx, cy + r)
   ctx.lineTo(cx - r, cy)
   ctx.closePath()
-  ctx.globalAlpha = 0.25 + 0.5 * fraction
+  // A ruin under a predator (it sits on its kill) is pushed back: fainter, thin edge, no letter, so the two never blend.
+  ctx.globalAlpha = (0.25 + 0.5 * fraction) * (covered ? 0.4 : 1)
   ctx.fillStyle = COLORS.ruin
   ctx.fill()
-  ctx.globalAlpha = 1
-  ctx.lineWidth = 2
+  ctx.globalAlpha = covered ? 0.45 : 1
+  ctx.lineWidth = covered ? 1 : 2
   ctx.strokeStyle = COLORS.ruin
   ctx.stroke()
-  drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
+  ctx.globalAlpha = 1
+  if (!covered) drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
+}
+
+/** True when a predator's body overlaps the ruin's diamond (the ruin is drawn pushed back, see `drawRuin`). */
+function ruinCovered(ruin: WorldNode, predators: WorldNode[]): boolean {
+  const reach = ruin.radius * 1.35 + PREDATOR_BODY_CELLS * 1.4
+  return predators.some((p) => Math.abs(p.x - ruin.x) + Math.abs(p.y - ruin.y) <= reach)
 }
 
 /**
@@ -241,6 +249,18 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
 
   // Tip ahead, two wings behind, a notch in the back (an arrowhead).
   const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4)
+  if (resting) {
+    // A resting predator is a token: a dark disc with a thin light ring behind a full-contrast chevron, so it never reads as a ruin.
+    ctx.beginPath()
+    ctx.arc(cx, cy, r * 1.3, 0, Math.PI * 2)
+    ctx.globalAlpha = 0.8
+    ctx.fillStyle = COLORS.botEdge
+    ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.lineWidth = 1
+    ctx.strokeStyle = PREDATOR_FILL
+    ctx.stroke()
+  }
   const cos = Math.cos(heading)
   const sin = Math.sin(heading)
   const point = (forward: number, side: number): [number, number] => [cx + cos * forward - sin * side, cy + sin * forward + cos * side]
@@ -250,7 +270,7 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.lineTo(...point(-r * 0.2, 0))
   ctx.lineTo(...point(-r * 0.75, -r * 0.9))
   ctx.closePath()
-  ctx.globalAlpha = resting ? 0.85 : 1
+  ctx.globalAlpha = 1
   ctx.fillStyle = PREDATOR_FILL
   ctx.fill()
   ctx.lineWidth = 1.5
@@ -260,7 +280,6 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.restore()
 
   ctx.save()
-  ctx.globalAlpha = resting ? 0.8 : 1
   ctx.fillStyle = COLORS.botEdge
   ctx.font = `800 ${Math.max(8, Math.round(layout.scale * 0.85))}px "Segoe UI", system-ui, sans-serif`
   ctx.textAlign = 'center'
@@ -268,7 +287,7 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
   if (resting) {
     ctx.globalAlpha = 1
-    ctx.font = `700 ${Math.max(10, Math.round(layout.scale * 1.1))}px "Segoe UI", system-ui, sans-serif`
+    ctx.font = `800 ${Math.max(13, Math.round(layout.scale * 1.7))}px "Segoe UI", system-ui, sans-serif`
     ctx.lineWidth = 3
     ctx.strokeStyle = COLORS.botEdge
     ctx.strokeText('z', cx + r * 1.1, cy - r * 1.1)
@@ -547,8 +566,9 @@ export function drawWorld(
   for (const node of world.nodes) {
     if (node.kind === 'resource') drawResource(ctx, node, layout)
   }
+  const predators = world.nodes.filter((node) => node.kind === 'predator')
   for (const node of world.nodes) {
-    if (node.kind === 'ruin') drawRuin(ctx, node, layout)
+    if (node.kind === 'ruin') drawRuin(ctx, node, layout, ruinCovered(node, predators))
   }
   for (const node of world.nodes) {
     if (node.kind === 'predator') drawPredator(ctx, node, layout, world.tick, alpha)

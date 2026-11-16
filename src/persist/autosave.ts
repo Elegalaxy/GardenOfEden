@@ -5,7 +5,7 @@
 // "no autosave": the page works without it.
 
 import { decodeSave, encodeSave } from './save.ts'
-import type { Save } from './save.ts'
+import type { Save, SaveError } from './save.ts'
 
 export const AUTOSAVE_KEY = 'garden-of-eden:autosave'
 
@@ -26,17 +26,25 @@ export function writeAutosave(storage: KeyValueStore | null, save: Save): boolea
   }
 }
 
-/** The stored run, or null when there is none, the storage fails or the text is not a valid save. */
-export function readAutosave(storage: KeyValueStore | null): Save | null {
-  if (storage === null) return null
+/** What is stored: a run, a stored text that is not an openable save (with the typed reason), or nothing. */
+export type AutosaveRead = { save: Save | null; problem: SaveError | null }
+
+/** Like `readAutosave`, but says why a stored text could not be opened (for example `retired-kind` after a rules change). Never throws. */
+export function inspectAutosave(storage: KeyValueStore | null): AutosaveRead {
+  if (storage === null) return { save: null, problem: null }
   try {
     const text = storage.getItem(AUTOSAVE_KEY)
-    if (text === null) return null
+    if (text === null) return { save: null, problem: null }
     const result = decodeSave(text)
-    return result.ok ? result.save : null
+    return result.ok ? { save: result.save, problem: null } : { save: null, problem: result.error }
   } catch {
-    return null
+    return { save: null, problem: null }
   }
+}
+
+/** The stored run, or null when there is none, the storage fails or the text is not a valid save. */
+export function readAutosave(storage: KeyValueStore | null): Save | null {
+  return inspectAutosave(storage).save
 }
 
 /** True when nothing is left stored (also when there was nothing). */

@@ -14,16 +14,18 @@
 // best effort: if the page is gone before the answer arrives, the previous autosave stays.
 
 import { useSyncExternalStore } from 'react'
-import { clearAutosave, readAutosave, writeAutosave } from '../persist/autosave.ts'
+import { clearAutosave, inspectAutosave, writeAutosave } from '../persist/autosave.ts'
 import type { KeyValueStore } from '../persist/autosave.ts'
-import type { Save } from '../persist/save.ts'
-import { exportSave, getSnapshot, subscribe } from './store.ts'
+import type { Save, SaveError } from '../persist/save.ts'
+import { exportSave, getSnapshot, reportSave, subscribe } from './store.ts'
 
 const INTERVAL_MS = 10_000
 
 export type AutosaveInfo = {
   /** The stored run, or null when there is none. */
   saved: Save | null
+  /** Why a stored run could not be opened (it is kept, not deleted), or null. Never set together with `saved`. */
+  unreadable: SaveError | null
   /** False when browser storage is missing or a write failed. */
   available: boolean
 }
@@ -53,9 +55,34 @@ function setInfo(next: AutosaveInfo): void {
 export function getAutosaveInfo(): AutosaveInfo {
   if (info === null) {
     const store = getStorage()
-    info = { saved: readAutosave(store), available: store !== null }
+    const read = inspectAutosave(store)
+    info = { saved: read.save, unreadable: read.problem, available: store !== null }
   }
   return info
+}
+
+/** What to tell the player when the stored run cannot be opened. */
+export function unreadableAutosaveText(error: SaveError): string {
+  return error.code === 'retired-kind'
+    ? "Your last autosave was made with older rules and can't be opened."
+    : "Your last autosave can't be opened."
+}
+
+let warnedUnreadable = false
+/** Tells the player once per page load that a stored run could not be opened. Returns whether it spoke. */
+export function warnUnreadableAutosave(): boolean {
+  const { unreadable } = getAutosaveInfo()
+  if (unreadable === null || warnedUnreadable) return false
+  warnedUnreadable = true
+  reportSave('warn', `${unreadableAutosaveText(unreadable)} It stays in this browser until a new run is saved over it, or you press Clear.`)
+  return true
+}
+
+/** For tests: forget the cached read, the once-per-load flag and the storage, so the next read starts fresh. */
+export function resetAutosaveForTests(next?: KeyValueStore | null): void {
+  info = null
+  warnedUnreadable = false
+  storage = next
 }
 
 function subscribeAutosave(listener: () => void): () => void {
@@ -79,11 +106,12 @@ export function clearStoredRun(): void {
   const ok = clearAutosave(getStorage())
   const snap = getSnapshot()
   suspended = { runId: snap.runId, commands: snap.commandCount }
-  setInfo({ saved: null, available: ok && getStorage() !== null })
+  setInfo({ saved: null, unreadable: null, available: ok && getStorage() !== null })
 }
 
 /** Starts saving the latest run. Returns a function that stops it. */
 export function startAutosave(): () => void {
+  warnUnreadableAutosave()
   let lastKey = ''
   let lastWriteAt = Number.NEGATIVE_INFINITY
 
@@ -107,7 +135,7 @@ export function startAutosave(): () => void {
       .then((save) => {
         if (generation !== clearGeneration) return
         const ok = writeAutosave(getStorage(), save)
-        setInfo({ saved: ok ? save : (info?.saved ?? null), available: ok })
+        setInfo({ saved: ok ? save : (info?.saved ?? null), unreadable: ok ? null : (info?.unreadable ?? null), available: ok })
       })
       .catch(() => {
         // The simulation could not make a save; the previous autosave stays.

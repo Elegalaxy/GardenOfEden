@@ -5,6 +5,7 @@ import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
 import { FamilyPanel } from './FamilyPanel.tsx'
 import { HeatLegend } from './HeatLegend.tsx'
+import { PredatorKey } from './PredatorKey.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunMenu } from './RunMenu.tsx'
@@ -34,7 +35,7 @@ function Legend() {
         <span className="legend-note">droplet, bots drink, never runs dry</span>
       </li>
       <li>
-        <span className="key key-predator" aria-hidden="true">V</span> Predator
+        <PredatorKey /> Predator
         <span className="legend-note">chevron, hunts bots, cannot enter shelters</span>
       </li>
       <li>
