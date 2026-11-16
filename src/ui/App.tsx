@@ -35,7 +35,7 @@ function Legend() {
       </li>
       <li>
         <span className="key key-predator" aria-hidden="true">V</span> Predator
-        <span className="legend-note">hunts bots outside shelters</span>
+        <span className="legend-note">chevron, hunts bots, cannot enter shelters</span>
       </li>
       <li>
         <span className="key key-shelter" aria-hidden="true">S</span> Shelter

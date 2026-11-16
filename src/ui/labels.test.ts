@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -121,5 +121,19 @@ describe('chordWidth', () => {
     expect(inbreedingLabel(0)).toBe('No')
     expect(inbreedingLabel(0.5)).toBe('Yes · 50%')
     expect(inbreedingLabel(1)).toBe('Yes · 100%')
+  })
+})
+
+describe('predatorActivity', () => {
+  it('reads resting first, then hunting, else prowling', () => {
+    expect(predatorActivity({ targetId: 4, restUntil: 100 }, 90)).toEqual({ kind: 'resting', ticksLeft: 10 })
+    expect(predatorActivity({ targetId: 4, restUntil: 100 }, 100)).toEqual({ kind: 'resting', ticksLeft: 0 })
+    expect(predatorActivity({ targetId: 4, restUntil: 100 }, 101)).toEqual({ kind: 'hunting', targetId: 4 })
+    expect(predatorActivity({ targetId: null, restUntil: 0 }, 5)).toEqual({ kind: 'prowling' })
+    expect(predatorActivity(null, 5)).toEqual({ kind: 'prowling' })
+  })
+
+  it('sums the three memory slot classes', () => {
+    expect(memoryCapacity(tuning.memory)).toBe(tuning.memory.cap + tuning.memory.waterCap + tuning.memory.predatorCap)
   })
 })

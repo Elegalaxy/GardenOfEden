@@ -3,7 +3,7 @@
 // the context transform for devicePixelRatio.
 //
 // The map is letterboxed to fit. Nodes are tinted shapes with a letter, so
-// kind never relies on colour alone: R resource, V predator (a circle, placeholder art until M21c), D meteor crater (dashed edge, drawn with an M),
+// kind never relies on colour alone: R resource, V predator (a chevron pointing along its heading in a dashed threat ring, "z" while it rests), D meteor crater (dashed edge, drawn with an M),
 // S shelter, U ruin (a diamond, not a circle), W water (a droplet with a point
 // at the top). A water node is a permanent spring, so it has no fill level. A resource also has a ring that
 // fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring. Their fill follows the page's colour mode (botColour.ts, M20: plain, bloodline, sex, one trait); in sex mode males are diamonds.
@@ -28,7 +28,7 @@
 import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
-import { botPosition, findBot, findNode } from './geometry.ts'
+import { PREDATOR_BODY_CELLS, botPosition, findBot, findNode, predatorPosition } from './geometry.ts'
 import type { Cell, Layout } from './geometry.ts'
 import { drawHeat, drawHeatCursor } from './heatRender.ts'
 import type { HeatSnapshot } from './heat.ts'
@@ -91,6 +91,9 @@ const NODE_COLOR: Record<NodeKind, string> = {
   water: COLORS.water,
   predator: COLORS.predator,
 }
+
+/** The predator chevron's fill: a light grey, so it reads against the dark map and apart from every orange and yellow thing. */
+const PREDATOR_FILL = '#e6e6ee'
 
 const GHOST_LETTER = { plague: 'P', meteor: 'M' } as const
 
@@ -214,21 +217,65 @@ function drawRuin(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   drawLetter(ctx, NODE_LETTER.ruin, cx, cy, layout.scale * 1.1)
 }
 
-/** A predator (M21a): a plain circle with a V. Placeholder art; the real drawing is M21c. */
-function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
-  const cx = layout.offsetX + node.x * layout.scale
-  const cy = layout.offsetY + node.y * layout.scale
-  const r = Math.max(4, layout.scale * 0.8)
+/**
+ * A predator (M21c): a light chevron pointing along its heading (a V-shaped arrowhead with a dark edge and the
+ * letter V), at its position blended by `alpha`, inside a faint dashed ring at the threat radius. A resting
+ * predator (tick <= restUntil) is dimmed and gets a "z". Shape, ring and letter carry the meaning, not the colour.
+ */
+function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout, tick: number, alpha: number): void {
+  const position = predatorPosition(node, alpha)
+  const cx = layout.offsetX + position.x * layout.scale
+  const cy = layout.offsetY + position.y * layout.scale
+  const resting = node.hunt !== null && node.hunt.restUntil > 0 && tick <= node.hunt.restUntil
+  const heading = node.hunt?.heading ?? 0
+
+  ctx.save()
   ctx.beginPath()
-  ctx.arc(cx, cy, r, 0, Math.PI * 2)
-  ctx.globalAlpha = 0.6
-  ctx.fillStyle = COLORS.predator
-  ctx.fill()
-  ctx.globalAlpha = 1
-  ctx.lineWidth = 2
+  ctx.arc(cx, cy, node.radius * layout.scale, 0, Math.PI * 2)
+  ctx.globalAlpha = resting ? 0.25 : 0.45
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([5, 4])
   ctx.strokeStyle = COLORS.predator
   ctx.stroke()
-  drawLetter(ctx, NODE_LETTER.predator, cx, cy, layout.scale * 1.1)
+  ctx.setLineDash([])
+
+  // Tip ahead, two wings behind, a notch in the back (an arrowhead).
+  const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4)
+  const cos = Math.cos(heading)
+  const sin = Math.sin(heading)
+  const point = (forward: number, side: number): [number, number] => [cx + cos * forward - sin * side, cy + sin * forward + cos * side]
+  ctx.beginPath()
+  ctx.moveTo(...point(r, 0))
+  ctx.lineTo(...point(-r * 0.75, r * 0.9))
+  ctx.lineTo(...point(-r * 0.2, 0))
+  ctx.lineTo(...point(-r * 0.75, -r * 0.9))
+  ctx.closePath()
+  ctx.globalAlpha = resting ? 0.85 : 1
+  ctx.fillStyle = PREDATOR_FILL
+  ctx.fill()
+  ctx.lineWidth = 1.5
+  ctx.lineJoin = 'round'
+  ctx.strokeStyle = COLORS.botEdge
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.globalAlpha = resting ? 0.8 : 1
+  ctx.fillStyle = COLORS.botEdge
+  ctx.font = `800 ${Math.max(8, Math.round(layout.scale * 0.85))}px "Segoe UI", system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
+  if (resting) {
+    ctx.globalAlpha = 1
+    ctx.font = `700 ${Math.max(10, Math.round(layout.scale * 1.1))}px "Segoe UI", system-ui, sans-serif`
+    ctx.lineWidth = 3
+    ctx.strokeStyle = COLORS.botEdge
+    ctx.strokeText('z', cx + r * 1.1, cy - r * 1.1)
+    ctx.fillStyle = COLORS.label
+    ctx.fillText('z', cx + r * 1.1, cy - r * 1.1)
+  }
+  ctx.restore()
 }
 
 /**
@@ -504,7 +551,7 @@ export function drawWorld(
     if (node.kind === 'ruin') drawRuin(ctx, node, layout)
   }
   for (const node of world.nodes) {
-    if (node.kind === 'predator') drawPredator(ctx, node, layout)
+    if (node.kind === 'predator') drawPredator(ctx, node, layout, world.tick, alpha)
   }
 
   const adultAge = tuning.bot.adultAge

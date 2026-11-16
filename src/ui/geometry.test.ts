@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Bot, WorldNode } from '../sim/types.ts'
-import { botAt, cellAtPixel, cellCenter, findBot, nodeAt, pickAt } from './geometry.ts'
+import { PREDATOR_BODY_CELLS, botAt, cellAtPixel, cellCenter, findBot, nodeAt, pickAt, predatorPosition } from './geometry.ts'
 
 const world = { width: 10, height: 8 }
 const layout = { scale: 20, offsetX: 10, offsetY: 5 }
@@ -76,5 +76,42 @@ describe('findBot', () => {
     expect(findBot(w, 2)?.id).toBe(2)
     expect(findBot(w, 4)).toBeUndefined()
     expect(findBot({ bots: [] }, 1)).toBeUndefined()
+  })
+})
+
+describe('predators', () => {
+  const hunter = (id: number, x: number, y: number, px = x, py = y): WorldNode => ({
+    ...node(id, 'predator', x, y, 4),
+    hunt: { px, py, heading: 0, homeX: x, homeY: y, targetId: null, chase: 0, restUntil: 0, kills: 0 },
+  })
+
+  it('is hit by its body, not its threat ring', () => {
+    const w = { nodes: [hunter(1, 5, 5)] }
+    expect(nodeAt(w, 5 + PREDATOR_BODY_CELLS - 0.05, 5)?.id).toBe(1)
+    expect(nodeAt(w, 5 + PREDATOR_BODY_CELLS + 0.1, 5)).toBeUndefined()
+    expect(nodeAt(w, 7, 5)).toBeUndefined()
+  })
+
+  it('picks the predator on a click on its body', () => {
+    const w = { bots: [bot(3, 8, 5)], nodes: [hunter(1, 5, 5)] }
+    expect(pickAt(w, 5.2, 5, 1, 0.6)).toEqual({ kind: 'node', id: 1 })
+  })
+
+  it('keeps a bot inside the threat ring clickable, and a click in the ring on bare ground selects nothing', () => {
+    const w = { bots: [bot(3, 7, 5)], nodes: [hunter(1, 5, 5)] }
+    expect(pickAt(w, 7, 5, 1, 0.6)).toEqual({ kind: 'bot', id: 3 })
+    expect(pickAt(w, 7, 6.5, 1, 0.6)).toBeNull()
+  })
+
+  it('still lets a resource inside the ring be picked', () => {
+    const w = { nodes: [hunter(1, 5, 5), node(2, 'resource', 7, 5, 1.5)] }
+    expect(nodeAt(w, 7, 5)?.id).toBe(2)
+  })
+
+  it('uses the blended position', () => {
+    const w = { nodes: [hunter(1, 6, 5, 2, 5)] }
+    expect(predatorPosition(w.nodes[0]!, 0.5)).toEqual({ x: 4, y: 5 })
+    expect(nodeAt(w, 2, 5, 0)?.id).toBe(1)
+    expect(nodeAt(w, 6, 5, 0)).toBeUndefined()
   })
 })

@@ -96,6 +96,22 @@ export function commandName(command: CommandType, nodeKind?: NodeKind, eventKind
   return nodeKind === undefined ? 'place node' : `place ${nodeKind}`
 }
 
+/** What a predator is doing: chasing a bot, resting (with the ticks left) or prowling. */
+export type PredatorActivity = { kind: 'hunting'; targetId: number } | { kind: 'resting'; ticksLeft: number } | { kind: 'prowling' }
+
+/** Reads a predator's state at `tick`: resting while `tick <= restUntil` (checked first), hunting while it has a target, else prowling. */
+export function predatorActivity(hunt: { targetId: number | null; restUntil: number } | null, tick: number): PredatorActivity {
+  if (hunt === null) return { kind: 'prowling' }
+  if (hunt.restUntil > 0 && tick <= hunt.restUntil) return { kind: 'resting', ticksLeft: hunt.restUntil - tick }
+  if (hunt.targetId !== null) return { kind: 'hunting', targetId: hunt.targetId }
+  return { kind: 'prowling' }
+}
+
+/** How many nodes a bot's memory can hold: the shared cap plus the water and predator slot classes. */
+export function memoryCapacity(memory: { cap: number; waterCap: number; predatorCap: number }): number {
+  return memory.cap + memory.waterCap + memory.predatorCap
+}
+
 /** "12.5, 7.5" */
 export function formatPoint(x: number, y: number): string {
   return `${Math.round(x * 10) / 10}, ${Math.round(y * 10) / 10}`

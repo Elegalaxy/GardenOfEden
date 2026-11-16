@@ -10,7 +10,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -149,7 +149,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         </Row>
         <Row label="Ready to breed in">{Math.max(0, Math.ceil(bot.cooldown))} ticks</Row>
         <Row label="Memory">
-          {bot.memoryCount} / {tuning.memory.cap + tuning.memory.waterCap} nodes · {bot.learnedCount} from family
+          {bot.memoryCount} / {memoryCapacity(tuning.memory)} nodes · {bot.learnedCount} from family
         </Row>
       </dl>
       <h4>Family</h4>
@@ -205,6 +205,38 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   )
 }
 
+/** A predator's extra rows (M21c): what it is doing, its record and the numbers that make it dangerous. */
+function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
+  const hunt = node.hunt
+  const activity = predatorActivity(hunt, world.tick)
+  const prey = activity.kind === 'hunting' ? findBot(world, activity.targetId) : undefined
+  return (
+    <>
+      <Row label="State">
+        {activity.kind === 'hunting' ? (
+          prey === undefined ? (
+            <>Hunting bot #{activity.targetId}</>
+          ) : (
+            <>
+              Hunting <SelectButton target={{ kind: 'bot', id: prey.id }}>bot #{prey.id}</SelectButton>
+            </>
+          )
+        ) : activity.kind === 'resting' ? (
+          <>Resting {activity.ticksLeft.toLocaleString('en-US')} ticks</>
+        ) : (
+          'Prowling'
+        )}
+      </Row>
+      <Row label="Kills">{hunt === null ? 0 : hunt.kills.toLocaleString('en-US')}</Row>
+      {hunt !== null && <Row label="Home">{formatPoint(hunt.homeX, hunt.homeY)}</Row>}
+      <Row label="Threat radius">{fixed1(node.radius)} cells</Row>
+      <Row label="Bite range">{fixed1(tuning.predator.biteRange)} cells</Row>
+      <Row label="Damage">{fixed1(node.damage)} health / tick</Row>
+      <Row label="Speed">{fixed2(tuning.predator.speed)} cells / tick</Row>
+    </>
+  )
+}
+
 function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const crater = node.expires > 0
   return (
@@ -215,7 +247,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
       <dl className="kv">
         <Row label="Kind">{crater ? 'meteor crater' : KIND_LABEL[node.kind]}</Row>
         <Row label="Position">{formatPoint(node.x, node.y)}</Row>
-        <Row label="Radius">{fixed1(node.radius)} cells</Row>
+        {node.kind !== 'predator' && <Row label="Radius">{fixed1(node.radius)} cells</Row>}
         {node.kind === 'resource' && (
           <>
             <Meter label="Amount" value={node.amount} max={node.capacity} low={node.amount <= 0} />
@@ -238,6 +270,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
             <Row label="Supply">never runs dry</Row>
           </>
         )}
+        {node.kind === 'predator' && <PredatorRows node={node} world={world} />}
         {node.kind === 'danger' && <Row label="Damage">{fixed1(node.damage)} health / tick</Row>}
         {crater && <Row label="Time left">{Math.max(0, node.expires - world.tick).toLocaleString('en-US')} ticks</Row>}
         {node.kind === 'shelter' && (

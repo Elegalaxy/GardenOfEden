@@ -227,8 +227,22 @@ button:disabled {
   border-style: dashed;
 }
 
+/* Dashed threat ring around a light chevron with a dark V, as on the map. */
 .key-predator {
+  position: relative;
   border-color: var(--predator);
+  border-style: dashed;
+  color: #0e1118;
+  isolation: isolate;
+}
+
+.key-predator::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  background: #e6e6ee;
+  clip-path: polygon(100% 50%, 10% 95%, 38% 50%, 10% 5%);
 }
 
 .key-shelter {

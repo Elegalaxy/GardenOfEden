@@ -34,15 +34,33 @@ export function botPosition(bot: Pick<Bot, 'x' | 'y' | 'px' | 'py'>, alpha: numb
   return { x: bot.px + (bot.x - bot.px) * alpha, y: bot.py + (bot.y - bot.py) * alpha }
 }
 
+/** A predator's body, in cells: what a click can hit. Its `radius` is a threat ring, not something to click inside. */
+export const PREDATOR_BODY_CELLS = 0.8
+
+/** A predator's drawn position: blended from where its last turn started to where it is, by `alpha` (0 to 1). */
+export function predatorPosition(node: Pick<WorldNode, 'x' | 'y' | 'hunt'>, alpha: number): { x: number; y: number } {
+  const hunt = node.hunt
+  if (hunt === null) return { x: node.x, y: node.y }
+  return { x: hunt.px + (node.x - hunt.px) * alpha, y: hunt.py + (node.y - hunt.py) * alpha }
+}
+
 /**
  * The smallest node whose circle contains the point (so a resource inside a crater wins); among equal sizes the
- * newest, so removing what you just placed undoes it. Undefined when nothing covers the point.
+ * newest, so removing what you just placed undoes it. A predator counts only by its body (`PREDATOR_BODY_CELLS`,
+ * at its drawn position for `alpha`), never by its threat ring. Undefined when nothing covers the point.
  */
-export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number): WorldNode | undefined {
+export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number, alpha = 1): WorldNode | undefined {
   let best: WorldNode | undefined
+  let bestRadius = Infinity
   for (const node of world.nodes) {
-    if (Math.hypot(node.x - x, node.y - y) > node.radius) continue
-    if (best === undefined || node.radius <= best.radius) best = node
+    const predator = node.kind === 'predator'
+    const radius = predator ? PREDATOR_BODY_CELLS : node.radius
+    const at = predator ? predatorPosition(node, alpha) : node
+    if (Math.hypot(at.x - x, at.y - y) > radius) continue
+    if (radius <= bestRadius) {
+      best = node
+      bestRadius = radius
+    }
   }
   return best
 }
@@ -66,7 +84,7 @@ export function botAt<B extends Located>(world: { bots: readonly B[] }, x: numbe
 export function pickAt(world: { bots: readonly Located[] } & Pick<World, 'nodes'>, x: number, y: number, alpha: number, reach: number): Selection | null {
   const bot = botAt(world, x, y, alpha, reach)
   if (bot !== undefined) return { kind: 'bot', id: bot.id }
-  const node = nodeAt(world, x, y)
+  const node = nodeAt(world, x, y, alpha)
   return node === undefined ? null : { kind: 'node', id: node.id }
 }
 
