@@ -602,6 +602,21 @@ export type Tuning = {
     /** Radians between the headings tried when steering around a shelter. */
     steerStep: number
   }
+  /**
+   * Seasons (S1): food regrowth swings with the tick, multiplier = base + amplitude * sin(2 * pi * tick / period), so tick 0
+   * is the start of spring, summer peaks at a quarter period and winter bottoms out at three quarters. Only resource
+   * regrowth is seasonal. No random draws; see seasons.ts.
+   */
+  seasons: {
+    /** Off: the multiplier is exactly 1 and the world is as it was before seasons. */
+    enabled: boolean
+    /** Ticks in one full year (greater than 0). */
+    period: number
+    /** Half the swing of the regrowth multiplier (0 to 0.5). */
+    amplitude: number
+    /** The yearly average multiplier. */
+    base: number
+  }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number
 }

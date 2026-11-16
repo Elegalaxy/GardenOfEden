@@ -5,11 +5,13 @@
 // nodes heal everything standing inside their radius; `exposureAt` adds up
 // what one spot receives from the real nodes (not from any bot's memory), and
 // from any plague zone covering it (a world event, see worldEvents.ts). A drought
-// or bounty scales how fast resources regrow (`regrowthMultiplier`). A predator (M21a) bites a bot outside
+// or bounty scales how fast resources regrow (`regrowthMultiplier`, events only); the season (seasons.ts, S1) scales it too,
+// and `regrow` multiplies the two. A predator (M21a) bites a bot outside
 // every shelter that stands within `predator.biteRange` of its centre while it is not resting; pass the
 // tuning to `exposureAt` to count it (without, predators are ignored).
 
 import { hypot } from './exactMath.ts'
+import { seasonAt } from './seasons.ts'
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
 
 /** What one spot on the map does to a bot this tick. */
@@ -98,8 +100,9 @@ export function regrowthMultiplier(world: World): number {
   return mult
 }
 
-export function regrow(world: World): void {
-  const mult = regrowthMultiplier(world)
+/** Resources regrow by `regen` x the events multiplier x the season multiplier (exactly 1 while seasons are off). */
+export function regrow(world: World, tuning: Pick<Tuning, 'seasons'>): void {
+  const mult = regrowthMultiplier(world) * seasonAt(world.tick, tuning).multiplier
   for (const node of world.nodes) {
     if (node.kind === 'resource') node.amount = Math.min(node.capacity, node.amount + node.regen * mult)
   }

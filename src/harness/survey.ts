@@ -15,7 +15,7 @@
 // mother's age). `fem` (M17) is the number of females among the bots alive at the end.
 // `inb` (M18) is the number of births whose parents were close relatives (inbreeding score above 0).
 // `withoutFamily` gives the rules with that
-// sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`).
+// sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
@@ -85,6 +85,11 @@ export function withoutSex(rules: Rules): Rules {
 /** The same rules with family knowledge sharing off: newborns start empty and nobody exchanges. */
 export function withoutFamily(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, family: { ...rules.tuning.family, inherit: false, shareRadius: 0 } } }
+}
+
+/** The same rules with the seasons off (food regrowth back to the fixed rate): `--no-seasons`. */
+export function withoutSeasons(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
 }
 
 /** A mean trait for a table cell: two decimals, or a dash when nobody is alive. */

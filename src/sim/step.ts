@@ -17,7 +17,7 @@
 // removed (logging each), then family knowledge is shared (a living parent and child close
 // together swap memory on every `family.shareEvery`-th tick), then a stats row is recorded every
 // `stats.sampleEvery` ticks. A plague hurts inside the bot loop (metabolise); a drought or
-// bounty acts in the regrow phase; both are still in force on their last tick. A ruin made this tick is already decaying by its
+// bounty acts in the regrow phase (the season multiplies it too, seasons.ts, off by default); both are still in force on their last tick. A ruin made this tick is already decaying by its
 // end, and a ruin eaten empty this tick is gone before the next one; a bot
 // that was heading for it simply finds the node missing and wanders.
 //
@@ -94,7 +94,7 @@ export function step(world: World, rules: Rules): void {
   pruneLineage(world, tuning)
   for (const bot of fallen) leaveRuin(world, bot, rules)
 
-  regrow(world)
+  regrow(world, tuning)
   decayRuins(world, tuning)
   expireEvents(world, tuning)
   shareFamilyKnowledge(world, tuning)

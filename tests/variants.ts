@@ -48,6 +48,11 @@ export function neutralTraits(rules: Rules): Rules {
   }
 }
 
+/** The same rules with the seasons switched off (they are off in Eden already; this keeps a test honest if that changes). */
+export function noSeasons(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
+}
+
 export function stage1(rules: Rules): Rules {
   const { tuning } = rules
   return {

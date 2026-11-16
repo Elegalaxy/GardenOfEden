@@ -236,5 +236,10 @@ export const tuning: Tuning = {
     homeRange: 11,
     steerStep: 0.5,
   },
+  // Seasons (S1): first guesses, S2 retunes them. Off for now, so Eden is unchanged. Food regrowth is multiplied by
+  // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the
+  // summer surplus, so a base of 1 gives less food over a year than the old fixed rate; if intake drops by more
+  // than 5%, raise base to 1.05 before lowering amplitude. amplitude may not exceed 0.5.
+  seasons: { enabled: false, period: 4000, amplitude: 0.3, base: 1 },
   logCap: 500,
 }

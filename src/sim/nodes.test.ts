@@ -56,6 +56,9 @@ describe('ruins', () => {
   })
 })
 
+/** Seasons off (the sim cannot import content, so the one block `regrow` reads is spelled out). */
+const tuning = { seasons: { enabled: false, period: 4000, amplitude: 0.3, base: 1 } }
+
 describe('regrow', () => {
   it('refills resources up to capacity and leaves other nodes alone', () => {
     const world = worldWith([
@@ -64,7 +67,7 @@ describe('regrow', () => {
       node(3, 'danger', 25, { damage: 1 }),
       node(4, 'ruin', 35, { amount: 10, capacity: 60, decay: 0.05 }),
     ])
-    regrow(world)
+    regrow(world, tuning)
     expect(world.nodes[0].amount).toBe(98.5)
     expect(world.nodes[1].amount).toBe(100)
     expect(world.nodes[2].amount).toBe(0)
@@ -101,7 +104,7 @@ describe('world events in the node rules', () => {
     expect(regrowthMultiplier(world)).toBe(1)
     world.events.push(event({ kind: 'drought', magnitude: 0.5 }), event({ kind: 'bounty', magnitude: 4 }))
     expect(regrowthMultiplier(world)).toBe(2)
-    regrow(world)
+    regrow(world, tuning)
     expect(world.nodes[0].amount).toBe(11)
     expect(world.nodes[1].amount).toBe(10)
     expect(world.nodes[2].amount).toBe(0)
