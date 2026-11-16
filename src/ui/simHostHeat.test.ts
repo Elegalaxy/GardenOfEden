@@ -43,7 +43,7 @@ function finishLoad(host: SimHost): FromWorker[] {
 /** A run with a few commands, among them a meteor aimed at a living bot, long enough to cross several fade steps. */
 function playRun(host: SimHost): void {
   advance(host, 60)
-  command(host, { type: 'placeNode', kind: 'danger', x: 20.5, y: 20.5 })
+  command(host, { type: 'placeNode', kind: 'shelter', x: 20.5, y: 20.5 })
   advance(host, 90)
   const bot = host.world.bots[0]!
   command(host, { type: 'triggerEvent', event: 'meteor', x: bot.x, y: bot.y })
@@ -160,7 +160,7 @@ describe('when snapshots are sent', () => {
   it('does not send one for a refused command, which changed nothing', () => {
     const host = createSimHost({ now: clock().now })
     host.handle({ type: 'heat', layer: 'deaths', range: 'all' })
-    const messages = command(host, { type: 'placeNode', kind: 'danger', x: 9999, y: 1 })
+    const messages = command(host, { type: 'placeNode', kind: 'shelter', x: 9999, y: 1 })
     expect(messages.map((m) => m.type)).toEqual(['frame', 'commandResult', 'heatSnapshot'])
     expect(host.heat.seenDeaths).toBe(0)
   })

@@ -9,7 +9,7 @@ import { traitNumber } from './traitMath.ts'
 
 export const KIND_LABEL: Record<NodeKind, string> = {
   resource: 'resource',
-  danger: 'danger',
+  danger: 'crater',
   shelter: 'shelter',
   ruin: 'ruin',
   water: 'water',
@@ -27,7 +27,7 @@ export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D
 export const CAUSE_LABEL: Record<DeathCause, string> = {
   starve: 'Starved',
   thirst: 'Thirst',
-  danger: 'Danger',
+  danger: 'Crater',
   plague: 'Plague',
   meteor: 'Meteor',
   predator: 'Predator',
@@ -38,7 +38,7 @@ export const CAUSE_LABEL: Record<DeathCause, string> = {
 export const CAUSE_SENTENCE: Record<DeathCause, string> = {
   starve: 'Died of hunger',
   thirst: 'Died of thirst',
-  danger: 'Killed by danger',
+  danger: 'Killed in a meteor crater',
   plague: 'Killed by plague',
   meteor: 'Killed by a meteor',
   predator: 'Killed by a predator',
@@ -62,14 +62,23 @@ export const INTENT_LABEL: Record<IntentKind, string> = {
   wander: 'Wandering',
   seekFood: 'Seeking food',
   seekWater: 'Seeking water',
-  flee: 'Fleeing danger',
+  flee: 'Fleeing danger', // the fallback; `intentLabel` names a predator or a crater when it knows the target
   rest: 'Resting in shelter',
   reproduce: 'Heading to a shelter to wait for a mate',
   seekMate: 'Walking to a mate',
 }
 
+/** A goal in words. A fleeing bot's target says what it flees from: "Fleeing a predator", "Fleeing a crater". */
+export function intentLabel(kind: IntentKind, target?: { kind: NodeKind }): string {
+  if (kind === 'flee' && target !== undefined) {
+    if (target.kind === 'predator') return 'Fleeing a predator'
+    if (target.kind === 'danger') return 'Fleeing a crater'
+  }
+  return INTENT_LABEL[kind]
+}
+
 /**
- * One letter for a chart marker: R, D, S, W for a placed node of that kind, B for a bot, X for a removal,
+ * One letter for a chart marker: R, V, S, W for a placed node of that kind, B for a bot, X for a removal,
  * H, F, P, M for a world event (drought, bounty, plague, meteor).
  */
 export function commandLetter(command: CommandType, nodeKind?: NodeKind, eventKind?: EventKind): string {
@@ -79,7 +88,7 @@ export function commandLetter(command: CommandType, nodeKind?: NodeKind, eventKi
   return nodeKind === undefined ? '+' : KIND_LETTER[nodeKind]
 }
 
-/** "place danger", "remove node", "place bot", "trigger drought". */
+/** "place predator", "remove node", "place bot", "trigger drought". */
 export function commandName(command: CommandType, nodeKind?: NodeKind, eventKind?: EventKind): string {
   if (command === 'triggerEvent') return eventKind === undefined ? 'trigger event' : `trigger ${eventKind}`
   if (command === 'placeBot') return 'place bot'
@@ -111,7 +120,7 @@ export const TRAIT_LABEL: Record<TraitName, string> = {
 /** One line on what a trait does, for tooltips. */
 export const TRAIT_HELP: Record<TraitName, string> = {
   senseRadius: 'How far a bot sees nodes. Seeing further costs energy every tick.',
-  caution: 'How strongly a bot flees danger instead of seeking food.',
+  caution: 'How strongly a bot flees predators and craters instead of seeking food.',
   reproThreshold: 'Energy a bot needs before it reproduces. Low is early but risky for the parent.',
   metabolism: 'Scales energy loss, thirst and walking speed. Higher burns more and thirsts much more, but moves faster.',
 }

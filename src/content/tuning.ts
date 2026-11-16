@@ -173,7 +173,7 @@ export const tuning: Tuning = {
     energyShare: 0.5,
     mergeRadius: 2,
     maxCount: 60,
-    // A ruin whose centre is inside any danger radius (zone, grove, crater) decays this many times as
+    // A ruin whose centre is inside any danger radius (a meteor crater since M21b) decays this many times as
     // fast (M12), so it is gone in about 100 ticks instead of 500 and lures fewer starving bots into
     // danger. 3, 5 and 10 gave similar 60,000-tick results (seeds above 0.4 caution: 3, 3, 5 of 10);
     // 20 was worse (3 of 10, lowest population 15).
@@ -195,7 +195,10 @@ export const tuning: Tuning = {
     plague: { duration: 800, radius: 14, damage: 0.8 },
     meteor: { radius: 6, damage: 200, craterRadius: 3, craterDamage: 2, craterTicks: 600 },
   },
-  // Predators (M21a). Start values are guesses; the retune is M21b. None exist in the eden preset yet.
+  // Predators (M21a, retuned in M21b for the eden preset's three). A predator spends most of its time resting after a kill:
+  // `digestTicks` 1300 (was a first guess of 300) puts predator deaths at about 5% of all deaths and keeps a small colony alive
+  // after a drought or plague; at 300 they were 15 to 30% and killed the survivors of a crash (see the changelog in
+  // doc/GAME_DESIGN.md for every setting tried). `speed` 0.9 is unchanged from M21a.
   predator: {
     maxCount: 8,
     senseRadius: 8,
@@ -203,7 +206,7 @@ export const tuning: Tuning = {
     biteRange: 1,
     chaseTicks: 40,
     giveUpRest: 60,
-    digestTicks: 300,
+    digestTicks: 1300,
     memoryTicks: 400,
     homeRange: 10,
     steerStep: 0.5,

@@ -35,7 +35,7 @@ export function botPosition(bot: Pick<Bot, 'x' | 'y' | 'px' | 'py'>, alpha: numb
 }
 
 /**
- * The smallest node whose circle contains the point (so a resource inside a danger wins); among equal sizes the
+ * The smallest node whose circle contains the point (so a resource inside a crater wins); among equal sizes the
  * newest, so removing what you just placed undoes it. Undefined when nothing covers the point.
  */
 export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number): WorldNode | undefined {

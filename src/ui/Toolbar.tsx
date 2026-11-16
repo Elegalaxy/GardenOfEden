@@ -15,7 +15,7 @@ import { isTypingTarget } from './typing.ts'
 import { TOOLS, placesThings, toolForKey, toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 
-/** The little badge on a tool button: the same R/W/D/S keys as the map legend (water is a droplet shape). */
+/** The little badge on a tool button: the same R/W/V/S keys as the map legend (water is a droplet shape). */
 function ToolBadge({ id }: { id: Tool }) {
   switch (id) {
     case 'water':
@@ -25,7 +25,7 @@ function ToolBadge({ id }: { id: Tool }) {
         </span>
       )
     case 'resource':
-    case 'danger':
+    case 'predator':
     case 'shelter':
       return (
         <span className={`key key-${id}`} aria-hidden="true">

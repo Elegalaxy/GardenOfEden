@@ -3,7 +3,7 @@
 // the context transform for devicePixelRatio.
 //
 // The map is letterboxed to fit. Nodes are tinted shapes with a letter, so
-// kind never relies on colour alone: R resource, D danger (dashed edge),
+// kind never relies on colour alone: R resource, V predator (a circle, placeholder art until M21c), D meteor crater (dashed edge, drawn with an M),
 // S shelter, U ruin (a diamond, not a circle), W water (a droplet with a point
 // at the top). A water node is a permanent spring, so it has no fill level. A resource also has a ring that
 // fills in with its remaining amount; a ruin's diamond fills in the same way. Bots are dots: children are smaller, and a fleeing bot gets a ring. Their fill follows the page's colour mode (botColour.ts, M20: plain, bloodline, sex, one trait); in sex mode males are diamonds.
@@ -20,8 +20,8 @@
 // readout is about gets a thin outline on top.
 //
 // World events (M8): a plague zone is a hatched disc with a dashed ring and the
-// label "P PLAGUE" with the ticks left (shortened, or left out, when the zone is small); a meteor crater is a danger zone drawn in
-// the meteor colour with an M instead of a D, and for its first moments an
+// label "P PLAGUE" with the ticks left (shortened, or left out, when the zone is small); a meteor crater is the one remaining danger zone, drawn in
+// the meteor colour with an M, and for its first moments an
 // expanding ring shows the impact. The global events (drought, bounty) are
 // banners over the map, in WorldCanvas.
 

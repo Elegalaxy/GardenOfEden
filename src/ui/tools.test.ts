@@ -44,7 +44,7 @@ describe('tools', () => {
     expect(kinds).toEqual([
       ['resource', 'resource'],
       ['water', 'water'],
-      ['danger', 'danger'],
+      ['predator', 'predator'],
       ['shelter', 'shelter'],
     ])
   })

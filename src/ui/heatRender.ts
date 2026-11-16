@@ -1,5 +1,5 @@
 // Drawing a heat layer (M15) under the nodes and bots. Each layer has its own hue (M19) in the same HEAT_BIN_COUNT steps of
-// growing opacity, with an empty cell left clear. The hues avoid the node colours on the map (green resource, red danger,
+// growing opacity, with an empty cell left clear. The hues avoid the node colours on the map (green resource, red crater,
 // blue water, purple ruin, cyan shelter): amber for traffic, pink for births, orange for deaths. Colour is never the only
 // cue: the controls and the legend name the layer. The snapshot becomes a small
 // offscreen canvas (one pixel per map cell) once per snapshot, so at most about four times a second; every frame only

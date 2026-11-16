@@ -106,7 +106,7 @@ export function batchNotice(noun: string, result: BatchResult): string {
   const head = `Placed ${placed} of ${total} ${noun}`
   if (result.refused === 0 || firstReason === null) return `${head}.`
   let why: string
-  if (/full|cap/i.test(firstReason)) why = 'cap reached'
+  if (/full|cap|too many/i.test(firstReason)) why = 'cap reached'
   else if (/too close/i.test(firstReason)) why = 'some spots were too close'
   else why = plain(firstReason)
   return `${head} (${why}).`

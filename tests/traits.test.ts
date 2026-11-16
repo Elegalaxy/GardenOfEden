@@ -121,7 +121,7 @@ describe('inheritance', { timeout: 60_000 }, () => {
     const script = [
       { tick: 300, cmd: { type: 'placeBot', x: 10.5, y: 10.5 } },
       { tick: 700, cmd: { type: 'placeNode', kind: 'shelter', x: 30.5, y: 20.5 } },
-      { tick: 1200, cmd: { type: 'placeNode', kind: 'danger', x: 50.5, y: 12.5 } },
+      { tick: 1200, cmd: { type: 'placeNode', kind: 'predator', x: 50.5, y: 12.5 } },
     ] as const
     for (const { tick, cmd } of script) {
       while (live.tick < tick) step(live, rules)

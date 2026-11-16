@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { rules } from '../src/content/index.ts'
+import { blankPreset, edenPreset, rules } from '../src/content/index.ts'
 import { applyCommand, checkCommand } from '../src/sim/commands.ts'
 import { shareFamilyKnowledge, inheritMemory } from '../src/sim/family.ts'
 import { stateHash } from '../src/sim/hash.ts'
@@ -373,5 +373,45 @@ describe('what bots remember of a predator', () => {
     const safe = nodeDefs.predator.radius + tuning.brain.avoidMargin - 1e-9
     expect(approach(1, 0.25 * tuning.bot.maxEnergy)).toBeGreaterThanOrEqual(safe)
     expect(approach(1, 0.03 * tuning.bot.maxEnergy)).toBeLessThan(nodeDefs.predator.radius)
+  })
+})
+
+describe('the presets (M21b)', () => {
+  it('gives Eden three predators at the old grove centres, each with its food, and no danger zone', () => {
+    const world = createWorld('a', edenPreset, rules)
+    const predators = predatorsOf(world)
+    expect(predators.map((node) => [node.x, node.y])).toEqual([
+      [24, 16],
+      [72, 48],
+      [48, 34],
+    ])
+    for (const node of predators) {
+      expect(node.hunt).toMatchObject({ homeX: node.x, homeY: node.y, kills: 0 })
+      expect(world.nodes.some((other) => other.kind === 'resource' && other.x === node.x && other.y === node.y)).toBe(true)
+    }
+    expect(world.nodes.some((node) => node.kind === 'danger')).toBe(false)
+    expect(edenPreset.scatter.some((entry) => entry.kind === 'danger')).toBe(false)
+  })
+
+  it('gives Blank none', () => {
+    expect(predatorsOf(createWorld('a', blankPreset, rules))).toHaveLength(0)
+  })
+
+  it('refuses a placed danger zone, and a bulk of them says so', () => {
+    const world = createWorld('a', blankPreset, rules)
+    const cmd = { type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 } as const
+    expect(checkCommand(world, rules, cmd)).toBe('Danger zones were replaced by predators.')
+    expect(applyCommand(world, rules, cmd).ok).toBe(false)
+  })
+
+  it('keeps Eden alive and predators a small share of deaths over 5,000 ticks on seed a', { timeout: 60_000 }, () => {
+    const world = createWorld('a', edenPreset, rules)
+    for (let i = 0; i < 5000; i += 1) step(world, rules)
+    const d = world.deathsByCause
+    const total = d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age
+    expect(world.bots.length).toBeGreaterThan(5)
+    expect(d.predator).toBeGreaterThan(0)
+    expect(d.predator / total).toBeLessThan(0.3)
+    expect(d.danger).toBe(0)
   })
 })

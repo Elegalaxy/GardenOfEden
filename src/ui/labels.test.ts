@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
-const KINDS: NodeKind[] = ['resource', 'danger', 'shelter', 'ruin', 'water']
+const KINDS: NodeKind[] = ['resource', 'danger', 'shelter', 'ruin', 'water', 'predator']
 
 describe('labels', () => {
   it('gives every node kind its own letter, the same on the map and in the legend', () => {
@@ -32,6 +32,15 @@ describe('labels', () => {
     expect(INTENT_LABEL.seekWater).toBe('Seeking water')
   })
 
+  it('calls the internal danger kind a crater and a fleeing bot names what it flees', () => {
+    expect(KIND_LABEL.danger).toBe('crater')
+    expect(CAUSE_LABEL.danger).toBe('Crater')
+    expect(intentLabel('flee', { kind: 'predator' })).toBe('Fleeing a predator')
+    expect(intentLabel('flee', { kind: 'danger' })).toBe('Fleeing a crater')
+    expect(intentLabel('flee')).toBe('Fleeing danger')
+    expect(intentLabel('seekFood', { kind: 'resource' })).toBe('Seeking food')
+  })
+
   it('names the plague and meteor death causes', () => {
     expect(CAUSE_LABEL.plague).toBe('Plague')
     expect(CAUSE_LABEL.meteor).toBe('Meteor')
@@ -41,7 +50,7 @@ describe('labels', () => {
     const expected: Record<DeathCause, string> = {
       starve: 'Died of hunger',
       thirst: 'Died of thirst',
-      danger: 'Killed by danger',
+      danger: 'Killed in a meteor crater',
       plague: 'Killed by plague',
       meteor: 'Killed by a meteor',
       predator: 'Killed by a predator',
@@ -49,18 +58,18 @@ describe('labels', () => {
     }
     for (const cause of Object.keys(expected) as DeathCause[]) expect(causeSentence(cause)).toBe(expected[cause])
     expect(causeSentence(undefined)).toBe('Died of hunger')
-    for (const cause of Object.keys(CAUSE_LABEL) as DeathCause[]) expect(CAUSE_SENTENCE[cause]).toMatch(/^(Died of|Killed by) /)
+    for (const cause of Object.keys(CAUSE_LABEL) as DeathCause[]) expect(CAUSE_SENTENCE[cause]).toMatch(/^(Died of|Killed by|Killed in) /)
   })
 
-  it('gives each world event a marker letter that clashes with no other marker (R D S W B X)', () => {
+  it('gives each world event a marker letter that clashes with no other marker (R V S W B X)', () => {
     const kinds: EventKind[] = ['drought', 'bounty', 'plague', 'meteor']
     const markerLetters = [
-      ...(['resource', 'danger', 'shelter', 'water'] as NodeKind[]).map((kind) => commandLetter('placeNode', kind)),
+      ...(['resource', 'predator', 'shelter', 'water'] as NodeKind[]).map((kind) => commandLetter('placeNode', kind)),
       commandLetter('placeBot'),
       commandLetter('removeNode'),
       ...kinds.map((kind) => commandLetter('triggerEvent', undefined, kind)),
     ]
-    expect(markerLetters).toEqual(['R', 'D', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M'])
+    expect(markerLetters).toEqual(['R', 'V', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M'])
     expect(new Set(markerLetters).size).toBe(markerLetters.length)
     for (const kind of kinds) expect(EVENT_LETTER[kind]).toBe(commandLetter('triggerEvent', undefined, kind))
   })

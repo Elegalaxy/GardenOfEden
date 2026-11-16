@@ -49,6 +49,17 @@ export function isValidSeed(seed: string): boolean {
 
 export const LOADING_REASON = 'A saved run is loading. Wait for it or cancel it first.'
 
+/**
+ * What a failed replay says. A save from older rules whose command the current rules refuse (a rule was retired, such as the
+ * danger zone in M21b) is worded as an old-rules problem rather than a broken file.
+ */
+export function replayFailureMessage(saveSim: number, reason: string): string {
+  if (saveSim < SIM_VERSION && /was refused/.test(reason)) {
+    return `This save was made with older rules (v${saveSim}) and no longer replays: ${reason}. Your current run was kept.`
+  }
+  return `This save could not be replayed (${reason}). Your current run was kept.`
+}
+
 /** Why a save cannot be loaded by this version (unknown preset, bad seed), or null. The text has no "kept" suffix. */
 export function checkLoad(save: Pick<Save, 'seed' | 'presetId'>): string | null {
   if (findPreset(save.presetId) === undefined) {
@@ -195,7 +206,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown error'
       load = null
-      return [{ type: 'loadDone', outcome: { status: 'failed', message: `This save could not be replayed (${reason}). Your current run was kept.` } }]
+      return [{ type: 'loadDone', outcome: { status: 'failed', message: replayFailureMessage(save.sim, reason) } }]
     }
     if (!job.finished) return [{ type: 'loadProgress', tick: job.tick, target: job.target }]
     // Complete: only now does the new world replace the old one.

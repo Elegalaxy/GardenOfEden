@@ -9,7 +9,7 @@ import { step } from '../src/sim/step.ts'
 import type { Tuning, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { applyCommand } from '../src/sim/commands.ts'
-import { asexual } from './variants.ts'
+import { asexual, edenWithDanger } from './variants.ts'
 
 // Bloodline colour gene (M20): hue helpers, founders, inheritance with drift, replay, and proof that
 // the gene stream changes no behaviour (Eden seeds a and b match the numbers recorded before M20).
@@ -163,9 +163,15 @@ describe('hues in a world', () => {
   })
 
   it('leaves behaviour alone: Eden at 5000 ticks matches the numbers from before M20', () => {
-    const a = run('a', 5000)
+    // On Eden as it was before M21b (`edenWithDanger`): the recorded numbers belong to that map.
+    const old = (seed: string): World => {
+      const world = createWorld(seed, edenWithDanger(), rules)
+      for (let i = 0; i < 5000; i += 1) step(world, rules)
+      return world
+    }
+    const a = old('a')
     expect([a.bots.length, a.totalBirths]).toEqual([70, 299])
-    const b = run('b', 5000)
+    const b = old('b')
     expect([b.bots.length, b.totalBirths]).toEqual([67, 277])
   })
 })

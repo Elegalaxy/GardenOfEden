@@ -38,7 +38,7 @@ const PLAN: Timed[] = [
   { tick: 150, cmd: { type: 'placeBot', x: 40.5, y: 31.5 } },
   { tick: 150, cmd: { type: 'placeNode', kind: 'shelter', x: 44.5, y: 30.5 } },
   { tick: 300, cmd: { type: 'triggerEvent', event: 'drought' } },
-  { tick: 500, cmd: { type: 'placeNode', kind: 'danger', x: 20.5, y: 20.5 } },
+  { tick: 500, cmd: { type: 'placeNode', kind: 'predator', x: 20.5, y: 20.5 } },
   { tick: 600, cmd: { type: 'triggerEvent', event: 'plague', x: 48.5, y: 32.5 } },
   { tick: 900, cmd: { type: 'triggerEvent', event: 'meteor', x: 48.5, y: 32.5 } },
   { tick: 1100, cmd: { type: 'triggerEvent', event: 'bounty' } },
@@ -53,7 +53,8 @@ function saveOf(world: World): Save {
 
 describe('save format and content', () => {
   it('lists the same placeable node kinds and event kinds as the content', () => {
-    expect([...PLACEABLE_KINDS].sort()).toEqual(Object.keys(nodeDefs).filter((kind) => kind !== 'ruin').sort())
+    // Ruins are made by the sim and danger zones were retired in M21b (craters keep the internal kind), so neither is placeable.
+    expect([...PLACEABLE_KINDS].sort()).toEqual(Object.keys(nodeDefs).filter((kind) => kind !== 'ruin' && kind !== 'danger').sort())
     expect([...EVENT_KINDS].sort()).toEqual(Object.keys(tuning.events).filter((key) => !['maxActive', 'maxCraters'].includes(key)).sort())
   })
 })

@@ -40,6 +40,7 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
     case 'placeNode': {
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
       if (cmd.kind === 'ruin') return 'Ruins are left by dead bots. They cannot be placed.'
+      if (cmd.kind === 'danger') return 'Danger zones were replaced by predators.'
       if (cmd.kind === 'predator') {
         let predators = 0
         for (const node of world.nodes) {

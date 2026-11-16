@@ -18,7 +18,7 @@ function seeded(): () => number {
 }
 
 function mixed(): Command[] {
-  return [...bulkCommands(null, 60, 96, 64, seeded()), ...bulkCommands('danger', 20, 96, 64, seeded()), ...bulkCommands('water', 20, 96, 64, seeded())]
+  return [...bulkCommands(null, 60, 96, 64, seeded()), ...bulkCommands('shelter', 20, 96, 64, seeded()), ...bulkCommands('water', 20, 96, 64, seeded())]
 }
 
 describe('the commands message', () => {

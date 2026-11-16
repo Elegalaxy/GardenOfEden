@@ -50,7 +50,8 @@ export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water' | 'p
  * One purposeful spot on the map. Only the fields a kind uses matter; the
  * rest stay 0 so every node has the same shape.
  * - resource: `amount` (0..capacity) refills by `regen` per tick.
- * - danger: `damage` health per tick to a bot inside `radius`.
+ * - danger: `damage` health per tick to a bot inside `radius`. Since M21b only a meteor crater is one (the player can no
+ *   longer place it; the internal kind name stays).
  * - shelter: `heal` health per tick, and `drainMult` scales energy loss.
  * - ruin: food left by a dead bot. `amount` (0..capacity) falls by `decay` per tick and by being
  *   eaten; the node is removed at 0. Made by the sim only (ruins.ts), never by a preset.
@@ -516,7 +517,7 @@ export type Tuning = {
     mergeRadius: number
     /** Most ruins the world may hold; past it a death adds to the nearest ruin, however far. */
     maxCount: number
-    /** A ruin whose centre is inside any danger node's radius (zone, grove or crater) decays this many times as fast. 1 turns it off. */
+    /** A ruin whose centre is inside any danger node's radius (a meteor crater since M21b) decays this many times as fast. 1 turns it off. */
     dangerDecayMult: number
   }
   /** World events the player can trigger (M8). Applied by the `triggerEvent` command (worldEvents.ts). */

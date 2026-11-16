@@ -39,7 +39,7 @@ function stepAlong(world: World, bot: Bot, heading: number, length: number): { x
   return { x, y, clamped: x !== rawX || y !== rawY }
 }
 
-/** A step is safe if it ends outside every danger zone or does not bring the bot closer to one it is in. */
+/** A step is safe if it ends outside every remembered predator or crater or does not bring the bot closer to one it is in. */
 function isSafe(bot: Bot, x: number, y: number, dangers: MemoryEntry[], margin: number): boolean {
   for (const danger of dangers) {
     const after = distance(x, y, danger.x, danger.y)

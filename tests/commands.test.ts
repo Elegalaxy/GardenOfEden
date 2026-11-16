@@ -29,13 +29,24 @@ function advanceTo(world: World, tick: number): void {
 describe('applyCommand', () => {
   it('places a node with the numbers for its kind and logs it', () => {
     const world = createWorld('a', empty, rules)
-    const result = applyCommand(world, rules, { type: 'placeNode', kind: 'danger', x: 5.5, y: 6.5 })
+    const result = applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 5.5, y: 6.5 })
     expect(result).toEqual({ ok: true, id: 1 })
     const node = world.nodes[0]
-    expect(node).toMatchObject({ id: 1, kind: 'danger', x: 5.5, y: 6.5, radius: nodeDefs.danger.radius, damage: nodeDefs.danger.damage })
+    expect(node).toMatchObject({ id: 1, kind: 'predator', x: 5.5, y: 6.5, radius: nodeDefs.predator.radius, damage: nodeDefs.predator.damage })
+    expect(node?.hunt).toMatchObject({ homeX: 5.5, homeY: 6.5, kills: 0 })
     expect(world.nextId).toBe(2)
-    expect(world.commands).toEqual([{ tick: 0, cmd: { type: 'placeNode', kind: 'danger', x: 5.5, y: 6.5 } }])
-    expect(world.log.at(-1)).toMatchObject({ type: 'command', command: 'placeNode', nodeKind: 'danger', nodeId: 1 })
+    expect(world.commands).toEqual([{ tick: 0, cmd: { type: 'placeNode', kind: 'predator', x: 5.5, y: 6.5 } }])
+    expect(world.log.at(-1)).toMatchObject({ type: 'command', command: 'placeNode', nodeKind: 'predator', nodeId: 1 })
+  })
+
+  it('refuses a danger zone: predators replaced them, only meteors leave craters', () => {
+    const world = createWorld('a', empty, rules)
+    const before = stateHash(world)
+    const cmd: Command = { type: 'placeNode', kind: 'danger', x: 5.5, y: 6.5 }
+    expect(checkCommand(world, rules, cmd)).toBe('Danger zones were replaced by predators.')
+    expect(applyCommand(world, rules, cmd)).toEqual({ ok: false, reason: 'Danger zones were replaced by predators.' })
+    expect(world.commands).toHaveLength(0)
+    expect(stateHash(world)).toBe(before)
   })
 
   it('places a resource full, and a bot with default traits and full health', () => {
@@ -64,9 +75,10 @@ describe('applyCommand', () => {
     applyCommand(world, rules, { type: 'placeNode', kind: 'resource', x: 5.5, y: 5.5 })
     const before = stateHash(world)
     const bad: Command[] = [
-      { type: 'placeNode', kind: 'danger', x: -1, y: 5 },
-      { type: 'placeNode', kind: 'danger', x: 5, y: 21 },
-      { type: 'placeNode', kind: 'danger', x: Number.NaN, y: 5 },
+      { type: 'placeNode', kind: 'shelter', x: -1, y: 5 },
+      { type: 'placeNode', kind: 'shelter', x: 5, y: 21 },
+      { type: 'placeNode', kind: 'shelter', x: Number.NaN, y: 5 },
+      { type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 },
       { type: 'placeNode', kind: 'resource', x: 5.5, y: 5.5 },
       { type: 'removeNode', id: 999 },
       { type: 'placeBot', x: 30, y: 5 },
@@ -81,7 +93,7 @@ describe('applyCommand', () => {
 
   it('allows different kinds on the same spot (a grove)', () => {
     const world = createWorld('a', empty, rules)
-    expect(applyCommand(world, rules, { type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 }).ok).toBe(true)
+    expect(applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 5.5, y: 5.5 }).ok).toBe(true)
     expect(applyCommand(world, rules, { type: 'placeNode', kind: 'resource', x: 5.5, y: 5.5 }).ok).toBe(true)
   })
 
@@ -92,8 +104,8 @@ describe('applyCommand', () => {
     expect(applyCommand(world, capped, { type: 'placeBot', x: 2, y: 2 }).ok).toBe(true)
     expect(applyCommand(world, capped, { type: 'placeBot', x: 3, y: 3 })).toMatchObject({ ok: false })
     expect(applyCommand(world, capped, { type: 'placeNode', kind: 'resource', x: 5.5, y: 5.5 }).ok).toBe(true)
-    expect(applyCommand(world, capped, { type: 'placeNode', kind: 'danger', x: 9.5, y: 9.5 }).ok).toBe(true)
-    expect(applyCommand(world, capped, { type: 'placeNode', kind: 'shelter', x: 12.5, y: 12.5 })).toMatchObject({ ok: false })
+    expect(applyCommand(world, capped, { type: 'placeNode', kind: 'shelter', x: 9.5, y: 9.5 }).ok).toBe(true)
+    expect(applyCommand(world, capped, { type: 'placeNode', kind: 'water', x: 12.5, y: 12.5 })).toMatchObject({ ok: false })
   })
 
   it('keeps stepping when a node bots were heading for is removed', () => {
@@ -118,7 +130,7 @@ describe('replay', () => {
     const live = createWorld('a', edenPreset, rules)
     const script: { tick: number; cmd: Command }[] = [
       { tick: 0, cmd: { type: 'placeBot', x: 10.5, y: 10.5 } },
-      { tick: 120, cmd: { type: 'placeNode', kind: 'danger', x: 36.5, y: 10.5 } },
+      { tick: 120, cmd: { type: 'placeNode', kind: 'predator', x: 36.5, y: 10.5 } },
       { tick: 120, cmd: { type: 'placeNode', kind: 'shelter', x: 30.5, y: 20.5 } },
       { tick: 400, cmd: { type: 'removeNode', id: 1 } },
       { tick: 900, cmd: { type: 'placeNode', kind: 'resource', x: 60.5, y: 30.5 } },
@@ -139,7 +151,7 @@ describe('replay', () => {
     advanceTo(control, 800)
     const live = createWorld('a', edenPreset, rules)
     advanceTo(live, 100)
-    expect(applyCommand(live, rules, { type: 'placeNode', kind: 'danger', x: 40.5, y: 24.5 }).ok).toBe(true)
+    expect(applyCommand(live, rules, { type: 'placeNode', kind: 'predator', x: 40.5, y: 24.5 }).ok).toBe(true)
     advanceTo(live, 800)
     expect(stateHash(live)).not.toBe(stateHash(control))
     expect(stateHash(replayWorld('a', edenPreset, rules, live.commands, 800))).toBe(stateHash(live))

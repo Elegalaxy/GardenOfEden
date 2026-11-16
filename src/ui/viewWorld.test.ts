@@ -22,7 +22,7 @@ import type { ViewWorld } from './viewWorld.ts'
 function busyWorld(): World {
   const world = createWorld('mirror', edenPreset, rules)
   for (let i = 0; i < 300; i += 1) step(world, rules)
-  applyCommand(world, rules, { type: 'placeNode', kind: 'danger', x: 30.5, y: 30.5 })
+  applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 30.5, y: 30.5 })
   applyCommand(world, rules, { type: 'triggerEvent', event: 'plague', x: 50.5, y: 20.5 })
   applyCommand(world, rules, { type: 'triggerEvent', event: 'drought' })
   applyCommand(world, rules, { type: 'triggerEvent', event: 'meteor', x: 70.5, y: 40.5 })
@@ -86,9 +86,10 @@ describe('ViewWorld', () => {
 
   it('accepts and refuses commands exactly as the world does (the hover ghost)', () => {
     const commands: Command[] = [
-      { type: 'placeNode', kind: 'danger', x: 30.5, y: 30.5 }, // too close to the one just placed
+      { type: 'placeNode', kind: 'predator', x: 30.5, y: 30.5 }, // too close to the predator just placed, unless it has walked off
       { type: 'placeNode', kind: 'shelter', x: 30.5, y: 30.5 },
       { type: 'placeNode', kind: 'ruin', x: 1.5, y: 1.5 },
+      { type: 'placeNode', kind: 'danger', x: 40.5, y: 40.5 },
       { type: 'placeNode', kind: 'resource', x: -1, y: 5 },
       { type: 'removeNode', id: world.nodes[0]!.id },
       { type: 'removeNode', id: 123456 },

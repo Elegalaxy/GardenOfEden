@@ -1,5 +1,5 @@
 // Ruins: what a dead bot leaves behind. A ruin is a small food node at the
-// place of death, so the dead feed the living and a danger zone or a hungry
+// place of death, so the dead feed the living and a predator's hunting ground or a hungry
 // stretch of map keeps a visible trace.
 //
 // Every death leaves one, whatever the cause. Its amount is `ruin.baseAmount`
@@ -10,7 +10,7 @@
 // `ruin.maxCount` ruins a death adds to the nearest one however far it is.
 // Ruins are eaten like resources (`eat` in nodes.ts), never regrow, lose
 // `decay` per tick, and are removed when they reach 0. A ruin whose centre lies inside any danger
-// node (a danger zone, a grove's zone, a meteor crater) loses `ruin.dangerDecayMult` times that,
+// node (since M21b only a meteor crater; predators are not `danger` nodes) loses `ruin.dangerDecayMult` times that,
 // so the trace stays but the lure fades fast (M12).
 //
 // No random draws, and no events: a ruin per death would flood the log. The
@@ -58,7 +58,7 @@ export function leaveRuin(world: World, bot: Bot, rules: Rules): void {
   world.nodes.push(ruin)
 }
 
-/** Is the point inside the radius of any danger node (zones, groves and meteor craters alike)? */
+/** Is the point inside the radius of any danger node (since M21b only meteor craters)? */
 export function insideAnyDanger(world: Pick<World, 'nodes'>, x: number, y: number): boolean {
   for (const node of world.nodes) {
     if (node.kind === 'danger' && hypot(x - node.x, y - node.y) <= node.radius) return true

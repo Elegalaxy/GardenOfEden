@@ -5,7 +5,7 @@
 // Population is a solid line on the left axis, food a dashed line on the right
 // axis, so the two read apart without colour. Food here is resource food only
 // (food sitting in ruins is not added in). Every player command is a thin
-// vertical marker topped with a letter: R, D, S for a placed resource, danger
+// vertical marker topped with a letter: R, V, S for a placed resource, predator
 // or shelter, W for water, B for a bot, X for a removed node, H F P M for a world
 // event (drought, bounty, plague, meteor). A timed event (drought, bounty, plague)
 // also gets a shaded band over the ticks it was in force, labelled and patterned

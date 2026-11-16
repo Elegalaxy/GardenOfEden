@@ -8,7 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Bot, Preset, Rules, Sex, World } from '../src/sim/types.ts'
 import { autoSex, createWorld } from '../src/sim/world.ts'
-import { stage1 } from './variants.ts'
+import { edenWithDanger, stage1 } from './variants.ts'
 
 // Two sexes (M17): founders alternate, children get a sex, and a birth needs a ready female and a ready
 // male in shelters within mateRange. The one-tick scenes use rules with speed 0, so nobody walks and
@@ -64,7 +64,8 @@ describe('founders and sex of newborns', () => {
 
   it('gives newborns both sexes in about equal numbers', () => {
     const world = createWorld('a', edenPreset, rules)
-    for (let i = 0; i < 5000; i += 1) step(world, rules)
+    // 8,000 ticks, not 5,000: with predators (M21b) a colony makes about 190 births in 5,000 ticks, and the test wants over 200.
+    for (let i = 0; i < 8000; i += 1) step(world, rules)
     const born = world.lineage.filter((record) => record.born > 0)
     expect(born.length).toBeGreaterThan(200)
     const females = born.filter((record) => record.sex === 'female').length / born.length
@@ -319,7 +320,8 @@ describe('asexual control', () => {
 
   it.each(['a', 'b'] as const)('reproduces the pre-M17 numbers on seed %s', { timeout: 60_000 }, (seed) => {
     const old = stage1(rules)
-    const world = createWorld(seed, edenPreset, old)
+    // Eden as it was before M21b (`edenWithDanger`): the numbers belong to that map.
+    const world = createWorld(seed, edenWithDanger(), old)
     for (let i = 0; i < 5000; i += 1) step(world, old)
     expect(world.totalBirths).toBe(expected[seed].births)
     expect(world.bots).toHaveLength(expected[seed].bots)

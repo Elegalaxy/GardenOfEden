@@ -34,8 +34,8 @@ function Legend() {
         <span className="legend-note">droplet, bots drink, never runs dry</span>
       </li>
       <li>
-        <span className="key key-danger" aria-hidden="true">D</span> Danger
-        <span className="legend-note">dashed edge</span>
+        <span className="key key-predator" aria-hidden="true">V</span> Predator
+        <span className="legend-note">hunts bots outside shelters</span>
       </li>
       <li>
         <span className="key key-shelter" aria-hidden="true">S</span> Shelter
@@ -51,7 +51,7 @@ function Legend() {
       </li>
       <li>
         <span className="key key-event key-meteor" aria-hidden="true">M</span> Meteor crater
-        <span className="legend-note">dashed orange danger, fades</span>
+        <span className="legend-note">dashed edge, hurts bots, fades</span>
       </li>
       <li>
         <span className="key key-bot" aria-hidden="true" /> Bot

@@ -3,7 +3,7 @@
 // the state hash it had there. Loading replays the commands up to `tick` and
 // compares the hash (a mismatch means the simulation changed since the save).
 //
-//   { version: 2, seed, presetId, sim, tick, hash, commands: [{ tick, cmd }, ...] }
+//   { version: 3, seed, presetId, sim, tick, hash, commands: [{ tick, cmd }, ...] }
 //
 // `sim` is the simulation (rules) version that made the save (`SIM_VERSION` in content);
 // the ui compares it with the current one to word a hash mismatch.
@@ -16,11 +16,13 @@
 //
 // This file knows only sim types, not content. Whether the preset exists, and
 // whether the replay accepts every command, is checked by the ui when it loads.
-// New formats bump `SAVE_VERSION`; an older save is upgraded in `upgradeSave`.
+// New formats bump `SAVE_VERSION`; an older save is upgraded in `upgradeSave`. Version 3 (M21b) only retired
+// the `danger` node kind from `placeNode`: a version 1 or 2 save that places one is refused (`retired-kind`),
+// any other older save is the same data.
 
 import type { Command, EventKind, NodeKind } from '../sim/types.ts'
 
-export const SAVE_VERSION = 2
+export const SAVE_VERSION = 3
 
 /** Highest simulation version a save may claim. */
 export const MAX_SIM_VERSION = 1_000_000
@@ -34,8 +36,8 @@ export const MAX_TICK = 1_000_000
 export const MAX_COORD = 100_000
 const MAX_ID = 1_000_000_000
 
-/** Kinds a `placeNode` command may carry (ruins are made by the sim). Kept in step with content by tests/save.test.ts. */
-export const PLACEABLE_KINDS = ['resource', 'danger', 'shelter', 'water', 'predator'] as const satisfies readonly NodeKind[]
+/** Kinds a `placeNode` command may carry (ruins are made by the sim, danger zones were retired in M21b). Kept in step with content by tests/save.test.ts. */
+export const PLACEABLE_KINDS = ['resource', 'predator', 'shelter', 'water'] as const satisfies readonly NodeKind[]
 export const EVENT_KINDS = ['drought', 'bounty', 'plague', 'meteor'] as const satisfies readonly EventKind[]
 
 export type SavedCommand = { tick: number; cmd: Command }
@@ -62,6 +64,7 @@ export type SaveErrorCode =
   | 'bad-field'
   | 'too-many-commands'
   | 'bad-command'
+  | 'retired-kind'
   | 'bad-order'
 
 export type SaveError = { code: SaveErrorCode; message: string }
@@ -125,13 +128,24 @@ function readCommand(raw: unknown): Command | null {
   }
 }
 
-/** Hook for older formats. Version 1 had no `sim` field; it was made by simulation version 1. */
+/** Hook for older formats. Version 1 had no `sim` field; it was made by simulation version 1. Version 2 became 3 unchanged (see `placesDanger`). */
 function upgradeSave(raw: Record<string, unknown>): Record<string, unknown> {
-  if (raw.version === 1) {
-    const { version: _version, seed, presetId, ...rest } = raw
-    return { version: 2, seed, presetId, sim: 1, ...rest }
+  let out = raw
+  if (out.version === 1) {
+    const { version: _version, seed, presetId, ...rest } = out
+    out = { version: 2, seed, presetId, sim: 1, ...rest }
   }
-  return raw
+  if (out.version === 2) out = { ...out, version: 3 }
+  return out
+}
+
+/** True when a command list places a danger zone (M21b retired them; dropping the command would shift every later node id). */
+function placesDanger(commands: unknown): boolean {
+  if (!Array.isArray(commands)) return false
+  return commands.some((entry: unknown) => {
+    if (!isRecord(entry) || !isRecord(entry.cmd)) return false
+    return entry.cmd.type === 'placeNode' && entry.cmd.kind === 'danger'
+  })
 }
 
 /** Checks an already parsed value. Never throws. */
@@ -147,7 +161,14 @@ export function validateSave(value: unknown): SaveResult {
       `This save was made by a newer version of the game (save format ${version}; this one reads up to ${SAVE_VERSION}). Update the game to open it.`,
     )
   }
+  const older = version < SAVE_VERSION
   const raw = upgradeSave(value)
+  if (older && placesDanger(raw.commands)) {
+    return fail(
+      'retired-kind',
+      'This save places danger zones, which this version replaced with predators. It cannot be opened.',
+    )
+  }
   if (!onlyKeys(raw, TOP_KEYS)) return fail('bad-field', 'This save has fields this version does not know.')
   if (typeof raw.seed !== 'string' || !SEED_PATTERN.test(raw.seed)) {
     return fail('bad-field', 'The save has an invalid seed (1 to 32 letters, digits or dashes).')

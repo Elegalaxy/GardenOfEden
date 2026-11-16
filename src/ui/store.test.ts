@@ -51,19 +51,19 @@ describe('isValidSeed', () => {
 describe('dispatch', () => {
   it('applies a command, records it and leaves a notice', async () => {
     const before = getSnapshot().commandCount
-    const result = await dispatch({ type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 })
+    const result = await dispatch({ type: 'placeNode', kind: 'predator', x: 5.5, y: 5.5 })
     expect(result.ok).toBe(true)
     const snap = getSnapshot()
     expect(snap.commandCount).toBe(before + 1)
     expect(snap.world.commands).toHaveLength(before + 1)
     expect(snap.notice).toMatchObject({ ok: true })
-    expect(snap.notice?.text).toContain('danger')
+    expect(snap.notice?.text).toContain('predator')
   })
 
   it('reports a refused command without recording it', async () => {
-    await dispatch({ type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 })
+    await dispatch({ type: 'placeNode', kind: 'predator', x: 5.5, y: 5.5 })
     const count = getSnapshot().commandCount
-    const result = await dispatch({ type: 'placeNode', kind: 'danger', x: 5.5, y: 5.5 })
+    const result = await dispatch({ type: 'placeNode', kind: 'predator', x: 5.5, y: 5.5 })
     expect(result.ok).toBe(false)
     expect(getSnapshot().commandCount).toBe(count)
     expect(getSnapshot().notice).toMatchObject({ ok: false })
@@ -181,7 +181,7 @@ describe('clickMap', () => {
   })
 
   it('remove deletes the node under the click, and says so when there is none', async () => {
-    setTool('danger')
+    setTool('shelter')
     clickMap(90.5, 60.5, 1)
     await settled()
     const id = getSnapshot().world.nodes.at(-1)!.id
@@ -363,8 +363,8 @@ describe('dispatchBatch (bulk placing)', () => {
 
   it('stops at the node cap and says so', async () => {
     const max = tuning.player.maxNodes
-    const commands = Array.from({ length: max + 10 }, (_, i) => ({ type: 'placeNode' as const, kind: 'danger' as const, x: (i % 90) + 0.5, y: Math.floor(i / 90) * 2 + 0.5 }))
-    const result = await dispatchBatch(commands, 'danger nodes')
+    const commands = Array.from({ length: max + 10 }, (_, i) => ({ type: 'placeNode' as const, kind: 'shelter' as const, x: (i % 90) + 0.5, y: Math.floor(i / 90) * 2 + 0.5 }))
+    const result = await dispatchBatch(commands, 'shelter nodes')
     expect(result.placed + result.refused).toBe(max + 10)
     expect(result.placed).toBeGreaterThan(0)
     expect(result.refused).toBeGreaterThan(0)

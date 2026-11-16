@@ -6,8 +6,7 @@ import { fertilityAt, meetsReproductionNeeds } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { edenPreset } from '../src/content/index.ts'
-import { asexual, stage1 } from './variants.ts'
+import { asexual, edenWithDanger, stage1 } from './variants.ts'
 
 // Aging fertility (M16): the curve, the breeding gate, the cooldown after a birth, and a control
 // run showing that neutral settings give back the pre-M16 world bit for bit.
@@ -97,7 +96,8 @@ describe('neutral control', () => {
         fertility: { startFraction: 1, primeAge: adultAge, declineAge: maxAge, fertileUntil: maxAge },
       },
     }
-    const world = createWorld('a', edenPreset, neutral)
+    // Runs on Eden as it was before M21b (`edenWithDanger`): the numbers belong to that map.
+    const world = createWorld('a', edenWithDanger(), neutral)
     for (let i = 0; i < 3000; i += 1) step(world, neutral)
     // Captured before any M16 edit (npx tsx on the unchanged tree): 125 births, 34 bots. The state hash of
     // that run was e1069c163c8bf330; it can no longer match because bots and lineage records gained keys

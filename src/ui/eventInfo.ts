@@ -25,7 +25,7 @@ export const EVENT_INFOS: readonly EventInfo[] = [
   { kind: 'drought', label: EVENT_LABEL.drought, letter: EVENT_LETTER.drought, key: 'd', global: true, blurb: 'Food grows back much slower everywhere. Springs are not affected.' },
   { kind: 'bounty', label: EVENT_LABEL.bounty, letter: EVENT_LETTER.bounty, key: 'b', global: true, blurb: 'Food grows back much faster everywhere.' },
   { kind: 'plague', label: EVENT_LABEL.plague, letter: EVENT_LETTER.plague, key: 'p', global: false, blurb: 'A zone where bots lose health for a while. Pick it, then click the map.' },
-  { kind: 'meteor', label: EVENT_LABEL.meteor, letter: EVENT_LETTER.meteor, key: 'm', global: false, blurb: 'Kills bots at the centre of the impact and leaves a danger crater. Pick it, then click the map.' },
+  { kind: 'meteor', label: EVENT_LABEL.meteor, letter: EVENT_LETTER.meteor, key: 'm', global: false, blurb: 'Kills bots at the centre of the impact and leaves a crater. Pick it, then click the map.' },
 ]
 
 export function eventInfo(kind: EventKind): EventInfo {

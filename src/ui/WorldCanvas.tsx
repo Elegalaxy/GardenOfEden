@@ -34,7 +34,7 @@ function placementAt(tool: Tool, cell: Cell): Command | null {
   switch (tool) {
     case 'resource':
     case 'water':
-    case 'danger':
+    case 'predator':
     case 'shelter':
       return { type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x, y }
     case 'bot':

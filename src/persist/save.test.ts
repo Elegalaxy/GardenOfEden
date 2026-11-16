@@ -71,8 +71,21 @@ describe('encodeSave and decodeSave', () => {
     }
   })
 
-  it('roundtrips a version 2 save with its sim version', () => {
+  it('roundtrips a save with its sim version', () => {
     const save = { ...sample(), sim: 7 }
+    expect(decodeSave(encodeSave(save))).toEqual({ ok: true, save })
+  })
+
+  it('upgrades a version 2 save without danger zones to version 3 unchanged', () => {
+    const old = raw()
+    old.version = 2
+    old.sim = 6
+    const result = validateSave(old)
+    expect(result).toEqual({ ok: true, save: { ...sample(), version: 3, sim: 6 } })
+  })
+
+  it('roundtrips a placed predator', () => {
+    const save: Save = { ...sample(), commands: [{ tick: 0, cmd: { type: 'placeNode', kind: 'predator', x: 10.5, y: 20.5 } }] }
     expect(decodeSave(encodeSave(save))).toEqual({ ok: true, save })
   })
 
@@ -97,6 +110,36 @@ describe('encodeSave and decodeSave', () => {
 
   it('names the file after the seed and tick', () => {
     expect(saveFileName({ seed: 'Run-7', tick: 1500 })).toBe('garden-of-eden-Run-7-t1500.json')
+  })
+})
+
+describe('retired danger zones (M21b)', () => {
+  const placesDanger = [{ tick: 3, cmd: { type: 'placeNode', kind: 'danger', x: 1.5, y: 2.5 } }]
+
+  it('refuses a version 2 save that places one, naming predators', () => {
+    const value = raw()
+    value.version = 2
+    value.commands = placesDanger
+    expect(expectError(value, 'retired-kind')).toContain('replaced with predators')
+  })
+
+  it('refuses a version 1 save that places one', () => {
+    const value = raw()
+    delete value.sim
+    value.version = 1
+    value.commands = placesDanger
+    expectError(value, 'retired-kind')
+  })
+
+  it('treats a danger placement in a current save as a bad command', () => {
+    const value = raw()
+    value.commands = placesDanger
+    expectError(value, 'bad-command')
+  })
+
+  it('no longer lists danger as placeable', () => {
+    expect(PLACEABLE_KINDS).not.toContain('danger')
+    expect(PLACEABLE_KINDS).toContain('predator')
   })
 })
 

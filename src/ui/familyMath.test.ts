@@ -61,7 +61,7 @@ describe('status wording', () => {
     const labels: Record<DeathCause, string> = {
       starve: 'Starved',
       thirst: 'Thirst',
-      danger: 'Danger',
+      danger: 'Crater',
       plague: 'Plague',
       meteor: 'Meteor',
       predator: 'Predator',

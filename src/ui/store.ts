@@ -551,7 +551,7 @@ export function dispatch(cmd: Command): Promise<CommandResult> {
 /**
  * Places many bots or nodes in one message (bulk placing, M19): the worker applies them in order, each recorded as a
  * single command would be, and answers once. Lists longer than `MAX_BATCH` go in several messages, one after the other.
- * Leaves one notice for the whole batch. `noun` is the plural word the notice uses ("bots", "danger nodes").
+ * Leaves one notice for the whole batch. `noun` is the plural word the notice uses ("bots", "predators", "shelter nodes").
  */
 export async function dispatchBatch(cmds: Command[], noun: string): Promise<BatchResult> {
   const result: BatchResult = { total: cmds.length, placed: 0, refused: 0, firstReason: null }
@@ -598,11 +598,11 @@ export function clickMap(x: number, y: number, reach: number): void {
       return
     case 'resource':
     case 'water':
-    case 'danger':
+    case 'predator':
     case 'shelter':
       if (placeCount > 1) {
         const kind = toolInfo(tool).nodeKind ?? tool
-        void dispatchBatch(bulkCommands(kind as NodeKind, placeCount, view.width, view.height, Math.random, centre), `${kind} nodes`)
+        void dispatchBatch(bulkCommands(kind as NodeKind, placeCount, view.width, view.height, Math.random, centre), kind === 'predator' ? 'predators' : `${kind} nodes`)
         return
       }
       void dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })

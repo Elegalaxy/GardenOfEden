@@ -86,7 +86,7 @@ describe('advance and commands', () => {
   it('applies a command between ticks at the tick the advances before it reached', () => {
     const host = makeHost()
     advance(host, 7)
-    expect(command(host, { type: 'placeNode', kind: 'danger', x: 3.5, y: 3.5 }).ok).toBe(true)
+    expect(command(host, { type: 'placeNode', kind: 'shelter', x: 3.5, y: 3.5 }).ok).toBe(true)
     advance(host, 5)
     expect(command(host, { type: 'placeBot', x: 4.5, y: 4.5 }).ok).toBe(true)
     expect(host.world.commands.map((entry) => entry.tick)).toEqual([7, 12])
@@ -95,7 +95,7 @@ describe('advance and commands', () => {
 
   it('does not record a refused command, and says why', () => {
     const host = makeHost()
-    const refused = command(host, { type: 'placeNode', kind: 'danger', x: 9999, y: 1 })
+    const refused = command(host, { type: 'placeNode', kind: 'shelter', x: 9999, y: 1 })
     expect(refused).toMatchObject({ ok: false })
     expect(refused.reason).toContain('outside')
     expect(host.world.commands).toHaveLength(0)

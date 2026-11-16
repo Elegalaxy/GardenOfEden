@@ -227,6 +227,10 @@ button:disabled {
   border-style: dashed;
 }
 
+.key-predator {
+  border-color: var(--predator);
+}
+
 .key-shelter {
   border-color: var(--shelter);
 }

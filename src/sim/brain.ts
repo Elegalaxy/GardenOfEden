@@ -2,7 +2,7 @@
 // and what it remembers; the highest score wins. Ties go to the earlier option
 // in this order: flee, seek food, seek water, rest, reproduce, seek mate, wander.
 //
-//   flee       rises with how close the bot is to a remembered danger, scaled by
+//   flee       rises with how close the bot is to a remembered predator or crater, scaled by
 //              its caution trait and by how hurt it is. Full strength inside.
 //   seekFood   needs the bot to be hungry (with hysteresis, so it keeps eating
 //              until sated) and a worthwhile remembered resource. Scales with

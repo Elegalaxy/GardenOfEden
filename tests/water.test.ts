@@ -194,13 +194,13 @@ describe('water near danger', () => {
 })
 
 describe('eden springs', () => {
-  it('has springs, one of them touching a danger zone', () => {
+  it('has springs, one of them touching a predator zone', () => {
     const world = createWorld('a', edenPreset, rules)
     const springs = world.nodes.filter((node) => node.kind === 'water')
-    const dangers = world.nodes.filter((node) => node.kind === 'danger')
+    const predators = world.nodes.filter((node) => node.kind === 'predator')
     expect(springs.length).toBeGreaterThanOrEqual(4)
     const touching = springs.some((spring) =>
-      dangers.some((danger) => Math.hypot(spring.x - danger.x, spring.y - danger.y) <= spring.radius + danger.radius),
+      predators.some((predator) => Math.hypot(spring.x - predator.x, spring.y - predator.y) <= spring.radius + predator.radius),
     )
     expect(touching).toBe(true)
   })

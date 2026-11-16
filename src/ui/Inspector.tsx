@@ -10,7 +10,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { FERTILITY_PHASE_LABEL, INTENT_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -129,7 +129,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         </Row>
         <Row label="Sex">{bot.sex === 'female' ? 'Female' : 'Male'}</Row>
         <Row label="Generation">{bot.generation}</Row>
-        <Row label="Goal">{INTENT_LABEL[intent.kind]}</Row>
+        <Row label="Goal">{intentLabel(intent.kind, target)}</Row>
         <Row label="Target">
           {intent.targetId === null ? (
             'none'
@@ -213,7 +213,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
         {crater ? 'Meteor crater' : capital(KIND_LABEL[node.kind])} #{node.id}
       </h3>
       <dl className="kv">
-        <Row label="Kind">{crater ? 'danger (meteor crater)' : KIND_LABEL[node.kind]}</Row>
+        <Row label="Kind">{crater ? 'meteor crater' : KIND_LABEL[node.kind]}</Row>
         <Row label="Position">{formatPoint(node.x, node.y)}</Row>
         <Row label="Radius">{fixed1(node.radius)} cells</Row>
         {node.kind === 'resource' && (
