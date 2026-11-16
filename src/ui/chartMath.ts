@@ -152,3 +152,33 @@ export function eventBands(
   }
   return bands
 }
+
+/** One winter stretch of the run, in ticks, clipped to the ticks the chart shows. */
+export type SeasonBand = { start: number; end: number }
+
+/** Fewest pixels one whole year may take before the winter strip is left out (it would be a comb of slivers). */
+export const MIN_YEAR_PX = 12
+
+/**
+ * The winter strip: winter is the last quarter of each year (the quarter in which regrowth is lowest and
+ * `seasonAt` reports "winter"), so each band runs from 3/4 of a period to the next multiple of the period.
+ * Bands are clipped to `x0`..`x1`. Returns none when seasons are off, the range is empty, or a whole year is
+ * under `MIN_YEAR_PX` pixels wide on a plot `plotWidth` pixels wide (a very long run).
+ */
+export function seasonBands(
+  x0: number,
+  x1: number,
+  seasons: { enabled: boolean; period: number },
+  plotWidth: number,
+): SeasonBand[] {
+  const { enabled, period } = seasons
+  if (!enabled || !(period > 0) || !(x1 > x0) || !(plotWidth > 0)) return []
+  if ((period / (x1 - x0)) * plotWidth < MIN_YEAR_PX) return []
+  const bands: SeasonBand[] = []
+  for (let year = Math.floor(x0 / period); year * period < x1; year += 1) {
+    const start = Math.max(x0, year * period + period * 0.75)
+    const end = Math.min(x1, (year + 1) * period)
+    if (end > start) bands.push({ start, end })
+  }
+  return bands
+}

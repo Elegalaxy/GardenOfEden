@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Command } from '../sim/types.ts'
-import { compact, eventBands, nearestIndex, niceMax, thin, tickLabel, xAxisTicks } from './chartMath.ts'
+import { compact, eventBands, nearestIndex, niceMax, seasonBands, thin, tickLabel, xAxisTicks } from './chartMath.ts'
 
 describe('niceMax', () => {
   it('rounds up to a value that splits into round steps', () => {
@@ -171,5 +171,37 @@ describe('eventBands', () => {
       10_000,
     )
     expect(bands.map((band) => band.lane)).toEqual([0, 1, 0])
+  })
+})
+
+describe('seasonBands', () => {
+  const seasons = { enabled: true, period: 400 }
+
+  it('gives the last quarter of each year', () => {
+    expect(seasonBands(0, 1000, seasons, 600)).toEqual([
+      { start: 300, end: 400 },
+      { start: 700, end: 800 },
+    ])
+  })
+
+  it('clips to the visible range, including a run that ends inside winter', () => {
+    expect(seasonBands(0, 350, seasons, 600)).toEqual([{ start: 300, end: 350 }])
+    expect(seasonBands(320, 750, seasons, 600)).toEqual([
+      { start: 320, end: 400 },
+      { start: 700, end: 750 },
+    ])
+  })
+
+  it('gives nothing for a run that has not reached winter, seasons off, or an empty range', () => {
+    expect(seasonBands(0, 200, seasons, 600)).toEqual([])
+    expect(seasonBands(0, 1000, { enabled: false, period: 400 }, 600)).toEqual([])
+    expect(seasonBands(5, 5, seasons, 600)).toEqual([])
+    expect(seasonBands(0, 1000, seasons, 0)).toEqual([])
+    expect(seasonBands(0, 1000, { enabled: true, period: 0 }, 600)).toEqual([])
+  })
+
+  it('leaves the strip out when a year is only a few pixels wide', () => {
+    expect(seasonBands(0, 1_000_000, seasons, 600)).toEqual([])
+    expect(seasonBands(0, 20_000, seasons, 600).length).toBe(50)
   })
 })

@@ -925,6 +925,19 @@ button.log-button[aria-pressed='true'] {
   stroke-dasharray: 3 2;
 }
 
+/* Winter strip: a solid thin bar on the plot floor (event bands are hatched and full height). */
+.winter-fill {
+  fill: rgba(130, 170, 220, 0.4);
+  stroke: rgba(130, 170, 220, 0.9);
+  stroke-width: 1;
+}
+
+.winter-label {
+  fill: var(--text-strong);
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .marker-line {
   stroke: #ffffff;
   stroke-opacity: 0.5;

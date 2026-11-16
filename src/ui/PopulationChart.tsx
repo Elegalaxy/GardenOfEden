@@ -20,7 +20,7 @@ import type { KeyboardEvent, PointerEvent } from 'react'
 import { tuning } from '../content/index.ts'
 import type { Command, Sample, SimEvent, TimedEventKind } from '../sim/types.ts'
 import { takeSample } from '../sim/world.ts'
-import { compact, eventBands, nearestIndex, niceMax, thin, xAxisTicks } from './chartMath.ts'
+import { compact, eventBands, nearestIndex, niceMax, seasonBands, thin, xAxisTicks } from './chartMath.ts'
 import type { EventBand } from './chartMath.ts'
 import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
 import { useWorldStore } from './store.ts'
@@ -40,6 +40,9 @@ type Marker = {
 }
 
 const numberFormat = new Intl.NumberFormat('en-US')
+
+/** Height of the winter strip along the bottom of the plot, in pixels. */
+const WINTER_STRIP_PX = 12
 
 function toMarker(entry: { tick: number; cmd: Command }): Marker {
   const { cmd } = entry
@@ -148,6 +151,9 @@ export function PopulationChart() {
 
   const visibleMarkers = markers.filter((marker) => marker.tick >= x0 && marker.tick <= x1)
   const visibleBands = bands.filter((band) => band.end >= x0 && band.start <= x1)
+  // Winter strip (S3): a thin labelled bar on the plot's floor, so it is never mistaken for a full-height event band.
+  const winterBands = seasonBands(x0, x1, tuning.seasons, plotWidth)
+  const seasonsOn = tuning.seasons.enabled
 
   // Which markers get a letter: skip one that would sit on top of the previous letter.
   // The skipped ones are counted on the letter before them ("D+1").
@@ -249,6 +255,15 @@ export function PopulationChart() {
           Event band
           <span className="legend-note">hatched = drought, dotted = bounty, crossed = plague</span>
         </li>
+        {seasonsOn && (
+          <li>
+            <svg width="30" height="14" aria-hidden="true">
+              <rect x="1" y="5" width="28" height="8" className="winter-fill" />
+            </svg>
+            Winter strip
+            <span className="legend-note">regrowth lowest (last quarter of each year)</span>
+          </li>
+        )}
         <li className="legend-tick figure">
           Tick {numberFormat.format(shown.tick)}
         </li>
@@ -300,6 +315,21 @@ export function PopulationChart() {
                 {tick.label}
               </text>
             ))}
+            {winterBands.map((band, index) => {
+              const left = px(band.start)
+              const bandWidth = Math.max(1, px(band.end) - left)
+              return (
+                <g key={`winter-${index}`} className="winter-strip">
+                  <title>Winter: regrowth is lowest</title>
+                  <rect x={left} y={MARGIN.top + plotHeight - WINTER_STRIP_PX} width={bandWidth} height={WINTER_STRIP_PX} className="winter-fill" />
+                  {bandWidth >= 44 && (
+                    <text x={left + 4} y={MARGIN.top + plotHeight - 3} className="winter-label">
+                      Winter
+                    </text>
+                  )}
+                </g>
+              )
+            })}
             {visibleBands.map((band, index) => {
               const left = px(Math.max(band.start, x0))
               const right = px(Math.min(band.end, x1))
