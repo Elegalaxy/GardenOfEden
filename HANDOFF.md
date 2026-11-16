@@ -1,17 +1,15 @@
 # Project Handoff State
 
-- **Last Updated By:** Claude (implementer, M19 bulk placing and heat hue per layer)
-- **Current Goal:** M0 to M19 are built. Nothing is planned after it (GAME_DESIGN section 9 "Later"). Not committed or pushed: the lead verifies and commits.
-- **Recent Changes (M19, UI and worker only; no sim, content or persist change, SIM_VERSION still 4):**
-  - Bulk placing: `protocol.ts` messages `commands{reqId, cmds}` and `commandsResult{reqId, results[]}`; `simHost.ts` `case 'commands'` (`MAX_BATCH` 500, only placeNode/placeBot, refused during a load, one frame + one result + one heat snapshot, `observeWorld` once; commands recorded by `applyCommand` as usual).
-  - `store.ts`: `dispatchBatch(cmds, noun)`, `setPlaceCount`, snapshot `placeCount`; `clickMap` sends a batch of random distinct cell centres when the count is above 1. New `bulk.ts` (`PLACE_COUNTS` 1/10/50/200, `spreadPoints`, `bulkCommands`, `batchNotice`), `tools.ts` `placesThings`.
-  - `Toolbar.tsx` `PlaceCount` beside the notice in `ToolStatus` (44px buttons, hidden by `visibility` for other tools); `panels.css` `.tool-notice-row`, `.place-*`.
-  - Heat hue: `heatRender.ts` `HEAT_RGB` per layer (traffic amber 255,168,40; births pink 255,128,190; deaths orange 255,92,56), `heatBinColor(layer, bin)`, `heatHue(layer)`; `HeatLegend.tsx` swatches and a readout marker use the hue.
-  - Tests: new `bulk.test.ts`, `simHostBatch.test.ts` (same hash, commands and heat as one by one); `store.test.ts` dispatchBatch block; `heatRender.test.ts` updated.
-  - Docs: CLAUDE.md, GAME_DESIGN (status, section 8 items 7 and 8, M19 row, open question resolved, changelog), idea brief changelog.
+- **Last Updated By:** Claude (lead, bulk click clusters around the clicked cell)
+- **Current Goal:** M0 to M19 are built, committed and pushed (M19: bulk placing and a heat hue per layer). Nothing is planned after it (GAME_DESIGN section 9 "Later").
+- **Recent Changes:**
+  - M19 (`ddcaf95`): `commands{reqId, cmds}` batch message (`simHost.ts`, `MAX_BATCH` 500, placeNode/placeBot only, one frame + one result + one heat snapshot), `store.ts` `dispatchBatch` / `setPlaceCount`, `bulk.ts`, `Toolbar.tsx` `PlaceCount` (1 / 10 / 50 / 200 beside the notice), heat hue per layer in `heatRender.ts` (amber traffic, pink births, orange deaths) and `HeatLegend.tsx`.
+  - Uncommitted follow-up: a bulk click now clusters around the clicked cell. `bulk.ts` `clusterPoints` (disc around the cell, area about `count * cellsEach` cells with `BOT_CELLS_EACH` 2.5 and `NODE_CELLS_EACH` 9, grows until it holds enough cells, clipped to the map); `bulkCommands(..., around?)`; `store.ts` `clickMap` passes the clicked cell centre; tests in `bulk.test.ts`. `spreadPoints` (whole map) stays for calls without a position.
+  - Sim, content and persist untouched since M18 (`SIM_VERSION` 4).
 - **Active Decisions / Constraints:**
-  - The Place row sits beside the notice (not the hint) so text widths stay as before; the tool-status block grew about 3 px (about 48 px on a phone where the row wraps).
-  - Survey `--seeds a,b,c --ticks 20000 --warmup 1000` identical before and after. 1,000-bot batch about 30 ms (200 single commands took 1.7 s).
-  - Never import `rpg/` or `trading-sim/`. Do not commit or push unless the user asks.
-- **Open Questions for the user:** hue choice (amber / pink / orange) after a look on the real map; should a bulk click also place where the player clicked (a cluster) instead of spreading over the whole map; energy penalty at 0 and mate choice (M18); "recent" window.
-- **Exact Next Step:** the lead reviews the diff, commits and pushes (user's standing rule).
+  - The Place row sits beside the notice, not the hint, so text widths stay as before.
+  - The event scenes in `tests/events.test.ts` are knife-edge: re-run tuning, events and traits tests after any tuning change. Inbreeding `energyLoss` is 0 for that reason.
+  - Never import `rpg/` or `trading-sim/`.
+  - Commit and push after each stage (user's standing rule).
+- **Open Questions for the user:** heat hues (deaths orange is the closest to the red danger zones); mate choice that avoids relatives; energy penalty at 0; the "recent" heat window; eden feel check; Firefox and Safari untried.
+- **Exact Next Step:** commit and push the cluster change, then check the deployed site and play a few minutes on Eden and Blank.

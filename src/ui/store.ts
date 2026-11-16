@@ -580,14 +580,14 @@ export function clickMap(x: number, y: number, reach: number): void {
     case 'shelter':
       if (placeCount > 1) {
         const kind = toolInfo(tool).nodeKind ?? tool
-        void dispatchBatch(bulkCommands(kind as NodeKind, placeCount, view.width, view.height, Math.random), `${kind} nodes`)
+        void dispatchBatch(bulkCommands(kind as NodeKind, placeCount, view.width, view.height, Math.random, centre), `${kind} nodes`)
         return
       }
       void dispatch({ type: 'placeNode', kind: toolInfo(tool).nodeKind ?? tool, x: centre.x, y: centre.y })
       return
     case 'bot':
       if (placeCount > 1) {
-        void dispatchBatch(bulkCommands(null, placeCount, view.width, view.height, Math.random), 'bots')
+        void dispatchBatch(bulkCommands(null, placeCount, view.width, view.height, Math.random, centre), 'bots')
         return
       }
       void dispatch({ type: 'placeBot', x: centre.x, y: centre.y })

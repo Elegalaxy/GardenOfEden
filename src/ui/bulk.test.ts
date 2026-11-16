@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { batchNotice, bulkCommands, spreadPoints } from './bulk.ts'
+import { BOT_CELLS_EACH, NODE_CELLS_EACH, batchNotice, bulkCommands, clusterPoints, spreadPoints } from './bulk.ts'
 
 // The pure side of bulk placing: random distinct cell centres and the notice wording.
 
@@ -29,6 +29,35 @@ describe('spreadPoints', () => {
 
   it('never gives more spots than the map has cells', () => {
     expect(spreadPoints(50, 4, 3, counter())).toHaveLength(12)
+  })
+})
+
+describe('clusterPoints', () => {
+  it('gives distinct cell centres near the clicked cell', () => {
+    const points = clusterPoints(50, { x: 40.5, y: 30.5 }, 96, 64, counter(), BOT_CELLS_EACH)
+    expect(points).toHaveLength(50)
+    expect(new Set(points.map((p) => `${p.x},${p.y}`)).size).toBe(50)
+    const radius = Math.ceil(Math.sqrt((50 * BOT_CELLS_EACH) / Math.PI))
+    for (const p of points) {
+      expect(Math.hypot(p.x - 40.5, p.y - 30.5)).toBeLessThanOrEqual(radius + 0.001)
+      expect(p.x % 1).toBe(0.5)
+    }
+  })
+
+  it('stays inside the map at a corner and grows the disc when the map is small', () => {
+    const corner = clusterPoints(30, { x: 0.5, y: 0.5 }, 96, 64, counter(), BOT_CELLS_EACH)
+    expect(corner).toHaveLength(30)
+    for (const p of corner) {
+      expect(p.x).toBeGreaterThan(0)
+      expect(p.y).toBeGreaterThan(0)
+    }
+    expect(clusterPoints(200, { x: 2.5, y: 1.5 }, 6, 4, counter(), NODE_CELLS_EACH)).toHaveLength(24)
+  })
+
+  it('is used by bulkCommands when a click position is given', () => {
+    const near = bulkCommands(null, 20, 96, 64, counter(), { x: 10.5, y: 10.5 })
+    expect(near).toHaveLength(20)
+    for (const c of near) if (c.type === 'placeBot') expect(Math.hypot(c.x - 10.5, c.y - 10.5)).toBeLessThan(12)
   })
 })
 

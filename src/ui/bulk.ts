@@ -1,5 +1,6 @@
 // Bulk placing (M19): the "Place" count choice of the placement tools and the pure helpers behind it. A click with a count
-// above 1 places that many bots or nodes at random cells of the map. The randomness is the page's own (`Math.random`, fine
+// above 1 places that many bots or nodes at random cells around the clicked cell (`clusterPoints`; `spreadPoints` covers the
+// whole map and is used when no click position is given). The randomness is the page's own (`Math.random`, fine
 // in src/ui; the sim never sees it): each spot goes to the worker as explicit coordinates in an ordinary placeNode or
 // placeBot command, so a saved run replays exactly. Spots are distinct cell centres, so two nodes of one kind never fall
 // in the same cell (the sim refuses a gap under `player.minNodeGap`).
@@ -29,9 +30,68 @@ export function spreadPoints(count: number, width: number, height: number, rando
   return points
 }
 
-/** The commands for a bulk click: bots (`kind` null) or nodes of `kind`, at random spots. */
-export function bulkCommands(kind: NodeKind | null, count: number, width: number, height: number, random: () => number): Command[] {
-  return spreadPoints(count, width, height, random).map((point): Command =>
+/** How many cells of the disc each placed thing gets: bots may sit close, nodes need room (the sim refuses a gap under `player.minNodeGap`). */
+export const BOT_CELLS_EACH = 2.5
+export const NODE_CELLS_EACH = 9
+
+/**
+ * `count` distinct cell centres in a disc around the cell centre `around`, clipped to the map. The disc starts at about
+ * `count * cellsEach` cells and grows until it holds enough cells, so a big count spills over the whole map when needed.
+ */
+export function clusterPoints(
+  count: number,
+  around: { x: number; y: number },
+  width: number,
+  height: number,
+  random: () => number,
+  cellsEach: number,
+): { x: number; y: number }[] {
+  const w = Math.floor(width)
+  const h = Math.floor(height)
+  const wanted = Math.max(0, Math.min(Math.floor(count), w * h))
+  const cx = Math.min(w - 1, Math.max(0, Math.floor(around.x)))
+  const cy = Math.min(h - 1, Math.max(0, Math.floor(around.y)))
+  let radius = Math.max(2, Math.ceil(Math.sqrt((wanted * cellsEach) / Math.PI)))
+  let cells: number[] = []
+  for (;;) {
+    cells = []
+    for (let y = Math.max(0, cy - radius); y <= Math.min(h - 1, cy + radius); y += 1) {
+      for (let x = Math.max(0, cx - radius); x <= Math.min(w - 1, cx + radius); x += 1) {
+        const dx = x - cx
+        const dy = y - cy
+        if (dx * dx + dy * dy <= radius * radius) cells.push(y * w + x)
+      }
+    }
+    if (cells.length >= wanted || radius > w + h) break
+    radius += 2
+  }
+  // Fisher-Yates over the candidates, then the first `wanted`.
+  for (let i = cells.length - 1; i > 0; i -= 1) {
+    const j = Math.min(i, Math.floor(random() * (i + 1)))
+    const swap = cells[i]!
+    cells[i] = cells[j]!
+    cells[j] = swap
+  }
+  return cells.slice(0, wanted).map((index) => ({ x: (index % w) + 0.5, y: Math.floor(index / w) + 0.5 }))
+}
+
+/**
+ * The commands for a bulk click: bots (`kind` null) or nodes of `kind`. With `around` (the clicked cell centre) they
+ * cluster there; without it they spread over the whole map.
+ */
+export function bulkCommands(
+  kind: NodeKind | null,
+  count: number,
+  width: number,
+  height: number,
+  random: () => number,
+  around?: { x: number; y: number },
+): Command[] {
+  const points =
+    around === undefined
+      ? spreadPoints(count, width, height, random)
+      : clusterPoints(count, around, width, height, random, kind === null ? BOT_CELLS_EACH : NODE_CELLS_EACH)
+  return points.map((point): Command =>
     kind === null ? { type: 'placeBot', x: point.x, y: point.y } : { type: 'placeNode', kind, x: point.x, y: point.y },
   )
 }
