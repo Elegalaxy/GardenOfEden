@@ -1,0 +1,123 @@
+import { describe, expect, it } from 'vitest'
+
+import { tuning } from '../content/index.ts'
+import type { Den, PredatorLife, PredatorState, Sample, WorldNode } from '../sim/types.ts'
+import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries } from './predatorInfo.ts'
+
+const eco = tuning.predator.ecology
+
+function hunt(life: Partial<PredatorLife> | undefined): PredatorState {
+  return {
+    px: 0,
+    py: 0,
+    heading: 0,
+    homeX: 10,
+    homeY: 10,
+    targetId: null,
+    chase: 0,
+    restUntil: 0,
+    kills: 0,
+    ...(life === undefined ? {} : { life: { energy: 50, age: 100, born: 0, origin: 'founder', parentId: null, kidsKills: 0, ...life } }),
+  }
+}
+
+function node(id: number, state: PredatorState | null, kind: WorldNode['kind'] = 'predator'): WorldNode {
+  return { id, kind, x: 0, y: 0, radius: 1, amount: 0, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0, expires: 0, hunt: state } as WorldNode
+}
+
+describe('predatorLifeInfo', () => {
+  it('is null without a life', () => {
+    expect(predatorLifeInfo(hunt(undefined), tuning, 3)).toBeNull()
+  })
+
+  it('reports a hungry predator with no time to hungry and a time to starve', () => {
+    const info = predatorLifeInfo(hunt({ energy: 50 }), tuning, 3)!
+    expect(info).toMatchObject({ energy: 50, maxEnergy: eco.maxEnergy, huntBelow: eco.huntBelow, hungry: true, ticksToHungry: null, age: 100, maxAge: eco.maxAge, adult: false })
+    expect(info.ticksToStarve).toBe(Math.ceil(50 / eco.drain))
+  })
+
+  it('counts the ticks until a fed predator is hungry again', () => {
+    const info = predatorLifeInfo(hunt({ energy: 90 }), tuning, 3)!
+    expect(info.hungry).toBe(false)
+    expect(info.ticksToHungry).toBe(Math.ceil((90 - eco.huntBelow) / eco.drain))
+  })
+
+  it('has no countdowns when energy does not drain', () => {
+    const still = { predator: { ...tuning.predator, ecology: { ...eco, drain: 0 } } }
+    const info = predatorLifeInfo(hunt({ energy: 90 }), still, 3)!
+    expect(info.ticksToHungry).toBeNull()
+    expect(info.ticksToStarve).toBeNull()
+  })
+
+  it('names the first reason a cub is blocked, in the sim order', () => {
+    const ready = { kidsKills: eco.killsPerCub, age: eco.adultAge, energy: eco.cubCost + eco.huntBelow }
+    const room = tuning.predator.maxCount - 1
+    expect(predatorLifeInfo(hunt(ready), tuning, room)!.cubBlock).toBeNull()
+    expect(predatorLifeInfo(hunt({ ...ready, kidsKills: 1, age: 0, energy: 0 }), tuning, 99)!.cubBlock).toBe('kills')
+    expect(predatorLifeInfo(hunt({ ...ready, age: 0, energy: 0 }), tuning, 99)!.cubBlock).toBe('age')
+    expect(predatorLifeInfo(hunt({ ...ready, energy: 0 }), tuning, 99)!.cubBlock).toBe('energy')
+    expect(predatorLifeInfo(hunt(ready), tuning, tuning.predator.maxCount)!.cubBlock).toBe('cap')
+    expect(predatorLifeInfo(hunt(ready), tuning, room)!.adult).toBe(true)
+  })
+})
+
+describe('originText', () => {
+  it('words every origin and keeps a cub parent as an id', () => {
+    expect(originText({ origin: 'founder', born: 0, parentId: null })).toEqual({ text: 'Founder', parentId: null })
+    expect(originText({ origin: 'placed', born: 1200, parentId: null })).toEqual({ text: 'Placed by you at tick 1,200', parentId: null })
+    expect(originText({ origin: 'cub', born: 5000, parentId: 7 })).toEqual({ text: 'Cub of #7, born tick 5,000', parentId: 7 })
+    expect(originText({ origin: 'arrived', born: 3100, parentId: null })).toEqual({ text: 'Arrived from the map edge at tick 3,100', parentId: null })
+  })
+})
+
+describe('denFor', () => {
+  const dens: Den[] = [
+    { x: 10, y: 10, vacantSince: null },
+    { x: 50, y: 50, vacantSince: 100 },
+  ]
+  it('finds the den within the radius, edge included, else null', () => {
+    expect(denFor(dens, { homeX: 12, homeY: 10 }, 4)).toBe(dens[0])
+    expect(denFor(dens, { homeX: 14, homeY: 10 }, 4)).toBe(dens[0])
+    expect(denFor(dens, { homeX: 30, homeY: 30 }, 4)).toBeNull()
+    expect(denFor([], { homeX: 0, homeY: 0 }, 4)).toBeNull()
+  })
+})
+
+describe('predatorCounts and predatorCapNotice', () => {
+  const nodes = [
+    node(1, hunt({ origin: 'founder', energy: 50 })),
+    node(2, hunt({ origin: 'founder', energy: 90 })),
+    node(3, hunt({ origin: 'cub', energy: 50 })),
+    node(4, hunt({ origin: 'placed', energy: 50 })),
+    node(5, null, 'resource'),
+  ]
+  it('counts total, hungry and origins', () => {
+    expect(predatorCounts(nodes, tuning)).toEqual({ total: 4, hungry: 3, byOrigin: { founder: 2, placed: 1, cub: 1, arrived: 0 } })
+  })
+  it('writes the cap notice listing only the origins present', () => {
+    expect(predatorCapNotice(nodes, tuning)).toBe(`Predator cap reached (4 / ${tuning.predator.maxCount}: 2 founders, 1 cub, 1 placed). Remove one to place another.`)
+    expect(predatorCapNotice([node(1, hunt({ origin: 'arrived' }))], tuning)).toContain('1 arrived')
+  })
+  it('writes just the count when no predator has a life', () => {
+    expect(predatorCapNotice([node(1, hunt(undefined))], tuning)).toBe(`Predator cap reached (1 / ${tuning.predator.maxCount}). Remove one to place another.`)
+  })
+})
+
+describe('predatorChange and predatorSeries', () => {
+  const sample = (tick: number, predators?: number): Sample => ({ tick, pop: 10, births: 0, deaths: 0, food: 0, traits: null, ...(predators === undefined ? {} : { predators }) })
+  const samples = [sample(0, 3), sample(100, 4), sample(200, 5)]
+  it('gives the change over the window', () => {
+    expect(predatorChange(samples, sample(200, 5), 100)).toEqual({ span: 100, delta: 1 })
+    expect(predatorChange(samples, sample(200, 2), 500)).toEqual({ span: 200, delta: -1 })
+  })
+  it('is null with no history or no counts', () => {
+    expect(predatorChange([], sample(0, 3), 100)).toBeNull()
+    expect(predatorChange(samples, sample(0, 3), 100)).toBeNull()
+    expect(predatorChange([sample(0), sample(100)], sample(200, 5), 300)).toBeNull()
+    expect(predatorChange(samples, sample(200), 100)).toBeNull()
+  })
+  it('keeps only samples with a predator count', () => {
+    expect(predatorSeries([sample(0), sample(100, 4), sample(200, 0)])).toEqual([{ tick: 100, count: 4 }, { tick: 200, count: 0 }])
+    expect(predatorSeries([])).toEqual([])
+  })
+})

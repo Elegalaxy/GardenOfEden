@@ -5,7 +5,7 @@ import { EventLog } from './EventLog.tsx'
 import { EventsPanel } from './EventsPanel.tsx'
 import { FamilyPanel } from './FamilyPanel.tsx'
 import { HeatLegend } from './HeatLegend.tsx'
-import { PredatorKey } from './PredatorKey.tsx'
+import { DenKey, PredatorKey } from './PredatorKey.tsx'
 import { Inspector } from './Inspector.tsx'
 import { PopulationChart } from './PopulationChart.tsx'
 import { RunMenu } from './RunMenu.tsx'
@@ -17,6 +17,7 @@ import { TraitSummary } from './TraitSummary.tsx'
 import { WorldCanvas } from './WorldCanvas.tsx'
 import { startAutosave } from './autosave.ts'
 import { startLoop } from './loop.ts'
+import { tuning } from '../content/index.ts'
 import { watchShareLinks } from './shareLink.ts'
 import { useEngine, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
@@ -36,8 +37,18 @@ function Legend() {
       </li>
       <li>
         <PredatorKey /> Predator
-        <span className="legend-note">chevron, hunts bots, cannot enter shelters</span>
+        <span className="legend-note">
+          {tuning.predator.ecology.enabled ? 'chevron, hunts bots, cannot enter shelters; dotted ring = fed, does not bite' : 'chevron, hunts bots, cannot enter shelters'}
+        </span>
       </li>
+      {tuning.predator.ecology.enabled && (
+        <li>
+          <DenKey /> Den
+          <span className="legend-note">
+            arch, where predators live; dashed = empty, a newcomer comes after {tuning.predator.ecology.recolonizeTicks.toLocaleString('en-US')} ticks
+          </span>
+        </li>
+      )}
       <li>
         <span className="key key-shelter" aria-hidden="true">S</span> Shelter
         <span className="legend-note">heals, rests, reproduces</span>

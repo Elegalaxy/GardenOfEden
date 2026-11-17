@@ -5,11 +5,13 @@
 // same window, or over the whole run while it is younger than that. The Food
 // tile counts resource food (what the chart plots); food in ruins is shown
 // beside it, not added in. The Season tile (S3) shows the name, the regrowth
-// multiplier and the ticks to the next season (`seasonInfo.ts`); "Off" when disabled.
+// multiplier and the ticks to the next season (`seasonInfo.ts`); "Off" when disabled. The Predators tile (E3) shows how many
+// predators are alive, their change over the same minute and the cap; its hover text says how many are hungry and where they came from.
 
 import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
 import { takeSample, totalRuinFood } from '../sim/world.ts'
+import { predatorChange, predatorCounts } from './predatorInfo.ts'
 import { seasonSummary } from './seasonInfo.ts'
 import { useWorldStore } from './store.ts'
 
@@ -42,6 +44,16 @@ export function StatsStrip() {
   const birthRate = ratePer(world.samples, current, 'births', minuteTicks, minuteTicks, sampleEvery)
   const deathRate = ratePer(world.samples, current, 'deaths', minuteTicks, minuteTicks, sampleEvery)
   const season = seasonSummary(tick, tuning)
+  const predators = predatorCounts(world.nodes, tuning)
+  const predatorDelta = predatorChange(world.samples, current, minuteTicks)
+  const cap = `cap ${tuning.predator.maxCount}`
+  const { byOrigin } = predators
+  const origins = [
+    byOrigin.founder > 0 ? `${byOrigin.founder} founder${byOrigin.founder === 1 ? '' : 's'}` : '',
+    byOrigin.cub > 0 ? `${byOrigin.cub} cub${byOrigin.cub === 1 ? '' : 's'}` : '',
+    byOrigin.placed > 0 ? `${byOrigin.placed} placed` : '',
+    byOrigin.arrived > 0 ? `${byOrigin.arrived} arrived` : '',
+  ].filter((part) => part !== '')
   const rate = (value: number | null): string => (value === null ? '—' : rateFormat.format(value))
   return (
     <section className="panel stats-panel" aria-label="Society">
@@ -64,6 +76,12 @@ export function StatsStrip() {
           value={season.value}
           detail={season.detail}
           hint={season.enabled ? `Food regrowth multiplier, then ticks to the next season (${season.detail})` : 'Seasons are off'}
+        />
+        <Tile
+          label="Predators"
+          value={numberFormat.format(predators.total)}
+          detail={predatorDelta === null ? cap : `${changeText(predatorDelta.delta)} · ${cap}`}
+          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`} (${cap})`}
         />
       </dl>
     </section>

@@ -10,7 +10,9 @@
 // event (drought, bounty, plague, meteor). A timed event (drought, bounty, plague)
 // also gets a shaded band over the ticks it was in force, labelled and patterned
 // (diagonal lines = drought, dots = bounty, crosshatch = plague), never colour
-// alone. Hover (or touch, or the
+// alone. With predator ecology on (E3) a strip under the plot, in the same SVG and on the same x axis, steps the number of
+// predators on its own fixed scale (0 to the predator cap), dotted with a dashed cap line; its height is reserved whenever
+// ecology is switched on (a tuning constant), so it never changes between worlds. Hover (or touch, or the
 // arrow keys when the chart has focus) shows a tooltip with the tick, both
 // values and any command at that marker. Long runs are thinned to about one
 // point per pixel.
@@ -23,12 +25,20 @@ import { takeSample } from '../sim/world.ts'
 import { compact, eventBands, nearestIndex, niceMax, seasonBands, thin, xAxisTicks } from './chartMath.ts'
 import type { EventBand } from './chartMath.ts'
 import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
+import { predatorSeries } from './predatorInfo.ts'
 import { useWorldStore } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
 import type { ViewWorld } from './viewWorld.ts'
 
-const HEIGHT = 240
+const PLOT_HEIGHT = 190
 const MARGIN = { left: 40, right: 48, top: 24, bottom: 26 }
+// The predator strip (E3): a gap under the plot, then the strip; reserved only when ecology is switched on (a constant).
+const ecologyOn = tuning.predator.ecology.enabled
+const STRIP_GAP_PX = 8
+const STRIP_PX = ecologyOn ? 56 : 0
+const STRIP_PAD_PX = 5
+const HEIGHT = MARGIN.top + PLOT_HEIGHT + MARGIN.bottom + (ecologyOn ? STRIP_GAP_PX + STRIP_PX : 0)
+const PREDATOR_MAX = tuning.predator.maxCount
 const DIVISIONS = 4
 const MARKER_SNAP_PX = 7
 const MIN_LETTER_GAP_PX = 13
@@ -116,7 +126,9 @@ export function PopulationChart() {
   const [hoverTick, setHoverTick] = useState<number | null>(null)
 
   const plotWidth = Math.max(0, width - MARGIN.left - MARGIN.right)
-  const plotHeight = HEIGHT - MARGIN.top - MARGIN.bottom
+  const plotHeight = PLOT_HEIGHT
+  const stripTop = MARGIN.top + plotHeight + STRIP_GAP_PX
+  const stripY = (v: number): number => stripTop + STRIP_PX - STRIP_PAD_PX - (Math.min(v, PREDATOR_MAX) / PREDATOR_MAX) * (STRIP_PX - 2 * STRIP_PAD_PX)
 
   // The world is mutated in place, so this key (not the world object) says when the chart data is stale.
   const revision = `${tick}/${world.log.length}/${world.commands.length}`
@@ -148,6 +160,14 @@ export function PopulationChart() {
 
   const popLine = points.map((p) => `${px(p.tick).toFixed(1)},${popY(p.pop).toFixed(1)}`).join(' ')
   const foodLine = points.map((p) => `${px(p.tick).toFixed(1)},${foodY(p.food).toFixed(1)}`).join(' ')
+  // Predator count as a step path: hold the old value until the tick the new one was sampled.
+  const predatorPath = predatorSeries(points)
+    .map((p, i) => {
+      const x = px(p.tick).toFixed(1)
+      const y = stripY(p.count).toFixed(1)
+      return i === 0 ? `M${x},${y}` : `H${x}V${y}`
+    })
+    .join('')
 
   const visibleMarkers = markers.filter((marker) => marker.tick >= x0 && marker.tick <= x1)
   const visibleBands = bands.filter((band) => band.end >= x0 && band.start <= x1)
@@ -175,6 +195,7 @@ export function PopulationChart() {
   const hoverIndex = hoverTick === null ? -1 : nearestIndex(pointTicks, hoverTick)
   const hoverPoint = hoverIndex >= 0 ? points[hoverIndex] : undefined
   const shown = hoverPoint ?? last
+  const shownPredators = shown.predators
   const hoverX = hoverPoint === undefined ? null : px(hoverPoint.tick)
   const hoverMarkers =
     hoverX === null ? [] : visibleMarkers.filter((marker) => Math.abs(px(marker.tick) - hoverX) <= MARKER_SNAP_PX)
@@ -241,6 +262,15 @@ export function PopulationChart() {
           Resource food <strong className="figure">{numberFormat.format(Math.round(shown.food))}</strong>
           <span className="legend-note">right axis</span>
         </li>
+        {ecologyOn && (
+          <li>
+            <svg width="30" height="10" aria-hidden="true">
+              <line x1="1" x2="29" y1="5" y2="5" className="line-predator" />
+            </svg>
+            Predators <strong className="figure">{shownPredators === undefined ? '0' : numberFormat.format(shownPredators)}</strong>
+            <span className="legend-note">strip below, max {PREDATOR_MAX}</span>
+          </li>
+        )}
         <li>
           <svg width="14" height="14" aria-hidden="true">
             <line x1="7" x2="7" y1="0" y2="14" className="marker-line" />
@@ -268,7 +298,7 @@ export function PopulationChart() {
           Tick {numberFormat.format(shown.tick)}
         </li>
       </ul>
-      <div className="chart-wrap" ref={wrapRef}>
+      <div className="chart-wrap" ref={wrapRef} style={{ minHeight: HEIGHT }}>
         {width > 0 && (
           <svg
             className="chart"
@@ -276,7 +306,7 @@ export function PopulationChart() {
             height={HEIGHT}
             role="img"
             tabIndex={0}
-            aria-label={`Population and food from tick ${x0} to tick ${x1}. Latest population ${last.pop}, food ${Math.round(last.food)}. ${markers.length} player command${markers.length === 1 ? '' : 's'}. Use left and right arrow keys to read values.`}
+            aria-label={`Population and food${ecologyOn ? ' with a predator count strip' : ''} from tick ${x0} to tick ${x1}. Latest population ${last.pop}, food ${Math.round(last.food)}${last.predators === undefined ? '' : `, predators ${last.predators}`}. ${markers.length} player command${markers.length === 1 ? '' : 's'}. Use left and right arrow keys to read values.`}
             onPointerMove={onPointer}
             onPointerDown={onPointer}
             onPointerLeave={() => setHoverTick(null)}
@@ -310,6 +340,22 @@ export function PopulationChart() {
                 </g>
               )
             })}
+            {ecologyOn && (
+              <g className="predator-strip">
+                <title>Predators alive (0 to the cap of {PREDATOR_MAX})</title>
+                <rect x={MARGIN.left} y={stripTop} width={plotWidth} height={STRIP_PX} className="strip-bg" />
+                <line x1={MARGIN.left} x2={width - MARGIN.right} y1={stripY(PREDATOR_MAX)} y2={stripY(PREDATOR_MAX)} className="strip-cap" />
+                {[0, PREDATOR_MAX / 2, PREDATOR_MAX].map((value) => (
+                  <text key={value} x={MARGIN.left - 6} y={stripY(value) + 4} textAnchor="end" className="axis-text">
+                    {value}
+                  </text>
+                ))}
+                <text x={MARGIN.left + 4} y={stripTop + 11} className="strip-label">
+                  Predators
+                </text>
+                {predatorPath !== '' && <path d={predatorPath} className="line-predator" />}
+              </g>
+            )}
             {xTicks.map((tick) => (
               <text key={tick.value} x={px(tick.value)} y={HEIGHT - 8} textAnchor="middle" className="axis-text x-tick">
                 {tick.label}
@@ -371,6 +417,15 @@ export function PopulationChart() {
                 <line x1={hoverX} x2={hoverX} y1={MARGIN.top} y2={MARGIN.top + plotHeight} className="hover-line" />
                 <circle cx={hoverX} cy={popY(hoverPoint.pop)} r="4" className="dot-pop" />
                 <rect x={hoverX - 4} y={foodY(hoverPoint.food) - 4} width="8" height="8" className="dot-food" />
+                {ecologyOn && hoverPoint.predators !== undefined && (
+                  <>
+                    <line x1={hoverX} x2={hoverX} y1={stripTop} y2={stripTop + STRIP_PX} className="hover-line" />
+                    <path
+                      d={`M${hoverX},${stripY(hoverPoint.predators) - 5}L${hoverX + 5},${stripY(hoverPoint.predators)}L${hoverX},${stripY(hoverPoint.predators) + 5}L${hoverX - 5},${stripY(hoverPoint.predators)}Z`}
+                      className="dot-predator"
+                    />
+                  </>
+                )}
               </g>
             )}
           </svg>
@@ -387,6 +442,12 @@ export function PopulationChart() {
               <dd className="figure">{numberFormat.format(hoverPoint.pop)}</dd>
               <dt>Food</dt>
               <dd className="figure">{numberFormat.format(Math.round(hoverPoint.food))}</dd>
+              {hoverPoint.predators !== undefined && (
+                <>
+                  <dt>Predators</dt>
+                  <dd className="figure">{numberFormat.format(hoverPoint.predators)}</dd>
+                </>
+              )}
             </dl>
             {hoverBands.map((band, index) => (
               <p key={`band-${index}`} className="tooltip-command">

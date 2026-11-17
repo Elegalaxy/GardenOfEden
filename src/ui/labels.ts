@@ -96,13 +96,21 @@ export function commandName(command: CommandType, nodeKind?: NodeKind, eventKind
   return nodeKind === undefined ? 'place node' : `place ${nodeKind}`
 }
 
-/** What a predator is doing: chasing a bot, resting (with the ticks left) or prowling. */
-export type PredatorActivity = { kind: 'hunting'; targetId: number } | { kind: 'resting'; ticksLeft: number } | { kind: 'prowling' }
+/** What a predator is doing: chasing a bot, resting (with the ticks left), fed and walking home (E3), or prowling. */
+export type PredatorActivity =
+  | { kind: 'hunting'; targetId: number }
+  | { kind: 'resting'; ticksLeft: number }
+  | { kind: 'sated' }
+  | { kind: 'prowling' }
 
-/** Reads a predator's state at `tick`: resting while `tick <= restUntil` (checked first), hunting while it has a target, else prowling. */
-export function predatorActivity(hunt: { targetId: number | null; restUntil: number } | null, tick: number): PredatorActivity {
+/**
+ * Reads a predator's state at `tick`: resting while `tick <= restUntil` (checked first), then sated (E3: with ecology on, a
+ * predator at or above its hunt-below energy does not bite), hunting while it has a target, else prowling.
+ */
+export function predatorActivity(hunt: { targetId: number | null; restUntil: number } | null, tick: number, sated = false): PredatorActivity {
   if (hunt === null) return { kind: 'prowling' }
   if (hunt.restUntil > 0 && tick <= hunt.restUntil) return { kind: 'resting', ticksLeft: hunt.restUntil - tick }
+  if (sated) return { kind: 'sated' }
   if (hunt.targetId !== null) return { kind: 'hunting', targetId: hunt.targetId }
   return { kind: 'prowling' }
 }

@@ -19,7 +19,7 @@ import type { ViewWorld } from './viewWorld.ts'
 // The page draws and reads from a ViewWorld built out of frames. These tests check that it answers
 // every question the panels ask exactly as the World it mirrors does.
 
-// Fixed predators: the page's mirror has no `ecology` key, so its live sample would lack `predators` that an ecology world's sample has (E2 note).
+// Fixed predators (ecology off): keeps this world's pinned numbers. The ecology case is its own describe below (E3: the frame now carries `ecology`).
 const fixedRules = { ...rules, tuning: { ...rules.tuning, predator: { ...rules.tuning.predator, ecology: { ...rules.tuning.predator.ecology, enabled: false } } } }
 
 function busyWorld(): World {
@@ -184,5 +184,40 @@ describe('applyFrame', () => {
     applyFrame(view, structuredClone(buildFrame(world, run(world), target.id, false)))
     expect(view.tick).toBe(61)
     expect(view.selectedBot?.memory.length).toBe(memoryBefore) // unchanged until the next slow frame
+  })
+})
+
+describe('ViewWorld with predator ecology (E3)', () => {
+  const offRules = fixedRules
+
+  it('mirrors dens and counters, and the page samples predators like the world does', () => {
+    const world = createWorld('eco', edenPreset, rules)
+    for (let i = 0; i < 400; i += 1) step(world, rules)
+    const view = toViewWorld(world, 'eden')
+    expect(world.ecology).toBeDefined()
+    expect(view.ecology).toEqual(world.ecology)
+    expect(view.ecology).not.toBe(world.ecology)
+    expect(takeSample(view)).toEqual(takeSample(world))
+    expect(takeSample(view).predators).toBeGreaterThan(0)
+  })
+
+  it('has no ecology key for a world made with ecology off', () => {
+    const world = createWorld('eco', edenPreset, offRules)
+    for (let i = 0; i < 50; i += 1) step(world, offRules)
+    const view = toViewWorld(world, 'eden')
+    expect(Object.hasOwn(view, 'ecology')).toBe(false)
+    expect(takeSample(view)).toEqual(takeSample(world))
+    expect(takeSample(view).predators).toBeUndefined()
+  })
+
+  it('drops the key when a later frame of the same run has none, and updates it in place otherwise', () => {
+    const eco = createWorld('eco', edenPreset, rules)
+    const view = toViewWorld(eco, 'eden')
+    expect(view.ecology).toBeDefined()
+    const plain = createWorld('eco', edenPreset, offRules)
+    applyFrame(view, structuredClone(buildFrame(plain, run(plain, 0), null, false)))
+    expect(Object.hasOwn(view, 'ecology')).toBe(false)
+    applyFrame(view, structuredClone(buildFrame(eco, run(eco, 0), null, false)))
+    expect(view.ecology).toEqual(eco.ecology)
   })
 })

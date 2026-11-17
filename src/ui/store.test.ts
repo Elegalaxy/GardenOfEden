@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { tuning } from '../content/index.ts'
 import { stateHash } from '../sim/hash.ts'
+import type { Command } from '../sim/types.ts'
 import type { FromWorker, ToWorker } from './protocol.ts'
 import { MAX_BATCH } from './simHost.ts'
 import { createInlineClient } from './simClient.ts'
@@ -67,6 +68,27 @@ describe('dispatch', () => {
     expect(result.ok).toBe(false)
     expect(getSnapshot().commandCount).toBe(count)
     expect(getSnapshot().notice).toMatchObject({ ok: false })
+  })
+
+  it('names who the predators are when a placement hits the cap (E3)', async () => {
+    const max = tuning.predator.maxCount
+    let result = await dispatch({ type: 'placeNode', kind: 'predator', x: 5.5, y: 5.5 })
+    for (let i = 1; i < max + 1 && result.ok; i += 1) {
+      result = await dispatch({ type: 'placeNode', kind: 'predator', x: 5.5 + 15 * (i % 6), y: 5.5 + 20 * Math.floor(i / 6) })
+    }
+    expect(result.ok).toBe(false)
+    const text = getSnapshot().notice?.text ?? ''
+    expect(text.startsWith(`Predator cap reached (${max} / ${max}: `)).toBe(true)
+    expect(text).toContain('founder')
+    expect(text).toContain('placed')
+    expect(text).toContain('Remove one to place another.')
+  })
+
+  it('adds the cap note to a bulk placement that hit the predator cap', async () => {
+    const cmds: Command[] = Array.from({ length: tuning.predator.maxCount + 3 }, (_, i) => ({ type: 'placeNode', kind: 'predator', x: 5.5 + 15 * (i % 6), y: 5.5 + 20 * Math.floor(i / 6) }))
+    const result = await dispatchBatch(cmds, 'predators')
+    expect(result.refused).toBeGreaterThan(0)
+    expect(getSnapshot().notice?.text).toContain('(cap reached). Predator cap reached (')
   })
 
   it('applies a command after the advance sent before it, so it is recorded at that tick', async () => {

@@ -135,6 +135,8 @@ describe('frames', () => {
     expect(frame.fast.totalBirths).toBe(host.world.totalBirths)
     expect(frame.fast.deathsByCause).toEqual(host.world.deathsByCause)
     expect(frame.fast.lineageLength).toBe(host.world.lineage.length)
+    expect(frame.fast.ecology).toEqual(host.world.ecology ?? null)
+    expect(frame.fast.ecology?.dens.length).toBeGreaterThan(0)
     unpackBots(frame.fast.bots).forEach((view, i) => {
       const bot = host.world.bots[i]!
       expect(view).not.toHaveProperty('memory')

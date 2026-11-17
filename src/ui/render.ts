@@ -25,7 +25,8 @@
 // expanding ring shows the impact. The global events (drought, bounty) are
 // banners over the map, in WorldCanvas.
 
-import type { ActiveEvent, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
+import { isHungry } from '../sim/predators.ts'
+import type { ActiveEvent, Den, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
 import { PREDATOR_BODY_CELLS, botPosition, findBot, findNode, predatorPosition } from './geometry.ts'
@@ -226,23 +227,52 @@ function ruinCovered(ruin: WorldNode, predators: WorldNode[]): boolean {
 }
 
 /**
+ * A predator den (E3): a small arch (a semicircle on a flat base, about 1.1 cells across the radius, at least 7 px) stroked in the
+ * predator's light tone over a faint dark fill. Dens sit where a grove's resource grows, so it is drawn after the resources, as an
+ * outline the R shows through. An empty den (`vacantSince` set, a newcomer is due) is drawn dashed and fainter, so the difference is
+ * in the line style, not only in the strength of the colour.
+ */
+function drawDen(ctx: CanvasRenderingContext2D, den: Den, layout: Layout): void {
+  const cx = layout.offsetX + den.x * layout.scale
+  const cy = layout.offsetY + den.y * layout.scale
+  const r = Math.max(7, layout.scale * 1.1)
+  const vacant = den.vacantSince !== null
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy + r * 0.5, r, Math.PI, 0)
+  ctx.closePath()
+  ctx.globalAlpha = vacant ? 0.15 : 0.3
+  ctx.fillStyle = COLORS.botEdge
+  ctx.fill()
+  ctx.globalAlpha = vacant ? 0.6 : 0.95
+  ctx.lineWidth = 2
+  ctx.lineJoin = 'round'
+  ctx.setLineDash(vacant ? [3, 3] : [])
+  ctx.strokeStyle = PREDATOR_FILL
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
  * A predator (M21c): a light chevron pointing along its heading (a V-shaped arrowhead with a dark edge and the
  * letter V), at its position blended by `alpha`, inside a faint dashed ring at the threat radius. A resting
  * predator (tick <= restUntil) is dimmed and gets a "z". Shape, ring and letter carry the meaning, not the colour.
  */
-function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout, tick: number, alpha: number): void {
+function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout, tick: number, alpha: number, tuning: Tuning): void {
   const position = predatorPosition(node, alpha)
   const cx = layout.offsetX + position.x * layout.scale
   const cy = layout.offsetY + position.y * layout.scale
   const resting = node.hunt !== null && node.hunt.restUntil > 0 && tick <= node.hunt.restUntil
   const heading = node.hunt?.heading ?? 0
+  // E3: with ecology on, a fed predator does not bite, so its threat ring is dotted and fainter (a hungry or ecology-off one is as before).
+  const fed = !resting && node.hunt !== null && !isHungry(node.hunt, tuning)
 
   ctx.save()
   ctx.beginPath()
   ctx.arc(cx, cy, node.radius * layout.scale, 0, Math.PI * 2)
-  ctx.globalAlpha = resting ? 0.25 : 0.45
+  ctx.globalAlpha = resting || fed ? 0.25 : 0.45
   ctx.lineWidth = 1.5
-  ctx.setLineDash([5, 4])
+  ctx.setLineDash(fed ? [2, 6] : [5, 4])
   ctx.strokeStyle = COLORS.predator
   ctx.stroke()
   ctx.setLineDash([])
@@ -566,12 +596,14 @@ export function drawWorld(
   for (const node of world.nodes) {
     if (node.kind === 'resource') drawResource(ctx, node, layout)
   }
+  // Dens sit at the old grove centres, under a resource's disc, so they are drawn over the resources (an outline, so the R shows through).
+  for (const den of world.ecology?.dens ?? []) drawDen(ctx, den, layout)
   const predators = world.nodes.filter((node) => node.kind === 'predator')
   for (const node of world.nodes) {
     if (node.kind === 'ruin') drawRuin(ctx, node, layout, ruinCovered(node, predators))
   }
   for (const node of world.nodes) {
-    if (node.kind === 'predator') drawPredator(ctx, node, layout, world.tick, alpha)
+    if (node.kind === 'predator') drawPredator(ctx, node, layout, world.tick, alpha, tuning)
   }
 
   const adultAge = tuning.bot.adultAge

@@ -25,7 +25,8 @@
 //
 // From the worker:
 //   ready                   the worker started (the page falls back to running the host itself if it never comes).
-//   frame{frame, ack?}      the picture of the world (see Frame). `ack: 'advance'` answers an advance.
+//   frame{frame, ack?}      the picture of the world (see Frame). `ack: 'advance'` answers an advance. Its fast data carries
+//                           `ecology` (E3: predator dens and counters, null when the world has none) every frame.
 //   commandResult{...}      the command's result (the frame showing its effect is sent just before).
 //   commandsResult{...}     one result per command of a batch, in order (the one frame showing the effect is sent just before).
 //   loadProgress, loadDone  the load's progress, and how it ended (a loaded run's frame is sent just before).
@@ -46,6 +47,7 @@ import type {
   Command,
   DeathsByCause,
   Eaten,
+  PredatorEcology,
   Sample,
   SimEvent,
   WorldNode,
@@ -93,6 +95,8 @@ export type FastData = {
   commandCount: number
   /** Records in the lineage store. */
   lineageLength: number
+  /** Predator ecology (E3): the dens and counters, or null in a world made without it. Small, so it rides every frame. */
+  ecology: PredatorEcology | null
 }
 
 /** Sent at most about four times a second, when paused, and right after a command, a selection or a new run. */

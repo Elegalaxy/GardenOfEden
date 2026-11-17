@@ -9,3 +9,12 @@ export function PredatorKey() {
     </svg>
   )
 }
+
+/** The den's key in the map legend (E3): an arch on a flat base, as drawn on the map (the dashed variant is the empty den). */
+export function DenKey() {
+  return (
+    <svg className="key key-den" viewBox="0 0 22 22" aria-hidden="true">
+      <path d="M3 17 A8 8 0 0 1 19 17 Z" />
+    </svg>
+  )
+}

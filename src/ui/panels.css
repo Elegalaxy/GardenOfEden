@@ -891,6 +891,39 @@ button.log-button[aria-pressed='true'] {
   stroke-dasharray: 6 4;
 }
 
+/* Predator strip (E3): a dotted step line on its own 0..cap scale under the plot, with a faint dashed cap line. */
+.line-predator {
+  fill: none;
+  stroke: var(--predator);
+  stroke-width: 2;
+  stroke-dasharray: 1 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.strip-bg {
+  fill: rgba(255, 255, 255, 0.03);
+}
+
+.strip-cap {
+  stroke: var(--text-muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  opacity: 0.5;
+}
+
+.strip-label {
+  fill: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.dot-predator {
+  fill: var(--predator);
+  stroke: #0e1118;
+  stroke-width: 1.5;
+}
+
 /* Event bands: a pattern per event (lines, dots, crosshatch), a dashed left edge and a label. */
 .band-stroke {
   stroke: var(--text-muted);

@@ -36,7 +36,7 @@
 // `settled()` to wait until every earlier message has been answered.
 
 import { useSyncExternalStore } from 'react'
-import { SIM_VERSION, edenPreset, rules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, rules, tuning } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
@@ -52,6 +52,7 @@ import type { BotColour } from './botColour.ts'
 import { nextHeatLayer } from './heat.ts'
 import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
 import { formatPoint } from './labels.ts'
+import { predatorCapNotice, predatorCounts } from './predatorInfo.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
 import { DEFAULT_SEED, LOADING_REASON, MAX_BATCH, checkLoad, isValidSeed } from './simHost.ts'
 import { createInlineClient, createWorkerClient } from './simClient.ts'
@@ -529,6 +530,11 @@ function describeApplied(cmd: Command, id: number, killed: number): string {
   }
 }
 
+/** True when a refused predator placement hit the cap, going by the page's copy of the nodes (E3: the notice then says who the predators are). */
+function predatorCapHit(cmd: Command, reason: string): boolean {
+  return cmd.type === 'placeNode' && cmd.kind === 'predator' && /too many/i.test(reason) && predatorCounts(view.nodes, tuning).total >= tuning.predator.maxCount
+}
+
 /**
  * Asks the worker to apply a player command between two ticks, in the order sent. Resolves with its result once the
  * page's copy shows the effect. A rejected command changes nothing but the notice.
@@ -542,7 +548,8 @@ export function dispatch(cmd: Command): Promise<CommandResult> {
   return ask((reqId) => ({ type: 'command', reqId, cmd })).then((msg) => {
     if (msg.type !== 'commandResult') return { ok: false, reason: 'No answer.' }
     const { result } = msg
-    say(result.ok, result.ok ? describeApplied(cmd, result.id, msg.meteorKills) : result.reason)
+    const capped = !result.ok && predatorCapHit(cmd, result.reason)
+    say(result.ok, result.ok ? describeApplied(cmd, result.id, msg.meteorKills) : capped ? predatorCapNotice(view.nodes, tuning) : result.reason)
     publish()
     return result
   })
@@ -576,7 +583,9 @@ export async function dispatchBatch(cmds: Command[], noun: string): Promise<Batc
       }
     }
   }
-  say(result.placed > 0, batchNotice(noun, result))
+  const capNote =
+    result.firstReason !== null && cmds.some((cmd) => predatorCapHit(cmd, result.firstReason ?? '')) ? ` ${predatorCapNotice(view.nodes, tuning)}` : ''
+  say(result.placed > 0, `${batchNotice(noun, result)}${capNote}`)
   publish()
   return result
 }

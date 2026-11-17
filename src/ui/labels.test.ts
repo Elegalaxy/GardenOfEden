@@ -138,6 +138,14 @@ describe('predatorActivity', () => {
     expect(predatorActivity(null, 5)).toEqual({ kind: 'prowling' })
   })
 
+  it('reads sated after resting and before hunting (E3)', () => {
+    expect(predatorActivity({ targetId: 4, restUntil: 100 }, 101, true)).toEqual({ kind: 'sated' })
+    expect(predatorActivity({ targetId: null, restUntil: 0 }, 5, true)).toEqual({ kind: 'sated' })
+    expect(predatorActivity({ targetId: 4, restUntil: 100 }, 90, true)).toEqual({ kind: 'resting', ticksLeft: 10 })
+    expect(predatorActivity(null, 5, true)).toEqual({ kind: 'prowling' })
+    expect(predatorActivity({ targetId: 4, restUntil: 0 }, 5, false)).toEqual({ kind: 'hunting', targetId: 4 })
+  })
+
   it('sums the three memory slot classes', () => {
     expect(memoryCapacity(tuning.memory)).toBe(tuning.memory.cap + tuning.memory.waterCap + tuning.memory.predatorCap)
   })

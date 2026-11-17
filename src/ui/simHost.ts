@@ -103,6 +103,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
       familyLearned: world.familyLearned,
       commandCount: world.commands.length,
       lineageLength: world.lineage.length,
+      ecology: world.ecology ?? null,
     },
     slow: slow
       ? {

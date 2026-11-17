@@ -10,6 +10,8 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
+import { denFor, originText, predatorCounts, predatorLifeInfo } from './predatorInfo.ts'
+import type { PredatorLifeInfo } from './predatorInfo.ts'
 import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
@@ -210,7 +212,8 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
 /** A predator's extra rows (M21c): what it is doing, its record and the numbers that make it dangerous. */
 function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const hunt = node.hunt
-  const activity = predatorActivity(hunt, world.tick)
+  const life = hunt === null ? null : predatorLifeInfo(hunt, tuning, predatorCounts(world.nodes, tuning).total)
+  const activity = predatorActivity(hunt, world.tick, life !== null && !life.hungry)
   const prey = activity.kind === 'hunting' ? findBot(world, activity.targetId) : undefined
   return (
     <>
@@ -225,16 +228,78 @@ function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
           )
         ) : activity.kind === 'resting' ? (
           <>Resting {activity.ticksLeft.toLocaleString('en-US')} ticks</>
+        ) : activity.kind === 'sated' ? (
+          'Fed, walking home (does not bite)'
         ) : (
           'Prowling'
         )}
       </Row>
       <Row label="Kills">{hunt === null ? 0 : hunt.kills.toLocaleString('en-US')}</Row>
-      {hunt !== null && <Row label="Home">{formatPoint(hunt.homeX, hunt.homeY)}</Row>}
+      {hunt !== null && (
+        <Row label="Home">
+          {formatPoint(hunt.homeX, hunt.homeY)}
+          {life !== null && ` · ${world.ecology !== undefined && denFor(world.ecology.dens, hunt, tuning.predator.ecology.denRadius) !== null ? 'den' : 'no den (cubs make none)'}`}
+        </Row>
+      )}
       <Row label="Threat radius">{fixed1(node.radius)} cells</Row>
       <Row label="Bite range">{fixed1(tuning.predator.biteRange)} cells</Row>
       <Row label="Damage">{fixed1(node.damage)} health / tick</Row>
       <Row label="Speed">{fixed2(tuning.predator.speed)} cells / tick</Row>
+    </>
+  )
+}
+
+/** Why the next cub has to wait, in a few words (the kills case shows the kill count itself). */
+const CUB_BLOCK_TEXT = {
+  age: 'too young',
+  energy: 'needs more energy',
+  cap: 'predator cap reached',
+} as const
+
+/** The ecology rows of a predator (E3), under the main rows: energy, hunger, age, the next cub, where it came from and its den. */
+function PredatorLifeSection({ hunt, life, world }: { hunt: NonNullable<WorldNode['hunt']>; life: PredatorLifeInfo; world: ViewWorld }) {
+  const { ecology } = tuning.predator
+  const origin = originText(hunt.life!)
+  const parent = origin.parentId === null ? undefined : findNode(world, origin.parentId)
+  const ticks = (value: number): string => `${value.toLocaleString('en-US')} ticks`
+  return (
+    <>
+      <h4>Life</h4>
+      <dl className="kv">
+        <Meter label="Energy" value={life.energy} max={life.maxEnergy} low={life.hungry} />
+        <Row label="Hunger">
+          {life.hungry
+            ? `Hungry (hunts below ${life.huntBelow})`
+            : life.ticksToHungry === null
+              ? 'Fed'
+              : `Fed, hungry again in ${ticks(life.ticksToHungry)}`}
+        </Row>
+        <Row label="Starves in">{life.ticksToStarve === null ? 'does not starve' : ticks(life.ticksToStarve)}</Row>
+        <Row label="Age">
+          {life.age.toLocaleString('en-US')} / {life.maxAge.toLocaleString('en-US')} ticks
+          {life.adult ? '' : ` · young, breeds from ${ecology.adultAge.toLocaleString('en-US')}`}
+        </Row>
+        <Row label="Next cub">
+          {life.cubBlock === null
+            ? 'ready, looking for territory'
+            : life.cubBlock === 'kills'
+              ? `${life.kidsKills} / ${life.killsPerCub} kills`
+              : `${life.kidsKills} / ${life.killsPerCub} kills · ${CUB_BLOCK_TEXT[life.cubBlock]}`}
+        </Row>
+        <Row label="Origin">
+          {origin.parentId === null ? (
+            origin.text
+          ) : parent === undefined ? (
+            <>
+              {origin.text} · #{origin.parentId} gone
+            </>
+          ) : (
+            <>
+              Cub of <SelectButton target={{ kind: 'node', id: parent.id }}>#{parent.id}</SelectButton>, born tick {hunt.life!.born.toLocaleString('en-US')}
+            </>
+          )}
+        </Row>
+      </dl>
     </>
   )
 }
@@ -283,6 +348,9 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
         )}
         <Row label="Bots inside">{botsInside(world, node)}</Row>
       </dl>
+      {node.kind === 'predator' && node.hunt !== null && node.hunt.life !== undefined && (
+        <PredatorLifeSection hunt={node.hunt} life={predatorLifeInfo(node.hunt, tuning, predatorCounts(world.nodes, tuning).total)!} world={world} />
+      )}
     </>
   )
 }
@@ -298,6 +366,10 @@ function GoneNotice({ selection, world }: { selection: Selection; world: ViewWor
     }
     if (selection.kind === 'node' && event.command === 'removeNode' && event.nodeId === selection.id) {
       detail = `Removed at tick ${event.tick}.`
+      break
+    }
+    if (selection.kind === 'node' && event.type === 'predator' && event.nodeId === selection.id && (event.predatorEvent === 'starved' || event.predatorEvent === 'aged')) {
+      detail = `${event.predatorEvent === 'starved' ? 'Starved' : 'Died of age'} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
       break
     }
     if (selection.kind === 'node' && event.type === 'event' && event.nodeId === selection.id) {
