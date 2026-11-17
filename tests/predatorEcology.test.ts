@@ -53,16 +53,18 @@ describe('ecology off equals before E1', () => {
   })
 
   it('Eden seed a with a placed and a removed predator hashes as it did before E1, with no new keys', () => {
-    const world = createWorld('a', edenPreset, rules)
+    // Fixed predators: the pin belongs to the world without ecology, whatever the shipped rules say.
+    const off = staticPredators(rules)
+    const world = createWorld('a', edenPreset, off)
     let predatorDraws = 0
     for (let i = 0; i < 5000; i += 1) {
-      if (world.tick === 1000) expect(applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 40.5, y: 30.5 }).ok).toBe(true)
+      if (world.tick === 1000) expect(applyCommand(world, off, { type: 'placeNode', kind: 'predator', x: 40.5, y: 30.5 }).ok).toBe(true)
       if (world.tick === 3000) {
         const placed = predatorsOf(world).slice(-1)[0]!
-        expect(applyCommand(world, rules, { type: 'removeNode', id: placed.id }).ok).toBe(true)
+        expect(applyCommand(world, off, { type: 'removeNode', id: placed.id }).ok).toBe(true)
       }
       predatorDraws += predatorsOf(world).length
-      step(world, rules)
+      step(world, off)
     }
     // Recorded on the untouched tree (before E1) with the same script.
     expect(stateHash(world)).toBe('a055e51d6b1c90a7')
@@ -133,7 +135,7 @@ describe('hunger and kills', () => {
     expect(node.hunt!.targetId).toBeNull()
     expect(world.rng.predator).toEqual(reference)
     // The same sated predator bites nobody in the shipped (ecology off) rules' sense: off means always hungry.
-    expect(exposureAt(world, node.x, node.y, rules.tuning).predator).toBeGreaterThan(0)
+    expect(exposureAt(world, node.x, node.y, staticPredators(rules).tuning).predator).toBeGreaterThan(0)
   })
 })
 
@@ -163,7 +165,7 @@ describe('starving and ageing', () => {
   })
 
   it('a bot forgets a predator that died', () => {
-    const quick = withEcology(rules, { drain: 100 })
+    const quick = withEcology(rules, { maxAge: 1 })
     const world = createWorld('a', scene({ nodes: [{ kind: 'predator', x: 5, y: 5 }], bots: [{ x: 55, y: 55 }] }), quick)
     const node = predatorsOf(world)[0]!
     const entry: MemoryEntry = { nodeId: node.id, kind: 'predator', x: 5, y: 5, radius: node.radius, seenTick: 0, amount: 0, learnedFrom: null }
@@ -344,8 +346,12 @@ describe('commands and determinism', () => {
       expect(() => checkEcology({ ...eco, [name]: Number.NaN })).toThrow(RangeError)
     }
     expect(() => checkEcology({ ...eco, huntBelow: eco.maxEnergy + 1 })).toThrow(RangeError)
+    // A cub must be affordable after a kill: cubCost + huntBelow <= maxEnergy - drain.
+    expect(() => checkEcology({ ...eco, drain: 0, cubCost: eco.maxEnergy - eco.huntBelow })).not.toThrow()
+    expect(() => checkEcology({ ...eco, drain: 0.02, cubCost: eco.maxEnergy - eco.huntBelow })).toThrow(RangeError)
+    expect(() => checkEcology({ ...eco, cubCost: eco.maxEnergy - eco.huntBelow - eco.drain - 1 })).not.toThrow()
     expect(() => createWorld('a', blankPreset, withEcology(rules, { homeTries: 0 }))).toThrow(RangeError)
-    const bad = { ...rules, tuning: { ...rules.tuning, predator: { ...pt, ecology: { ...eco, homeTries: 0 } } } }
+    const bad = { ...rules, tuning: { ...rules.tuning, predator: { ...pt, ecology: { ...eco, enabled: false, homeTries: 0 } } } }
     expect(() => createWorld('a', blankPreset, bad)).not.toThrow()
   })
 
@@ -389,13 +395,13 @@ describe('harness', () => {
   })
 
   it('the survey table ends with the predator columns, one cell per heading', () => {
-    const row = surveySeed('a', edenPreset, rules, 300, 100)
+    const row = surveySeed('a', edenPreset, staticPredators(rules), 300, 100)
     expect(row.preds).toBe(3)
     expect(row.predMin).toBe(3)
     expect(row.predBorn + row.predArrived + row.predStarved + row.predAged).toBe(0)
     const [head, line] = formatSurvey([row]).split('\n') as [string, string]
     const headings = head.trim().split(/\s+/)
-    expect(headings.slice(-9)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle'])
+    expect(headings.slice(-11)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%'])
     expect(headings.slice(0, 27).at(-1)).toBe('inb')
     expect(line.trim().split(/\s+/)).toHaveLength(headings.length)
   })

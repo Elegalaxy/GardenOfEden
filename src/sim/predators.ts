@@ -38,7 +38,7 @@ import { nextFloat } from './rng.ts'
 import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
 
-/** Throws when the ecology numbers cannot work: every number above 0 (`drain` may be 0) and `huntBelow` at most `maxEnergy`. */
+/** Throws when the ecology numbers cannot work: every number above 0 (`drain` may be 0) `huntBelow` at most `maxEnergy`, and `cubCost + huntBelow` at most `maxEnergy - drain`. */
 export function checkEcology(ecology: Tuning['predator']['ecology']): void {
   const { enabled: _enabled, drain, ...positive } = ecology
   if (!(Number.isFinite(drain) && drain >= 0)) throw new RangeError(`predator.ecology.drain must be a number from 0, received ${drain}`)
@@ -47,6 +47,13 @@ export function checkEcology(ecology: Tuning['predator']['ecology']): void {
   }
   if (ecology.huntBelow > ecology.maxEnergy) {
     throw new RangeError(`predator.ecology.huntBelow (${ecology.huntBelow}) must not exceed maxEnergy (${ecology.maxEnergy})`)
+  }
+  // A kill tops energy up to at most maxEnergy and predatorLife takes `drain` off before the cub check, so a cub needs
+  // cubCost + huntBelow <= maxEnergy - drain; with anything larger no predator could ever breed.
+  if (ecology.cubCost + ecology.huntBelow > ecology.maxEnergy - drain) {
+    throw new RangeError(
+      `predator.ecology.cubCost (${ecology.cubCost}) + huntBelow (${ecology.huntBelow}) must not exceed maxEnergy (${ecology.maxEnergy}) minus drain (${drain}), or no predator could ever breed`,
+    )
   }
 }
 

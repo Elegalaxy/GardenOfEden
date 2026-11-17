@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { blankPreset, edenPreset, rules } from '../src/content/index.ts'
+import { blankPreset, edenPreset, rules as shippedRules } from '../src/content/index.ts'
 import { applyCommand, checkCommand } from '../src/sim/commands.ts'
 import { shareFamilyKnowledge, inheritMemory } from '../src/sim/family.ts'
 import { stateHash } from '../src/sim/hash.ts'
@@ -14,11 +14,14 @@ import { createRng, nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { MemoryEntry, NodeKind, Preset, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld, placedNodeCount } from '../src/sim/world.ts'
+import { staticPredators } from './variants.ts'
 
 // Predators (M21a): the hunter node, its movement, bites, kills and what bots remember of it. These need
 // the real numbers from src/content, so they live here and not next to src/sim. Most tests call
 // `movePredators` directly with the tick set by hand, so a bot can be held still.
 
+// These are the M21a mechanics of fixed predators, so they run on the rules without predator ecology (E2 switches it on in the shipped ones).
+const rules = staticPredators(shippedRules)
 const { tuning, nodeDefs } = rules
 const pt = tuning.predator
 

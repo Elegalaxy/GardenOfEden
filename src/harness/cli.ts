@@ -17,6 +17,7 @@
 // The last survey columns (E1) are `preds` (predators at the end), `pMin`/`pMax` (their range after the warmup), `pBorn`, `pArr`, `pStarve`,
 // `pAged` (cubs born, newcomers arrived, predators starved or dead of age), `huntGap` (mean ticks between one predator's kills, the first
 // of each predator skipped) and `idle` (huntGap minus `predator.digestTicks`: the time a predator spent looking); a dash when there is no data.
+// E2 adds `pZero` (longest run of ticks after the warmup with no predator) and `pCap%` (share of those ticks at `predator.maxCount`).
 // `--set seasons.amplitude=0.4` (repeatable, either form) replaces one existing number or boolean of the tuning for this run only
 // (an unknown path is an error), so a sweep needs no edit to tuning.ts; applied after the other switches, in order.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either

@@ -246,7 +246,7 @@ export const tuning: Tuning = {
       adultAge: 2000,
       killsPerCub: 3,
       cubEnergy: 60,
-      cubCost: 30,
+      cubCost: 25,
       homeTries: 8,
       homeSpacing: 18,
       homeMargin: 4,

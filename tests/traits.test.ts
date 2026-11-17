@@ -11,7 +11,7 @@ import { step } from '../src/sim/step.ts'
 import { TRAIT_NAMES, meanTraits } from '../src/sim/traits.ts'
 import type { MemoryEntry, Preset, Rules, TraitName, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { noSeasons } from './variants.ts'
+import { noSeasons, staticPredators } from './variants.ts'
 
 // Trait inheritance (M6) with the real rules and the eden preset: children
 // inherit with a bounded mutation, the result is deterministic, and the
@@ -195,7 +195,8 @@ describe('what a trait costs', () => {
 // bots with a moderate one. These are the tradeoffs from tuning.ts at work. The race runs without seasons (S2): it
 // tests what a trait costs, and a 4,000-tick race should not hang on which season the founders start in.
 describe('selection', () => {
-  const noMutation = noSeasons(withMutation({ strength: 0 }))
+  // No seasons and fixed predators: the race tests what a trait costs, not how the predator population moves (E2).
+  const noMutation = noSeasons(staticPredators(withMutation({ strength: 0 })))
   const SEEDS = ['a', 'b', 'c', 'd', 'e', 'f']
 
   function lineages(seed: string, trait: TraitName, even: number, odd: number): { even: number; odd: number } {
@@ -463,7 +464,7 @@ describe('the four M22 traits', () => {
   describe('selection', () => {
     // A stalking predator that never digests (digestTicks 1) in open ground, bots standing in a ring around it:
     // a bot that can match its speed lives, one that cannot is caught.
-    const hunted: Rules = { ...rules, tuning: { ...tuning, predator: { ...tuning.predator, digestTicks: 1 }, mutation: { ...tuning.mutation, strength: 0 } } }
+    const hunted: Rules = staticPredators({ ...rules, tuning: { ...tuning, predator: { ...tuning.predator, digestTicks: 1 }, mutation: { ...tuning.mutation, strength: 0 } } })
     const field: Preset = {
       id: 'field',
       label: 'One hunter, a ring of bots',

@@ -19,14 +19,17 @@ import type { ViewWorld } from './viewWorld.ts'
 // The page draws and reads from a ViewWorld built out of frames. These tests check that it answers
 // every question the panels ask exactly as the World it mirrors does.
 
+// Fixed predators: the page's mirror has no `ecology` key, so its live sample would lack `predators` that an ecology world's sample has (E2 note).
+const fixedRules = { ...rules, tuning: { ...rules.tuning, predator: { ...rules.tuning.predator, ecology: { ...rules.tuning.predator.ecology, enabled: false } } } }
+
 function busyWorld(): World {
-  const world = createWorld('mirror', edenPreset, rules)
-  for (let i = 0; i < 300; i += 1) step(world, rules)
-  applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 30.5, y: 30.5 })
-  applyCommand(world, rules, { type: 'triggerEvent', event: 'plague', x: 50.5, y: 20.5 })
-  applyCommand(world, rules, { type: 'triggerEvent', event: 'drought' })
-  applyCommand(world, rules, { type: 'triggerEvent', event: 'meteor', x: 70.5, y: 40.5 })
-  for (let i = 0; i < 40; i += 1) step(world, rules)
+  const world = createWorld('mirror', edenPreset, fixedRules)
+  for (let i = 0; i < 300; i += 1) step(world, fixedRules)
+  applyCommand(world, fixedRules, { type: 'placeNode', kind: 'predator', x: 30.5, y: 30.5 })
+  applyCommand(world, fixedRules, { type: 'triggerEvent', event: 'plague', x: 50.5, y: 20.5 })
+  applyCommand(world, fixedRules, { type: 'triggerEvent', event: 'drought' })
+  applyCommand(world, fixedRules, { type: 'triggerEvent', event: 'meteor', x: 70.5, y: 40.5 })
+  for (let i = 0; i < 40; i += 1) step(world, fixedRules)
   return world
 }
 

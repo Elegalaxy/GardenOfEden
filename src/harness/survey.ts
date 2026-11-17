@@ -18,6 +18,8 @@
 // the cubs born, newcomers arrived and predators starved or dead of age (0 with ecology off). `huntGap` is the mean ticks between one
 // predator's kills (its first kill has no gap before it; read from `hunt.kills` once a tick) and `idle` the mean of gap minus `predator.digestTicks`,
 // so it is how long a predator spent looking for the next bot; both are null (a dash) when no predator killed twice.
+// E2 adds `pZero` (the longest run of ticks after the warmup with no predator at all) and `pCap%` (the share of ticks after the warmup with
+// `predator.maxCount` predators), the two bars that show a predator population dying out or filling the map; both after `idle`.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`).
 
@@ -33,6 +35,8 @@ import type { ScriptedCommand } from './script.ts'
 export type SeedSurvey = {
   seed: string
   ticks: number
+  /** The warmup the min, max and predator columns skip. */
+  warmup: number
   final: number
   min: number
   max: number
@@ -63,6 +67,10 @@ export type SeedSurvey = {
   /** Mean ticks between one predator's kills, and that minus `predator.digestTicks`; null when no predator killed twice. */
   huntGap: number | null
   idle: number | null
+  /** Longest run of ticks after the warmup with no predator alive (E2). */
+  predZeroRun: number
+  /** Ticks after the warmup with `predator.maxCount` predators alive (E2). */
+  predCapTicks: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -145,6 +153,12 @@ export function gapCell(value: number | null): string {
   return value === null ? '-' : value.toFixed(0)
 }
 
+/** The share of ticks after the warmup spent at the predator cap, as a whole percentage; a dash when no tick was counted. */
+function capCell(r: SeedSurvey): string {
+  const counted = r.ticks - r.warmup
+  return counted <= 0 ? '-' : ((100 * r.predCapTicks) / counted).toFixed(0)
+}
+
 /** A mean trait for a table cell: two decimals, or a dash when nobody is alive. */
 export function traitCell(traits: Traits | null, name: keyof Traits): string {
   return traits === null ? '-' : traits[name].toFixed(2)
@@ -165,6 +179,9 @@ export function surveySeed(
   let max = -Infinity
   let predMin = Infinity
   let predMax = -Infinity
+  let zeroRun = 0
+  let predZeroRun = 0
+  let predCapTicks = 0
   const gapTracker = createGapTracker()
   const gaps: number[] = []
   const predatorCount = (): number => world.nodes.filter((node) => node.kind === 'predator').length
@@ -178,6 +195,9 @@ export function surveySeed(
       const predators = predatorCount()
       predMin = Math.min(predMin, predators)
       predMax = Math.max(predMax, predators)
+      zeroRun = predators === 0 ? zeroRun + 1 : 0
+      predZeroRun = Math.max(predZeroRun, zeroRun)
+      if (predators >= rules.tuning.predator.maxCount) predCapTicks += 1
     }
   }
   if (min === Infinity) {
@@ -193,6 +213,7 @@ export function surveySeed(
   return {
     seed,
     ticks,
+    warmup,
     final: world.bots.length,
     min,
     max,
@@ -215,13 +236,15 @@ export function surveySeed(
     predAged: stats?.aged ?? 0,
     huntGap: gapMean,
     idle: gapMean === null ? null : gapMean - rules.tuning.predator.digestTicks,
+    predZeroRun,
+    predCapTicks,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -262,6 +285,8 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.predAged,
       gapCell(r.huntGap),
       gapCell(r.idle),
+      r.predZeroRun,
+      capCell(r),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),
