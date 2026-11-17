@@ -7,7 +7,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { ruinAmount } from '../src/sim/ruins.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World } from '../src/sim/types.ts'
-import { noCone } from './variants.ts'
+import { noCone, noPreyRule } from './variants.ts'
 import { createWorld, makeNode, placedNodeCount } from '../src/sim/world.ts'
 
 // Ruins (M7a): what a dead bot leaves behind. These need the real numbers from
@@ -79,8 +79,10 @@ describe('a death leaves a ruin', () => {
   })
 
   it('never logs a depleted event over a long eden run', () => {
-    const world = createWorld('b', edenPreset, rules)
-    for (let i = 0; i < 3000; i += 1) step(world, rules)
+    // Predator log events (cubs, arrivals, leavers) are not what this checks: the prey rule is off here.
+    const quiet = noPreyRule(rules)
+    const world = createWorld('b', edenPreset, quiet)
+    for (let i = 0; i < 3000; i += 1) step(world, quiet)
     expect(world.log.length).toBeGreaterThan(0)
     for (const event of world.log) expect(['birth', 'death', 'command']).toContain(event.type)
   })

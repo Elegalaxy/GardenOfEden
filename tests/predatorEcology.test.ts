@@ -48,7 +48,7 @@ function ready(node: WorldNode): void {
 const BIG = { width: 200, height: 200 }
 
 describe('ecology off equals before E1', () => {
-  it('ships on with the E2 numbers', () => {
+  it('ships on with the E2 numbers (killsPerCub 3 since P2)', () => {
     expect(eco).toEqual({
       enabled: true,
       drain: 0.02,
@@ -57,7 +57,7 @@ describe('ecology off equals before E1', () => {
       huntBelow: 60,
       maxAge: 12000,
       adultAge: 1500,
-      killsPerCub: 6,
+      killsPerCub: 3,
       cubEnergy: 50,
       cubCost: 30,
       homeTries: 8,

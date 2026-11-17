@@ -242,7 +242,7 @@ export const tuning: Tuning = {
     // `maxEnergy` and the drain comes off before the cub check, so a cub needs cubCost + huntBelow <= maxEnergy - drain (checkEcology refuses
     // anything else). `cubEnergy` must stay below `huntBelow`, or newborns start sated. E2 found that predators are limited by their
     // digest time, not by prey, so breeding is made rare (6 kills a cub, a 12,000-tick life): a predator breeds about once and the
-    // count peaks near 6 instead of sitting at the cap of 8, which cost the colony 60,000-tick extinctions.
+    // count peaks near 6 instead of sitting at the cap of 8, which cost the colony 60,000-tick extinctions. (P2: the prey rule below now holds the count down, so killsPerCub is 3.)
     ecology: {
       enabled: true,
       drain: 0.02,
@@ -251,7 +251,7 @@ export const tuning: Tuning = {
       huntBelow: 60,
       maxAge: 12000,
       adultAge: 1500,
-      killsPerCub: 6,
+      killsPerCub: 3,
       cubEnergy: 50,
       cubCost: 30,
       homeTries: 8,
@@ -260,10 +260,11 @@ export const tuning: Tuning = {
       denRadius: 4,
       recolonizeTicks: 3000,
     },
-    // Predator-prey rule (P1 mechanics, off; works only with ecology on): see `Tuning.predator.prey`. The predator limit is
+    // Predator-prey rule (P1 mechanics, P2 retune and switch-on; works only with ecology on): see `Tuning.predator.prey`. The predator limit is
     // floor(bots / perPredator), never below `minCount` (1: they cannot die out this way) nor above `maxCount`. Over the limit cubs and
     // newcomers wait, and after `leaveAfter` ticks over it the lowest-energy predator that was not placed by the player leaves.
-    prey: { enabled: false, perPredator: 12, minCount: 1, leaveAfter: 500 },
+    // P2: one predator per 16 bots, and with the limit now doing the capping, a cub only needs 3 kills (E2 had 6 to keep the count down). The sweep is in the doc/GAME_DESIGN.md changelog.
+    prey: { enabled: true, perPredator: 16, minCount: 1, leaveAfter: 500 },
   },
   // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by
   // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the

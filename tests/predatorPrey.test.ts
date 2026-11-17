@@ -10,7 +10,7 @@ import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { bestLag, pearson } from '../src/harness/survey.ts'
-import { noPreyRule, withPrey } from './variants.ts'
+import { noPreyRule, withEcology, withPrey } from './variants.ts'
 
 // Prey rule (P1, off): the predator limit, gated cubs and arrivals, leaving, and determinism. Most tests call `predatorLife`
 // directly with the tick set by hand, in worlds with no bots (so the limit is `minCount`).
@@ -38,14 +38,30 @@ function threePredators(r: Rules): World {
 }
 
 describe('prey rule off equals before P1', () => {
-  it('ships off with the planned numbers', () => {
-    expect(pt.prey).toEqual({ enabled: false, perPredator: 12, minCount: 1, leaveAfter: 500 })
+  it('ships on with the P2 numbers', () => {
+    expect(pt.prey).toEqual({ enabled: true, perPredator: 16, minCount: 1, leaveAfter: 500 })
+    expect(eco.killsPerCub).toBe(3)
     expect(() => checkPrey(pt.prey, pt.maxCount)).not.toThrow()
   })
 
+  it('Eden as shipped differs from noPreyRule, and only the shipped world has a prey key', () => {
+    const on = createWorld('b', edenPreset, rules)
+    const off = noPreyRule(rules)
+    const other = createWorld('b', edenPreset, off)
+    expect('prey' in on.ecology!).toBe(true)
+    expect('prey' in other.ecology!).toBe(false)
+    for (let i = 0; i < 1500; i += 1) {
+      step(on, rules)
+      step(other, off)
+    }
+    expect(stateHash(on)).not.toBe(stateHash(other))
+  })
+
   it('Eden seed a at 5,000 ticks hashes as it did before P1, with no prey key', () => {
-    const world = createWorld('a', edenPreset, rules)
-    for (let i = 0; i < 5000; i += 1) step(world, rules)
+    // P2 switched the prey rule on and lowered killsPerCub from 6 to 3: put both back (withEcology forces the prey rule off).
+    const before = withEcology(rules, { killsPerCub: 6 })
+    const world = createWorld('a', edenPreset, before)
+    for (let i = 0; i < 5000; i += 1) step(world, before)
     expect(stateHash(world)).toBe(PRE_P1_HASH)
     expect('ecology' in world).toBe(true)
     expect('prey' in world.ecology!).toBe(false)
@@ -68,7 +84,7 @@ describe('prey rule off equals before P1', () => {
 describe('predatorLimit', () => {
   const on = withPrey(rules, { perPredator: 10, minCount: 1 }).tuning
   it('is maxCount with the rule or ecology off', () => {
-    expect(predatorLimit(0, rules.tuning)).toBe(pt.maxCount)
+    expect(predatorLimit(0, noPreyRule(rules).tuning)).toBe(pt.maxCount)
     expect(predatorLimit(0, noPreyRule(withPrey(rules)).tuning)).toBe(pt.maxCount)
     const noEco = { predator: { ...on.predator, ecology: { ...on.predator.ecology, enabled: false } } }
     expect(predatorLimit(0, noEco)).toBe(pt.maxCount)
@@ -103,7 +119,7 @@ describe('checkPrey', () => {
   })
   it('createWorld refuses bad numbers only when both rules are on', () => {
     expect(() => createWorld('a', edenPreset, withPrey(rules, { perPredator: 0 }))).toThrow(RangeError)
-    const bad = { ...rules, tuning: { ...rules.tuning, predator: { ...pt, prey: { ...pt.prey, perPredator: 0 } } } }
+    const bad = { ...rules, tuning: { ...rules.tuning, predator: { ...pt, prey: { ...pt.prey, enabled: false, perPredator: 0 } } } }
     expect(() => createWorld('a', edenPreset, bad)).not.toThrow()
   })
 })

@@ -58,4 +58,16 @@ describe('eden predators over ten seeds', () => {
     expect(predatorDeaths / deaths).toBeGreaterThanOrEqual(0.03)
     expect(predatorDeaths / deaths).toBeLessThanOrEqual(0.15)
   })
+
+  // P2: with the prey rule on the predator count follows the bot count. The pre-P2 world (rule off) had a median best-lag
+  // correlation of about -0.05 and one seed of ten at 0.3 or more; the bar is a median of 0.5 and at least 7 of 10 seeds at 0.3.
+  it('track the bots: the predator count follows the bot count', { timeout: 180_000 }, async () => {
+    const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
+    const corr = rows.map((r) => r.predCorrBest)
+    expect(corr.every((c) => c !== null)).toBe(true)
+    const sorted = (corr as number[]).sort((a, b) => a - b)
+    const median = (sorted[sorted.length / 2 - 1]! + sorted[sorted.length / 2]!) / 2
+    expect(median).toBeGreaterThanOrEqual(0.5)
+    expect(sorted.filter((c) => c >= 0.3).length).toBeGreaterThanOrEqual(7)
+  })
 })

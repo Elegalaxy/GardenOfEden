@@ -8,13 +8,13 @@ import { nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { noCone, staticPredators, withCone } from './variants.ts'
+import { noCone, staticPredators, withCone, withEcology } from './variants.ts'
 
 // Directional sensing (V1): the vision cone for bots and predators. On in Eden since V2 (p1 numbers); `noCone` switches it off, `withCone` sets numbers. The tiny-scene tests use the V1 numbers explicitly so they pin the mechanics, not the tuning. Perception and
 // predator tests build tiny worlds and call `perceive` / `remember` / `movePredators` directly with the tick set by hand.
 
 const PI = Math.PI
-// Recorded on the untouched pre-V1 code: Eden, seed 'a', 5,000 ticks, shipped rules.
+// Recorded on the untouched pre-V1 code: Eden, seed 'a', 5,000 ticks, shipped rules (the E2 numbers: no prey rule, killsPerCub 6).
 const PRE_V1_HASH = 'e9b82aa4ca6110de'
 
 function scene(over: Partial<Preset>): Preset {
@@ -43,7 +43,8 @@ const idsOf = (nodes: WorldNode[]): number[] => nodes.map((node) => node.id)
 
 describe('cone off, and neutral cone', () => {
   it('with the cone off the hash is the pre-V1 one', () => {
-    expect(hashAfter(noCone(shippedRules), 5000)).toBe(PRE_V1_HASH)
+    // P2 switched the prey rule on and lowered killsPerCub from 6 to 3: put both back (withEcology forces the prey rule off).
+    expect(hashAfter(noCone(withEcology(shippedRules, { killsPerCub: 6 })), 5000)).toBe(PRE_V1_HASH)
   })
 
   it('ships on with the V2 numbers', () => {
