@@ -21,7 +21,7 @@
 // E2 adds `pZero` (the longest run of ticks after the warmup with no predator at all) and `pCap%` (the share of ticks after the warmup with
 // `predator.maxCount` predators), the two bars that show a predator population dying out or filling the map; both after `idle`.
 // `withoutFamily` gives the rules with that
-// sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`).
+// sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
@@ -109,6 +109,11 @@ export function withoutSex(rules: Rules): Rules {
 /** The same rules with family knowledge sharing off: newborns start empty and nobody exchanges. */
 export function withoutFamily(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, family: { ...rules.tuning.family, inherit: false, shareRadius: 0 } } }
+}
+
+/** The same rules with the V1 vision cone off (all-round sensing): `--no-cone`. */
+export function withoutCone(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, perception: { ...rules.tuning.perception, cone: { ...rules.tuning.perception.cone, enabled: false } } } }
 }
 
 /** The same rules with the seasons off (food regrowth back to the fixed rate): `--no-seasons`. */

@@ -19,22 +19,78 @@
 // entries and predator sightings alike, so fleeing, steering and the food and water choices avoid both.
 // Memory is always trimmed and aged in `remember`, before any decision, so a predator entry read there is fresh.
 //
+// Directional sensing (V1, `Tuning.perception.cone`, off by default; with it off `perceive` runs the old loop unchanged and adds
+// nothing hashed). On, reach depends on the angle off the bot's heading: a node is sensed when its reach (d for a predator, d minus
+// radius otherwise) is within senseRadius * coneFactor, which runs from `botFront` straight ahead down to `botRear` straight behind
+// (so anything within senseRadius * botRear is always seen). A predator the bot saw itself (not learned from family) and that has
+// slipped out of the cone is still tracked, and its sighting refreshed every tick, while it stays within senseRadius * botFront
+// and the sighting is at most `trackTicks` old. Sightings are never dropped for being out of view, only by `remember`. No draws.
+//
 // Since M10 a bot's memory can also hold sightings copied from its parent or child (family.ts);
 // `learnedFrom` names the source, and seeing the node itself clears it.
 
-import { hypot } from './exactMath.ts'
+import { cos, hypot, sin } from './exactMath.ts'
 import type { Bot, MemoryEntry, NodeKind, Tuning, World, WorldNode } from './types.ts'
 
 export function distance(ax: number, ay: number, bx: number, by: number): number {
   return hypot(bx - ax, by - ay)
 }
 
-/** Nodes whose edge is inside the bot's sense radius, in id order. */
-export function perceive(world: World, bot: Bot): WorldNode[] {
+/**
+ * Cone factor (V1): the share of the sense radius reached at cosine `c` of the angle off the heading, `rear` at c = -1 up to
+ * `front` at c = 1. With front = rear = 1 it is exactly 1.
+ */
+export function coneFactor(c: number, front: number, rear: number): number {
+  return rear + ((front - rear) * (1 + c)) / 2
+}
+
+/** Throws when the cone numbers cannot work: finite, 0 <= rear <= front, front > 0, trackTicks a whole number from 0. */
+export function checkPerception(cone: Tuning['perception']['cone']): void {
+  const { botFront, botRear, predatorFront, predatorRear, trackTicks } = cone
+  for (const [name, front, rear] of [
+    ['bot', botFront, botRear],
+    ['predator', predatorFront, predatorRear],
+  ] as const) {
+    if (!(Number.isFinite(front) && Number.isFinite(rear) && front > 0 && rear >= 0 && rear <= front)) {
+      throw new RangeError(
+        `perception.cone ${name}Front (${front}) must be above 0 and ${name}Rear (${rear}) from 0 up to ${name}Front, all finite`,
+      )
+    }
+  }
+  if (!(Number.isInteger(trackTicks) && trackTicks >= 0)) {
+    throw new RangeError(`perception.cone.trackTicks must be a whole number from 0, received ${trackTicks}`)
+  }
+}
+
+/** Nodes whose edge is inside the bot's sense radius, in id order (with the V1 cone on: inside its cone, see the header). */
+export function perceive(world: World, bot: Bot, tuning?: Pick<Tuning, 'perception'>): WorldNode[] {
   const sensed: WorldNode[] = []
+  const cone = tuning?.perception.cone
+  if (cone === undefined || !cone.enabled) {
+    for (const node of world.nodes) {
+      const d = distance(bot.x, bot.y, node.x, node.y)
+      if ((node.kind === 'predator' ? d : d - node.radius) <= bot.traits.senseRadius) sensed.push(node)
+    }
+    return sensed
+  }
+  const reachMax = bot.traits.senseRadius
+  const hx = cos(bot.heading)
+  const hy = sin(bot.heading)
   for (const node of world.nodes) {
+    const dx = node.x - bot.x
+    const dy = node.y - bot.y
     const d = distance(bot.x, bot.y, node.x, node.y)
-    if ((node.kind === 'predator' ? d : d - node.radius) <= bot.traits.senseRadius) sensed.push(node)
+    const isPredator = node.kind === 'predator'
+    const reach = isPredator ? d : d - node.radius
+    if (reach > reachMax * cone.botFront) continue
+    const c = d > 0 ? (dx * hx + dy * hy) / d : 1
+    if (reach <= reachMax * coneFactor(c, cone.botFront, cone.botRear)) {
+      sensed.push(node)
+    } else if (isPredator) {
+      // Tracking: a hunter the bot saw itself a moment ago stays in sight while it is within reach in any direction.
+      const seen = bot.memory.find((entry) => entry.nodeId === node.id)
+      if (seen !== undefined && seen.learnedFrom === null && world.tick - seen.seenTick <= cone.trackTicks) sensed.push(node)
+    }
   }
   return sensed
 }

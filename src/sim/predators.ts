@@ -20,6 +20,11 @@
 // rests `digestTicks`, drops its target and counts the kill. The dead bot leaves a normal ruin.
 // Numbers come only from `Tuning.predator`, the bot turn rate and the node's own radius and damage.
 //
+// Directional sensing (V1, `Tuning.perception.cone`, off by default; with it off `nearestPrey` runs as before): the predator then sees
+// along `hunt.heading` with a cone (`nearestPreyCone`: reach range * coneFactor(cos, predatorFront, predatorRear)) and keeps a lock:
+// the bot it is already chasing (`hunt.targetId`) stays a candidate while within range * predatorFront in any direction. The nearest
+// candidate outside the shelters wins as before; chase counter, give-up and the one draw per tick are unchanged.
+//
 // Predator ecology (E1, `Tuning.predator.ecology`, on in Eden since E2; with it off none of this runs, no key is added to the
 // world and no draw is taken). A predator then has `hunt.life` (energy, age, kills since its last cub). Energy falls by `drain`
 // each tick and a kill adds `killEnergy` (up to `maxEnergy`); a predator below `huntBelow` hunts, a fed one skips its target
@@ -34,6 +39,7 @@
 // per territory try when a cub is attempted.
 
 import { atan2, cos, hypot, sin } from './exactMath.ts'
+import { coneFactor } from './perception.ts'
 import { nextFloat } from './rng.ts'
 import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
@@ -112,6 +118,44 @@ function nearestPrey(bots: readonly Bot[], shelters: readonly WorldNode[], x: nu
   return best
 }
 
+/**
+ * Cone version of `nearestPrey` (V1): a bot is a candidate when within range * coneFactor of the heading (hx, hy), or, if it is the
+ * locked target (`lockId`), within range * front in any direction. Nearest wins, ties to the lowest id; shelters protect as before.
+ */
+function nearestPreyCone(
+  bots: readonly Bot[],
+  shelters: readonly WorldNode[],
+  x: number,
+  y: number,
+  range: number,
+  hx: number,
+  hy: number,
+  front: number,
+  rear: number,
+  lockId: number | null,
+): Bot | null {
+  let best: Bot | null = null
+  let bestDistance = Infinity
+  for (const bot of bots) {
+    const dx = bot.x - x
+    const dy = bot.y - y
+    const d = hypot(dx, dy)
+    if (d >= bestDistance) continue
+    let limit: number
+    if (bot.id === lockId) {
+      limit = range * front
+    } else {
+      if (d > range * front) continue
+      limit = range * coneFactor(d > 0 ? (dx * hx + dy * hy) / d : 1, front, rear)
+    }
+    if (d > limit) continue
+    if (insideShelter(shelters, bot.x, bot.y)) continue
+    best = bot
+    bestDistance = d
+  }
+  return best
+}
+
 /** Try `heading`, then headings turned by 1, -1, 2, -2, ... steps up to a half turn; take the first that is open and moves. */
 function stepPredator(
   world: World,
@@ -141,6 +185,7 @@ function stepPredator(
 
 export function movePredators(world: World, rules: Rules): void {
   const { predator, bot: botTuning } = rules.tuning
+  const cone = rules.tuning.perception.cone
   let shelters: WorldNode[] | null = null
   for (const node of world.nodes) {
     const hunt = node.hunt
@@ -152,7 +197,15 @@ export function movePredators(world: World, rules: Rules): void {
     if (world.tick <= hunt.restUntil) continue
     if (shelters === null) shelters = world.nodes.filter((other) => other.kind === 'shelter')
 
-    const prey = isHungry(hunt, rules.tuning) ? nearestPrey(world.bots, shelters, node.x, node.y, predator.senseRadius) : null
+    let prey: Bot | null = null
+    if (isHungry(hunt, rules.tuning)) {
+      prey = cone.enabled
+        ? nearestPreyCone(
+            world.bots, shelters, node.x, node.y, predator.senseRadius,
+            cos(hunt.heading), sin(hunt.heading), cone.predatorFront, cone.predatorRear, hunt.targetId,
+          )
+        : nearestPrey(world.bots, shelters, node.x, node.y, predator.senseRadius)
+    }
     if (prey === null) {
       hunt.targetId = null
       hunt.chase = 0

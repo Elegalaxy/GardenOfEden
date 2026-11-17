@@ -62,7 +62,7 @@ export function step(world: World, rules: Rules): void {
   // Ready females as the tick starts, for the males that look for one (mating.ts).
   const mates = sexual ? buildMateIndex(world.bots, tuning) : null
   for (const bot of world.bots) {
-    const sensed = perceive(world, bot)
+    const sensed = perceive(world, bot, tuning)
     remember(world, bot, sensed, tuning, live)
     decide(world, bot, tuning, mates)
     const moved = act(world, bot, rules, nodesById)

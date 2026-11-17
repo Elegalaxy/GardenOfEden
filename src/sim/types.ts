@@ -689,6 +689,26 @@ export type Tuning = {
     /** The yearly average multiplier. */
     base: number
   }
+  /**
+   * Directional sensing (V1): reach depends on the angle off the heading. Off by default; with it off nothing changes and nothing
+   * extra is hashed. No random draws; see perception.ts and predators.ts.
+   */
+  perception: {
+    cone: {
+      /** Off: sensing is the same disc as before V1. */
+      enabled: boolean
+      /** Bot sense radius multiplier straight ahead (above 0, at least botRear). */
+      botFront: number
+      /** Bot sense radius multiplier straight behind (0 up to botFront); everything inside it is always seen. */
+      botRear: number
+      /** Predator sense radius multiplier straight ahead. */
+      predatorFront: number
+      /** Predator sense radius multiplier straight behind. */
+      predatorRear: number
+      /** Ticks a self-seen predator stays tracked after it leaves the cone (whole number from 0). */
+      trackTicks: number
+    }
+  }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number
 }

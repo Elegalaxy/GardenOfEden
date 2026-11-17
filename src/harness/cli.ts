@@ -12,6 +12,7 @@
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
 // survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
+// `--no-cone` (either form) switches directional sensing off (V1; it is off by default, so this the flag applies before `--set` overrides).
 // `--no-seasons` (either form) switches seasonal regrowth off (S1; seasons are on in Eden since S2, so this gives the pre-season control).
 // `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
 // The last survey columns (E1) are `preds` (predators at the end), `pMin`/`pMax` (their range after the warmup), `pBorn`, `pArr`, `pStarve`,
@@ -26,6 +27,7 @@
 
 import { findPreset, presets, rules } from '../content/index.ts'
 import { checkEcology } from '../sim/predators.ts'
+import { checkPerception } from '../sim/perception.ts'
 import { checkSeasons } from '../sim/seasons.ts'
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
@@ -36,13 +38,13 @@ import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
 import { parseOverride, withOverrides } from './overrides.ts'
 import type { Override } from './overrides.ts'
-import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutEcology, withoutFamily, withoutSeasons, withoutSex } from './survey.ts'
+import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutEcology, withoutFamily, withoutSeasons, withoutSex } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
   '       npm run sim -- --seeds <seed,seed,...> --ticks <1-1000000> [--preset <id>] [--warmup <0-1000000>]',
   `       either form also takes ${EVENT_USAGE} and --no-family (no knowledge sharing between parent and child)`,
-  '       and --asexual (no two sexes: a bot breeds alone), --no-seasons (no seasonal regrowth)',
+  '       and --asexual (no two sexes: a bot breeds alone), --no-seasons (no seasonal regrowth), --no-cone (all-round sensing)',
   '       and --static-predators (predator ecology off: fixed predators)',
   '       and --set path.to.setting=value (repeatable: replace one existing tuning number or boolean for this run)',
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
@@ -63,6 +65,7 @@ type Options = {
   noFamily: boolean
   asexual: boolean
   noSeasons: boolean
+  noCone: boolean
   staticPredators: boolean
   overrides: Override[]
   script: ScriptedCommand[]
@@ -86,6 +89,7 @@ function parseArgs(argv: string[]): Options {
   let noFamily = false
   let asexual = false
   let noSeasons = false
+  let noCone = false
   let staticPredators = false
   const overrides: Override[] = []
   const script: ScriptedCommand[] = []
@@ -99,6 +103,8 @@ function parseArgs(argv: string[]): Options {
     } else if (flag === '--asexual') {
       asexual = true
       i -= 1
+    } else if (flag === '--no-cone') {
+      noCone = true
     } else if (flag === '--no-seasons') {
       noSeasons = true
       i -= 1
@@ -138,7 +144,7 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, staticPredators, overrides, script }
+  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, overrides, script }
 }
 
 function row(world: World): string {
@@ -196,17 +202,19 @@ function main(argv: string[]): void {
   const sexRules = options.asexual ? withoutSex(familyRules) : familyRules
   const seasonRules = options.noSeasons ? withoutSeasons(sexRules) : sexRules
   const staticRules = options.staticPredators ? withoutEcology(seasonRules) : seasonRules
+  const coneRules = options.noCone ? withoutCone(staticRules) : staticRules
   let active: Rules
   try {
-    active = withOverrides(staticRules, options.overrides)
+    active = withOverrides(coneRules, options.overrides)
     checkSeasons(active.tuning.seasons)
     if (active.tuning.predator.ecology.enabled) checkEcology(active.tuning.predator.ecology)
+    if (active.tuning.perception.cone.enabled) checkPerception(active.tuning.perception.cone)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
     return
   }
-  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.staticPredators ? ' static-predators' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
+  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine(active))
