@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -148,5 +148,21 @@ describe('predatorActivity', () => {
 
   it('sums the three memory slot classes', () => {
     expect(memoryCapacity(tuning.memory)).toBe(tuning.memory.cap + tuning.memory.waterCap + tuning.memory.predatorCap)
+  })
+})
+
+describe('sightText', () => {
+  it('gives ahead and behind with one decimal', () => {
+    expect(sightText(6, 1, 0.7, true)).toBe('6.0 ahead · 4.2 behind (cells)')
+    expect(sightText(8, 1, 0.35, true)).toBe('8.0 ahead · 2.8 behind (cells)')
+  })
+
+  it('gives one number with the cone off', () => {
+    expect(sightText(6, 1, 0.7, false)).toBe('6.0 all round (cells)')
+  })
+
+  it('follows the real tuning', () => {
+    const { botFront, botRear } = tuning.perception.cone
+    expect(sightText(tuning.traits.senseRadius, botFront, botRear, true)).toContain('ahead')
   })
 })

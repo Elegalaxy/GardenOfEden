@@ -12,7 +12,7 @@
 //
 // On top of the world, `drawOverlay` adds what the player is doing: the
 // selection (a double ring, plus a dashed line from a selected bot to its
-// target, and a thinner dotted line to its living parent and children), an outline on whatever the inspect or remove tool would hit, and a
+// target, a dashed sight outline (V3: the vision cone, a circle with the cone off), and a thinner dotted line to its living parent and children), an outline on whatever the inspect or remove tool would hit, and a
 // ghost of what a placement tool would add (an X through it when it would be
 // refused).
 //
@@ -25,6 +25,7 @@
 // expanding ring shows the impact. The global events (drought, bounty) are
 // banners over the map, in WorldCanvas.
 
+import { coneFactor } from '../sim/perception.ts'
 import { isHungry } from '../sim/predators.ts'
 import type { ActiveEvent, Den, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
@@ -435,7 +436,41 @@ function drawImpact(ctx: CanvasRenderingContext2D, node: WorldNode, age: number,
   ctx.restore()
 }
 
-function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: number, layout: Layout, overlay: Overlay): void {
+/**
+ * The selected thing's sight (V3): a faint dashed outline at distance R * coneFactor(cos theta) in 48 directions around it, turned to
+ * its heading (a plain circle of radius R with the cone off). It is the only sense-radius shape drawn; the dashes and the shape
+ * carry the meaning, the colour is the selection's.
+ */
+function drawSight(ctx: CanvasRenderingContext2D, layout: Layout, x: number, y: number, heading: number, radius: number, front: number, rear: number, enabled: boolean): void {
+  const cx = layout.offsetX + x * layout.scale
+  const cy = layout.offsetY + y * layout.scale
+  ctx.save()
+  ctx.globalAlpha = 0.35
+  ctx.strokeStyle = COLORS.select
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([6, 4])
+  ctx.beginPath()
+  if (!enabled) {
+    ctx.arc(cx, cy, radius * layout.scale, 0, Math.PI * 2)
+  } else {
+    for (let i = 0; i < SIGHT_POINTS; i += 1) {
+      const theta = (i / SIGHT_POINTS) * Math.PI * 2
+      const reach = radius * coneFactor(Math.cos(theta), front, rear) * layout.scale
+      const a = heading + theta
+      const qx = cx + Math.cos(a) * reach
+      const qy = cy + Math.sin(a) * reach
+      if (i === 0) ctx.moveTo(qx, qy)
+      else ctx.lineTo(qx, qy)
+    }
+    ctx.closePath()
+  }
+  ctx.stroke()
+  ctx.restore()
+}
+
+const SIGHT_POINTS = 48
+
+function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: number, layout: Layout, overlay: Overlay, tuning: Tuning): void {
   const { scale, offsetX, offsetY } = layout
   const px = (x: number): number => offsetX + x * scale
   const py = (y: number): number => offsetY + y * scale
@@ -473,6 +508,20 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
   if (sel !== null) {
     outline(sel, 2.5, 5, [], 1)
     outline(sel, 1, 9, [2, 3], 0.7)
+    const cone = tuning.perception.cone
+    if (sel.kind === 'bot') {
+      const bot = findBot(world, sel.id)
+      if (bot !== undefined) {
+        const p = botPosition(bot, alpha)
+        drawSight(ctx, layout, p.x, p.y, bot.heading, bot.traits.senseRadius, cone.botFront, cone.botRear, cone.enabled)
+      }
+    } else {
+      const node = findNode(world, sel.id)
+      if (node !== undefined && node.kind === 'predator' && node.hunt !== null) {
+        const p = predatorPosition(node, alpha)
+        drawSight(ctx, layout, p.x, p.y, node.hunt.heading, tuning.predator.senseRadius, cone.predatorFront, cone.predatorRear, cone.enabled)
+      }
+    }
     if (sel.kind === 'bot') {
       const bot = findBot(world, sel.id)
       const target = bot === undefined || bot.intent.targetId === null ? undefined : findNode(world, bot.intent.targetId)
@@ -644,6 +693,6 @@ export function drawWorld(
     if (isCrater(node)) drawImpact(ctx, node, meteor.craterTicks - (node.expires - world.tick), meteor.radius, layout)
   }
 
-  if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay)
+  if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay, tuning)
   if (heat?.cell) drawHeatCursor(ctx, heat.cell, layout)
 }

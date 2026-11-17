@@ -218,6 +218,18 @@ export function hueLabel(hue: number): string {
   return `hue ${Math.round(hue) % 360}°`
 }
 
+/**
+ * The Sight row (V3): how far a bot or predator sees ahead and behind, in cells with one decimal, or one number when the vision cone
+ * is off. `ahead` is R * front and `behind` is R * rear (the two ends of `coneFactor`).
+ */
+export function sightText(radius: number, front: number, rear: number, enabled: boolean): string {
+  if (!enabled) return `${radius.toFixed(1)} all round (cells)`
+  return `${(radius * front).toFixed(1)} ahead · ${(radius * rear).toFixed(1)} behind (cells)`
+}
+
+/** Tooltip for the Sight row. */
+export const SIGHT_HELP = 'Sees less behind. Keeps tracking a predator it has seen while it stays in range. Outline on the map.'
+
 /** The inbreeding score (M18, 0 to 1) as words: "no" at 0, else the percent (1 = parent and child or full siblings). */
 export function inbreedingLabel(score: number): string {
   if (score <= 0) return 'No'

@@ -12,7 +12,7 @@ import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { denFor, originText, predatorCounts, predatorLifeInfo } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -21,6 +21,7 @@ import type { ViewWorld } from './viewWorld.ts'
 import { HueSwatch } from './HueSwatch.tsx'
 import { TREND_GLYPH, signedDelta, trendOf } from './traitMath.ts'
 
+const cone = tuning.perception.cone
 const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(1)
 const fixed2 = (value: number): string => (Math.round(value * 100) / 100).toFixed(2)
 const capital = (text: string): string => `${text[0]!.toUpperCase()}${text.slice(1)}`
@@ -204,6 +205,10 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         {TRAIT_NAMES.map((name) => (
           <TraitRow key={name} name={name} bot={bot} mean={mean[name]} />
         ))}
+        <div className="kv-row" title={SIGHT_HELP}>
+          <dt>Sight</dt>
+          <dd className="figure">{sightText(bot.traits.senseRadius, cone.botFront, cone.botRear, cone.enabled)}</dd>
+        </div>
       </dl>
     </>
   )
@@ -241,6 +246,10 @@ function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
           {life !== null && ` · ${world.ecology !== undefined && denFor(world.ecology.dens, hunt, tuning.predator.ecology.denRadius) !== null ? 'den' : 'no den (cubs make none)'}`}
         </Row>
       )}
+      <div className="kv-row" title={SIGHT_HELP}>
+        <dt>Sight</dt>
+        <dd className="figure">{sightText(tuning.predator.senseRadius, cone.predatorFront, cone.predatorRear, cone.enabled)}</dd>
+      </div>
       <Row label="Threat radius">{fixed1(node.radius)} cells</Row>
       <Row label="Bite range">{fixed1(tuning.predator.biteRange)} cells</Row>
       <Row label="Damage">{fixed1(node.damage)} health / tick</Row>
