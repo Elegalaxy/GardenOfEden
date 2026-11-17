@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { tuning } from '../content/index.ts'
 import type { Den, PredatorLife, PredatorState, Sample, WorldNode } from '../sim/types.ts'
-import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries } from './predatorInfo.ts'
+import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries, preyPressure } from './predatorInfo.ts'
 
 const eco = tuning.predator.ecology
 
@@ -27,24 +27,24 @@ function node(id: number, state: PredatorState | null, kind: WorldNode['kind'] =
 
 describe('predatorLifeInfo', () => {
   it('is null without a life', () => {
-    expect(predatorLifeInfo(hunt(undefined), tuning, 3)).toBeNull()
+    expect(predatorLifeInfo(hunt(undefined), tuning, 3, 1000)).toBeNull()
   })
 
   it('reports a hungry predator with no time to hungry and a time to starve', () => {
-    const info = predatorLifeInfo(hunt({ energy: 50 }), tuning, 3)!
+    const info = predatorLifeInfo(hunt({ energy: 50 }), tuning, 3, 1000)!
     expect(info).toMatchObject({ energy: 50, maxEnergy: eco.maxEnergy, huntBelow: eco.huntBelow, hungry: true, ticksToHungry: null, age: 100, maxAge: eco.maxAge, adult: false })
     expect(info.ticksToStarve).toBe(Math.ceil(50 / eco.drain))
   })
 
   it('counts the ticks until a fed predator is hungry again', () => {
-    const info = predatorLifeInfo(hunt({ energy: 90 }), tuning, 3)!
+    const info = predatorLifeInfo(hunt({ energy: 90 }), tuning, 3, 1000)!
     expect(info.hungry).toBe(false)
     expect(info.ticksToHungry).toBe(Math.ceil((90 - eco.huntBelow) / eco.drain))
   })
 
   it('has no countdowns when energy does not drain', () => {
     const still = { predator: { ...tuning.predator, ecology: { ...eco, drain: 0 } } }
-    const info = predatorLifeInfo(hunt({ energy: 90 }), still, 3)!
+    const info = predatorLifeInfo(hunt({ energy: 90 }), still, 3, 1000)!
     expect(info.ticksToHungry).toBeNull()
     expect(info.ticksToStarve).toBeNull()
   })
@@ -52,12 +52,12 @@ describe('predatorLifeInfo', () => {
   it('names the first reason a cub is blocked, in the sim order', () => {
     const ready = { kidsKills: eco.killsPerCub, age: eco.adultAge, energy: eco.cubCost + eco.huntBelow }
     const room = tuning.predator.maxCount - 1
-    expect(predatorLifeInfo(hunt(ready), tuning, room)!.cubBlock).toBeNull()
-    expect(predatorLifeInfo(hunt({ ...ready, kidsKills: 1, age: 0, energy: 0 }), tuning, 99)!.cubBlock).toBe('kills')
-    expect(predatorLifeInfo(hunt({ ...ready, age: 0, energy: 0 }), tuning, 99)!.cubBlock).toBe('age')
-    expect(predatorLifeInfo(hunt({ ...ready, energy: 0 }), tuning, 99)!.cubBlock).toBe('energy')
-    expect(predatorLifeInfo(hunt(ready), tuning, tuning.predator.maxCount)!.cubBlock).toBe('cap')
-    expect(predatorLifeInfo(hunt(ready), tuning, room)!.adult).toBe(true)
+    expect(predatorLifeInfo(hunt(ready), tuning, room, 1000)!.cubBlock).toBeNull()
+    expect(predatorLifeInfo(hunt({ ...ready, kidsKills: 1, age: 0, energy: 0 }), tuning, 99, 1000)!.cubBlock).toBe('kills')
+    expect(predatorLifeInfo(hunt({ ...ready, age: 0, energy: 0 }), tuning, 99, 1000)!.cubBlock).toBe('age')
+    expect(predatorLifeInfo(hunt({ ...ready, energy: 0 }), tuning, 99, 1000)!.cubBlock).toBe('energy')
+    expect(predatorLifeInfo(hunt(ready), tuning, tuning.predator.maxCount, 1000)!.cubBlock).toBe('cap')
+    expect(predatorLifeInfo(hunt(ready), tuning, room, 1000)!.adult).toBe(true)
   })
 })
 
@@ -119,5 +119,28 @@ describe('predatorChange and predatorSeries', () => {
   it('keeps only samples with a predator count', () => {
     expect(predatorSeries([sample(0), sample(100, 4), sample(200, 0)])).toEqual([{ tick: 100, count: 4 }, { tick: 200, count: 0 }])
     expect(predatorSeries([])).toEqual([])
+  })
+})
+
+describe('prey limit', () => {
+  const ready = { kidsKills: 99, age: 99999, energy: 100 }
+  it('blocks a cub when the count reaches the limit but not the cap', () => {
+    const limit = tuning.predator.prey.perPredator * 3
+    expect(predatorLifeInfo(hunt(ready), tuning, 3, limit)!.cubBlock).toBe('prey')
+    expect(predatorLifeInfo(hunt(ready), tuning, 2, limit)!.cubBlock).toBeNull()
+    expect(predatorLifeInfo(hunt(ready), tuning, tuning.predator.maxCount, limit)!.cubBlock).toBe('cap')
+  })
+  it('reports limit, over and the leave countdown', () => {
+    const per = tuning.predator.prey.perPredator
+    const leave = tuning.predator.prey.leaveAfter
+    expect(preyPressure(undefined, per * 2, 2, 100, tuning)).toEqual({ limit: 2, over: false, leavesIn: null })
+    const eco = { prey: { overSince: 100, left: 0 } }
+    expect(preyPressure(eco, per * 2, 3, 300, tuning)).toEqual({ limit: 2, over: true, leavesIn: leave - 200 })
+    expect(preyPressure(eco, per * 2, 3, 100 + leave + 50, tuning).leavesIn).toBe(0)
+    expect(preyPressure({}, per * 2, 3, 300, tuning).leavesIn).toBeNull()
+  })
+  it('is inert with the prey rule off', () => {
+    const off = { predator: { ...tuning.predator, prey: { ...tuning.predator.prey, enabled: false } } }
+    expect(preyPressure({ prey: { overSince: 0, left: 0 } }, 0, 5, 10, off)).toEqual({ limit: tuning.predator.maxCount, over: false, leavesIn: null })
   })
 })

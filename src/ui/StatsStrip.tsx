@@ -6,12 +6,12 @@
 // tile counts resource food (what the chart plots); food in ruins is shown
 // beside it, not added in. The Season tile (S3) shows the name, the regrowth
 // multiplier and the ticks to the next season (`seasonInfo.ts`); "Off" when disabled. The Predators tile (E3) shows how many
-// predators are alive, their change over the same minute and the cap; its hover text says how many are hungry and where they came from.
+// predators are alive, their change over the same minute and the room the bots leave them (the prey limit, out of the cap); its hover text says how many are hungry and where they came from.
 
 import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
 import { takeSample, totalRuinFood } from '../sim/world.ts'
-import { predatorChange, predatorCounts } from './predatorInfo.ts'
+import { predatorChange, predatorCounts, preyPressure } from './predatorInfo.ts'
 import { seasonSummary } from './seasonInfo.ts'
 import { useWorldStore } from './store.ts'
 
@@ -46,7 +46,15 @@ export function StatsStrip() {
   const season = seasonSummary(tick, tuning)
   const predators = predatorCounts(world.nodes, tuning)
   const predatorDelta = predatorChange(world.samples, current, minuteTicks)
-  const cap = `cap ${tuning.predator.maxCount}`
+  const { maxCount } = tuning.predator
+  const prey = preyPressure(world.ecology, current.pop, predators.total, tick, tuning)
+  const preyOn = tuning.predator.ecology.enabled && tuning.predator.prey.enabled
+  const cap = preyOn ? `cap ${prey.limit}` : `cap ${maxCount}`
+  const preyHint = preyOn
+    ? ` ${current.pop} bots support ${prey.limit} predator${prey.limit === 1 ? '' : 's'} (${tuning.predator.prey.perPredator} bots each, at least ${tuning.predator.prey.minCount}, at most ${maxCount}).${
+        prey.leavesIn === null ? '' : ` Over the limit: one leaves in ${numberFormat.format(prey.leavesIn)} ticks.`
+      }`
+    : ''
   const { byOrigin } = predators
   const origins = [
     byOrigin.founder > 0 ? `${byOrigin.founder} founder${byOrigin.founder === 1 ? '' : 's'}` : '',
@@ -81,7 +89,7 @@ export function StatsStrip() {
           label="Predators"
           value={numberFormat.format(predators.total)}
           detail={predatorDelta === null ? cap : `${changeText(predatorDelta.delta)} · ${cap}`}
-          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`} (${cap})`}
+          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}`}
         />
       </dl>
     </section>

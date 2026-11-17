@@ -2,14 +2,14 @@
 // stats samples. Reads only what the frame carries (nodes, ecology, samples) and takes the tuning as a parameter, so tests can
 // pass their own. `isHungry` is the sim's own rule, so the page can never disagree with the sim about who bites. No state.
 
-import { isHungry } from '../sim/predators.ts'
+import { isHungry, predatorLimit } from '../sim/predators.ts'
 import { sampleAtOrBefore } from '../sim/stats.ts'
-import type { Den, PredatorOrigin, PredatorState, Sample, Tuning, WorldNode } from '../sim/types.ts'
+import type { Den, PredatorEcology, PredatorOrigin, PredatorState, Sample, Tuning, WorldNode } from '../sim/types.ts'
 
 type EcologyTuning = Pick<Tuning, 'predator'>
 
-/** Why a predator is not breeding yet, in the order the sim checks (kills, age, energy, cap); null when nothing blocks it. */
-export type CubBlock = 'kills' | 'age' | 'energy' | 'cap' | null
+/** Why a predator is not breeding yet, in the order the sim checks (kills, age, energy, cap, prey limit); null when nothing blocks it. */
+export type CubBlock = 'kills' | 'age' | 'energy' | 'cap' | 'prey' | null
 
 export type PredatorLifeInfo = {
   energy: number
@@ -30,8 +30,8 @@ export type PredatorLifeInfo = {
   cubBlock: CubBlock
 }
 
-/** A predator's life as numbers, or null when it has none (ecology off). `count` is the predators alive now, for the cap check. */
-export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, count: number): PredatorLifeInfo | null {
+/** A predator's life as numbers, or null when it has none (ecology off). `count` is the predators alive now, for the cap and prey checks; `botCount` the bots alive. */
+export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, count: number, botCount: number): PredatorLifeInfo | null {
   const life = hunt.life
   if (life === undefined) return null
   const eco = tuning.predator.ecology
@@ -41,6 +41,7 @@ export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, cou
   else if (life.age < eco.adultAge) cubBlock = 'age'
   else if (life.energy < eco.cubCost + eco.huntBelow) cubBlock = 'energy'
   else if (count >= tuning.predator.maxCount) cubBlock = 'cap'
+  else if (count >= predatorLimit(botCount, tuning)) cubBlock = 'prey'
   return {
     energy: life.energy,
     maxEnergy: eco.maxEnergy,
@@ -134,4 +135,29 @@ export function predatorSeries(points: readonly Sample[]): { tick: number; count
     if (point.predators !== undefined) series.push({ tick: point.tick, count: point.predators })
   }
   return series
+}
+
+export type PreyPressure = {
+  /** How many predators the bots can carry now (the cap when the prey rule is off). */
+  limit: number
+  /** True while the predator count is over the limit. */
+  over: boolean
+  /** Ticks until the next predator leaves (the sim's `leaveAfter` countdown); null when not over the limit or the rule is off. */
+  leavesIn: number | null
+}
+
+/** The prey rule as the page shows it. Over the limit means more predators than `predatorLimit(botCount)`; the sim's timer `overSince` gives the countdown. */
+export function preyPressure(
+  ecology: Pick<PredatorEcology, 'prey'> | undefined,
+  botCount: number,
+  count: number,
+  tick: number,
+  tuning: EcologyTuning,
+): PreyPressure {
+  const limit = predatorLimit(botCount, tuning)
+  const active = tuning.predator.ecology.enabled && tuning.predator.prey.enabled
+  const over = active && count > limit
+  const since = ecology?.prey?.overSince ?? null
+  const leavesIn = over && since !== null ? Math.max(0, since + tuning.predator.prey.leaveAfter - tick) : null
+  return { limit, over, leavesIn }
 }

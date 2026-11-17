@@ -38,7 +38,9 @@ function Legend() {
       <li>
         <PredatorKey /> Predator
         <span className="legend-note">
-          {tuning.predator.ecology.enabled ? 'chevron, hunts bots, cannot enter shelters; dotted ring = fed, does not bite' : 'chevron, hunts bots, cannot enter shelters'}
+          {tuning.predator.ecology.enabled
+            ? `chevron, hunts bots, cannot enter shelters; dotted ring = fed, does not bite${tuning.predator.prey.enabled ? '; leaves if bots are too few' : ''}`
+            : 'chevron, hunts bots, cannot enter shelters'}
         </span>
       </li>
       {tuning.predator.ecology.enabled && (

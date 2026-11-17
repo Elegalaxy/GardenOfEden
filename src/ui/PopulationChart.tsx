@@ -25,6 +25,7 @@ import { takeSample } from '../sim/world.ts'
 import { compact, eventBands, nearestIndex, niceMax, seasonBands, thin, xAxisTicks } from './chartMath.ts'
 import type { EventBand } from './chartMath.ts'
 import { EVENT_LABEL, EVENT_LETTER, commandLetter, commandName, formatPoint } from './labels.ts'
+import { predatorLimit } from '../sim/predators.ts'
 import { predatorSeries } from './predatorInfo.ts'
 import { useWorldStore } from './store.ts'
 import { useElementWidth } from './useElementWidth.ts'
@@ -169,6 +170,18 @@ export function PopulationChart() {
     })
     .join('')
 
+  // Prey room (P3): the limit the bots' population allowed at each sample, as a stepped line; only with the prey rule on.
+  const preyOn = ecologyOn && tuning.predator.prey.enabled
+  const roomPath = preyOn
+    ? points
+        .map((p, i) => {
+          const x = px(p.tick).toFixed(1)
+          const y = stripY(predatorLimit(p.pop, tuning)).toFixed(1)
+          return i === 0 ? `M${x},${y}` : `H${x}V${y}`
+        })
+        .join('')
+    : ''
+
   const visibleMarkers = markers.filter((marker) => marker.tick >= x0 && marker.tick <= x1)
   const visibleBands = bands.filter((band) => band.end >= x0 && band.start <= x1)
   // Winter strip (S3): a thin labelled bar on the plot's floor, so it is never mistaken for a full-height event band.
@@ -306,7 +319,7 @@ export function PopulationChart() {
             height={HEIGHT}
             role="img"
             tabIndex={0}
-            aria-label={`Population and food${ecologyOn ? ' with a predator count strip' : ''} from tick ${x0} to tick ${x1}. Latest population ${last.pop}, food ${Math.round(last.food)}${last.predators === undefined ? '' : `, predators ${last.predators}`}. ${markers.length} player command${markers.length === 1 ? '' : 's'}. Use left and right arrow keys to read values.`}
+            aria-label={`Population and food${ecologyOn ? ' with a predator count strip' : ''}${preyOn ? ' and the room the bots leave predators' : ''} from tick ${x0} to tick ${x1}. Latest population ${last.pop}, food ${Math.round(last.food)}${last.predators === undefined ? '' : `, predators ${last.predators}`}. ${markers.length} player command${markers.length === 1 ? '' : 's'}. Use left and right arrow keys to read values.`}
             onPointerMove={onPointer}
             onPointerDown={onPointer}
             onPointerLeave={() => setHoverTick(null)}
@@ -342,7 +355,7 @@ export function PopulationChart() {
             })}
             {ecologyOn && (
               <g className="predator-strip">
-                <title>Predators alive (0 to the cap of {PREDATOR_MAX})</title>
+                <title>{preyOn ? `Predators alive (solid dotted line) and the room the bots leave them (faint stepped line), 0 to the cap of ${PREDATOR_MAX}` : `Predators alive (0 to the cap of ${PREDATOR_MAX})`}</title>
                 <rect x={MARGIN.left} y={stripTop} width={plotWidth} height={STRIP_PX} className="strip-bg" />
                 <line x1={MARGIN.left} x2={width - MARGIN.right} y1={stripY(PREDATOR_MAX)} y2={stripY(PREDATOR_MAX)} className="strip-cap" />
                 {[0, PREDATOR_MAX / 2, PREDATOR_MAX].map((value) => (
@@ -353,6 +366,7 @@ export function PopulationChart() {
                 <text x={MARGIN.left + 4} y={stripTop + 11} className="strip-label">
                   Predators
                 </text>
+                {roomPath !== '' && <path d={roomPath} className="line-room" />}
                 {predatorPath !== '' && <path d={predatorPath} className="line-predator" />}
               </g>
             )}

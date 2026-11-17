@@ -217,7 +217,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
 /** A predator's extra rows (M21c): what it is doing, its record and the numbers that make it dangerous. */
 function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const hunt = node.hunt
-  const life = hunt === null ? null : predatorLifeInfo(hunt, tuning, predatorCounts(world.nodes, tuning).total)
+  const life = hunt === null ? null : predatorLifeInfo(hunt, tuning, predatorCounts(world.nodes, tuning).total, world.bots.length)
   const activity = predatorActivity(hunt, world.tick, life !== null && !life.hungry)
   const prey = activity.kind === 'hunting' ? findBot(world, activity.targetId) : undefined
   return (
@@ -263,6 +263,7 @@ const CUB_BLOCK_TEXT = {
   age: 'too young',
   energy: 'needs more energy',
   cap: 'predator cap reached',
+  prey: 'too few bots',
 } as const
 
 /** The ecology rows of a predator (E3), under the main rows: energy, hunger, age, the next cub, where it came from and its den. */
@@ -358,7 +359,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
         <Row label="Bots inside">{botsInside(world, node)}</Row>
       </dl>
       {node.kind === 'predator' && node.hunt !== null && node.hunt.life !== undefined && (
-        <PredatorLifeSection hunt={node.hunt} life={predatorLifeInfo(node.hunt, tuning, predatorCounts(world.nodes, tuning).total)!} world={world} />
+        <PredatorLifeSection hunt={node.hunt} life={predatorLifeInfo(node.hunt, tuning, predatorCounts(world.nodes, tuning).total, world.bots.length)!} world={world} />
       )}
     </>
   )

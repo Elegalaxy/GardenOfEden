@@ -905,6 +905,14 @@ button.log-button[aria-pressed='true'] {
   fill: rgba(255, 255, 255, 0.03);
 }
 
+.line-room {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 7 2 1 2;
+  opacity: 0.7;
+}
+
 .strip-cap {
   stroke: var(--text-muted);
   stroke-width: 1;
