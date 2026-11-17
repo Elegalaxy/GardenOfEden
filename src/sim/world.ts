@@ -2,10 +2,12 @@
 // preset (the starting scene) and the rules (numbers from src/content). Fixed
 // items are placed first, then scattered ones, so a preset's layout does not
 // depend on how many things are scattered after it. Every founder gets a lineage record. Founders
-// alternate female, male, ... in creation order (preset bots first, then scattered ones).
+// alternate female, male, ... in creation order (preset bots first, then scattered ones). With predator ecology on (E1) the
+// preset's predators get a life and a den after every node is placed (no draws).
 
 import { goldenHue } from './genes.ts'
 import { addRecord } from './lineage.ts'
+import { addDen, checkEcology, startLife } from './predators.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
@@ -134,11 +136,12 @@ export function totalDeaths(world: Pick<World, 'deathsByCause'>): number {
 /** One stats row for the world as it stands now. */
 /** What `takeSample` reads: a World, or the main thread's copy of one (bots without their memory). */
 export type Sampleable = Pick<World, 'tick' | 'nodes' | 'totalBirths' | 'deathsByCause'> & {
+  ecology?: unknown
   bots: readonly Pick<Bot, 'traits'>[]
 }
 
 export function takeSample(world: Sampleable): Sample {
-  return {
+  const sample: Sample = {
     tick: world.tick,
     pop: world.bots.length,
     births: world.totalBirths,
@@ -146,11 +149,15 @@ export function takeSample(world: Sampleable): Sample {
     food: totalFood(world),
     traits: meanTraits(world.bots),
   }
+  // Only a world with predator ecology (E1) counts its predators; the key is absent otherwise, so hashes are unchanged.
+  if (world.ecology !== undefined) sample.predators = world.nodes.filter((node) => node.kind === 'predator').length
+  return sample
 }
 
 export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   assertPositive(preset.width, 'preset width')
   assertPositive(preset.height, 'preset height')
+  if (rules.tuning.predator.ecology.enabled) checkEcology(rules.tuning.predator.ecology)
 
   const world: World = {
     seed,
@@ -211,6 +218,16 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     world.bots.push(bot)
     addRecord(world, bot.id, null, null, bot.sex, bot.generation, bot.traits, bot.hue)
     world.nextId += 1
+  }
+
+  // Predator ecology (E1): every preset predator gets a life and marks a den. No draws.
+  if (rules.tuning.predator.ecology.enabled) {
+    world.ecology = { dens: [], stats: { births: 0, arrivals: 0, starved: 0, aged: 0, removed: 0 } }
+    for (const node of world.nodes) {
+      if (node.kind !== 'predator') continue
+      startLife(world, node, rules.tuning, 'founder', null)
+      addDen(world, node.x, node.y, rules.tuning)
+    }
   }
 
   world.samples.push(takeSample(world))

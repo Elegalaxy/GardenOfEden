@@ -8,9 +8,10 @@
 // or bounty scales how fast resources regrow (`regrowthMultiplier`, events only); the season (seasons.ts, S1) scales it too,
 // and `regrow` multiplies the two. A predator (M21a) bites a bot outside
 // every shelter that stands within `predator.biteRange` of its centre while it is not resting; pass the
-// tuning to `exposureAt` to count it (without, predators are ignored).
+// tuning to `exposureAt` to count it (without, predators are ignored). With predator ecology on (E1) only a hungry one bites.
 
 import { hypot } from './exactMath.ts'
+import { isHungry } from './predators.ts'
 import { seasonAt } from './seasons.ts'
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
 
@@ -39,7 +40,7 @@ export function exposureAt(world: World, x: number, y: number, tuning: Pick<Tuni
   for (const node of world.nodes) {
     if (node.kind === 'predator') {
       const hunt = node.hunt
-      if (tuning !== null && hunt !== null && world.tick > hunt.restUntil && hypot(x - node.x, y - node.y) <= tuning.predator.biteRange) {
+      if (tuning !== null && hunt !== null && world.tick > hunt.restUntil && isHungry(hunt, tuning) && hypot(x - node.x, y - node.y) <= tuning.predator.biteRange) {
         biters.push(node)
       }
       continue

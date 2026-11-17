@@ -30,9 +30,10 @@ const FILTERS: { type: SimEventType; label: string; glyph: string }[] = [
   { type: 'death', label: 'Death', glyph: '✕' },
   { type: 'command', label: 'Command', glyph: '▸' },
   { type: 'event', label: 'World', glyph: '◆' },
+  { type: 'predator', label: 'Predator', glyph: '▲' },
 ]
-const GLYPH: Record<SimEventType, string> = { birth: '+', death: '✕', command: '▸', event: '◆' }
-const TYPE_LABEL: Record<SimEventType, string> = { birth: 'Birth', death: 'Death', command: 'Command', event: 'World' }
+const GLYPH: Record<SimEventType, string> = { birth: '+', death: '✕', command: '▸', event: '◆', predator: '▲' }
+const TYPE_LABEL: Record<SimEventType, string> = { birth: 'Birth', death: 'Death', command: 'Command', event: 'World', predator: 'Predator' }
 
 /** What a log entry is about, when the player could select it. */
 function targetOf(event: SimEvent): Selection | null {
@@ -55,6 +56,10 @@ function describe({ event, located }: LogEntry): string {
     case 'event': {
       const kind = event.eventKind ?? 'drought'
       return kind === 'meteor' ? `Meteor crater faded at ${where}` : `${EVENT_LABEL[kind]} ended`
+    }
+    case 'predator': {
+      const what = { born: 'born', arrived: 'arrived', starved: 'starved', aged: 'died of age' }[event.predatorEvent ?? 'born']
+      return `Predator #${event.nodeId} ${what} at ${where}`
     }
     case 'command': {
       if (event.command === 'triggerEvent') {
@@ -139,11 +144,12 @@ export function EventLog() {
     death: true,
     command: true,
     event: true,
+    predator: true,
   })
 
   const revision = `${world.tick}/${world.log.length}/${world.commands.length}`
   const entries = useMemo(() => entriesOf(world, revision), [world, revision])
-  const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0, event: 0 }
+  const counts: Record<SimEventType, number> = { birth: 0, death: 0, command: 0, event: 0, predator: 0 }
   for (const entry of entries) counts[entry.event.type] += 1
 
   const selectedKey = selection === null ? '' : `${selection.kind}:${selection.id}`

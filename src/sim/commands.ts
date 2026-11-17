@@ -6,7 +6,8 @@
 //
 // Ruins are made by the sim when a bot dies, so the player cannot place them
 // (they can remove one). Ruins, meteor craters and predators do not count toward `player.maxNodes`;
-// predators have their own cap, `predator.maxCount` (M21a).
+// predators have their own cap, `predator.maxCount` (M21a). With predator ecology on (E1) a placed predator gets a life and a den,
+// and removing one removes its den (unless another predator is homed there).
 // `triggerEvent` starts a world event (drought, bounty, plague, meteor); the rules
 // are in worldEvents.ts.
 //
@@ -23,6 +24,7 @@ import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { goldenHue } from './genes.ts'
+import { addDen, startLife } from './predators.ts'
 import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
 import type { CheckableWorld } from './worldEvents.ts'
@@ -79,7 +81,12 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
     case 'placeNode': {
       id = world.nextId
       world.nextId += 1
-      world.nodes.push(makeNode(id, cmd.kind, cmd.x, cmd.y, rules.nodeDefs[cmd.kind]))
+      const placed = makeNode(id, cmd.kind, cmd.x, cmd.y, rules.nodeDefs[cmd.kind])
+      world.nodes.push(placed)
+      if (cmd.kind === 'predator' && world.ecology !== undefined) {
+        startLife(world, placed, tuning, 'placed', null)
+        addDen(world, cmd.x, cmd.y, tuning)
+      }
       pushEvent(world, tuning, {
         tick: world.tick,
         type: 'command',
@@ -95,6 +102,16 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       const index = world.nodes.findIndex((node) => node.id === cmd.id)
       const [removed] = world.nodes.splice(index, 1)
       id = cmd.id
+      if (removed?.kind === 'predator' && removed.hunt !== null && world.ecology !== undefined) {
+        // Its den goes with it, unless another predator is still homed there.
+        const { homeX, homeY } = removed.hunt
+        const radius = tuning.predator.ecology.denRadius
+        world.ecology.dens = world.ecology.dens.filter((den) => {
+          if (hypot(den.x - homeX, den.y - homeY) > radius) return true
+          return world.nodes.some((node) => node.kind === 'predator' && node.hunt !== null && hypot(node.hunt.homeX - den.x, node.hunt.homeY - den.y) <= radius)
+        })
+        world.ecology.stats.removed += 1
+      }
       pushEvent(world, tuning, {
         tick: world.tick,
         type: 'command',

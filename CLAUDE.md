@@ -20,6 +20,7 @@ npm run sim -- --seeds a,b,c --ticks 20000 --no-family               # same, wit
 npm run sim -- --seeds a,b,c --ticks 20000 --asexual                 # same, with the two sexes off (a bot breeds alone); the last survey column `fem` is the females alive at the end
 npm run sim -- --seeds a,b,c --ticks 20000 --no-seasons                # same, with seasonal regrowth off (S2 switched seasons on in Eden; this is the pre-season control)
 npm run sim -- --seeds a,b,c --ticks 20000 --set seasons.enabled=true --set seasons.amplitude=0.4   # harness-only override of any existing tuning number or boolean (repeatable; an unknown path or wrong kind is an error), so sweeps need no edit to tuning.ts
+npm run sim -- --seeds a,b,c --ticks 20000 --static-predators        # predator ecology off (E1; it is off by default, so a no-op until E2); the last survey columns are preds pMin pMax pBorn pArr pStarve pAged huntGap idle (ecology counters and the mean ticks between one predator's kills, and that minus digestTicks)
 npm run sim -- --seed a --ticks 9000 --event drought@3000 --event plague@6000:48,32   # scripted world events, repeatable, also with --seeds (bounty@4000, meteor@5000:30,20)
 ```
 
@@ -45,6 +46,10 @@ The sim runs in a Web Worker; the page only draws and sends messages. **Logic li
 ### Seasons in the UI (S3)
 
 No sim change. `seasonInfo.ts` (pure, tested) wraps `seasonAt` for the stats strip's sixth tile, Season (value = Spring/Summer/Autumn/Winter by quarter or "Off"; detail = "x0.74 · 620 to winter", x being the regrowth multiplier, spelled out in the tooltip, a fixed line when off, so nothing moves). `chartMath.ts` `seasonBands(x0, x1, seasons, plotWidth)` gives the winter quarter of each year for the population chart's 12 px strip on the plot floor (not full height, so it is not read as an event band; none when seasons are off or a year is under `MIN_YEAR_PX` wide); the legend gains a "Winter strip" entry only while seasons are on.
+
+### Predator ecology (E1)
+
+Switched off (`tuning.predator.ecology.enabled` false; E2 retunes and enables it), so every hash is unchanged (`SIM_VERSION` 9). With it on (`--set predator.ecology.enabled=true`, or `withEcology` in `tests/variants.ts`): a world made with it has `World.ecology` (`dens`, `stats`) and each predator `hunt.life` (the keys are absent, never null, with it off, and the last in their objects); `predators.ts` has `checkEcology`, `startLife`, `addDen`, `isHungry` (used by `movePredators` and `exposureAt`: a fed predator neither targets nor bites, but still takes its one draw) and `predatorLife` (ageing, starvation, cubs, dens; called by `step` after `expireEvents`; a cub attempt takes two `predator` draws per territory try). `createWorld` and the `placeNode`/`removeNode` commands keep dens in step. `SimEventType` gained `predator` (`predatorEvent`: born, arrived, starved, aged). Tests: `tests/predatorEcology.test.ts`.
 
 ### Predators in the UI (M21c)
 

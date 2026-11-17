@@ -14,7 +14,7 @@
 // After the loop, in this order: dead bots are removed, (sexual mode: mates are paired,) children are added, the lineage store is
 // pruned if it holds more than `lineage.maxRecords` records (lineage.ts), each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
 // the emptied ones are removed, world events and meteor craters whose time is up are
-// removed (logging each), then family knowledge is shared (a living parent and child close
+// removed (logging each), then predator ecology runs (predators.ts, E1: ageing, starvation, cubs, dens; nothing while it is off), then family knowledge is shared (a living parent and child close
 // together swap memory on every `family.shareEvery`-th tick), then a stats row is recorded every
 // `stats.sampleEvery` ticks. A plague hurts inside the bot loop (metabolise); a drought or
 // bounty acts in the regrow phase (the season multiplies it too, seasons.ts, off by default); both are still in force on their last tick. A ruin made this tick is already decaying by its
@@ -23,7 +23,7 @@
 //
 // The phases live in perception.ts, brain.ts, movement.ts, metabolism.ts,
 // reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
-// given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick) and
+// given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick, plus two per territory try when predator ecology is on and a cub is attempted) and
 // the `birth` stream (nineteen per asexual child, twenty-eight per sexual one). Ruins, family sharing and lineage records draw nothing.
 
 import { decide } from './brain.ts'
@@ -34,7 +34,7 @@ import { deathCause, metabolise } from './metabolism.ts'
 import { act } from './movement.ts'
 import { exposureAt, regrow } from './nodes.ts'
 import { perceive, remember } from './perception.ts'
-import { creditKill, movePredators } from './predators.ts'
+import { creditKill, movePredators, predatorLife } from './predators.ts'
 import { conceive, meetsReproductionNeeds, pairMates, spawnChildren } from './reproduction.ts'
 import type { Conception } from './reproduction.ts'
 import { decayRuins, leaveRuin } from './ruins.ts'
@@ -97,6 +97,7 @@ export function step(world: World, rules: Rules): void {
   regrow(world, tuning)
   decayRuins(world, tuning)
   expireEvents(world, tuning)
+  predatorLife(world, rules)
   shareFamilyKnowledge(world, tuning)
 
   if (world.tick % tuning.stats.sampleEvery === 0) {

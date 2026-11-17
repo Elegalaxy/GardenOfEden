@@ -19,10 +19,58 @@
 // A bite is dealt in nodes.ts (`exposureAt`) and a kill is credited here (`creditKill`): the predator
 // rests `digestTicks`, drops its target and counts the kill. The dead bot leaves a normal ruin.
 // Numbers come only from `Tuning.predator`, the bot turn rate and the node's own radius and damage.
+//
+// Predator ecology (E1, `Tuning.predator.ecology`, off by default; with it off none of this runs, no key is added to the
+// world and no draw is taken). A predator then has `hunt.life` (energy, age, kills since its last cub). Energy falls by `drain`
+// each tick and a kill adds `killEnergy` (up to `maxEnergy`); a predator below `huntBelow` hunts, a fed one skips its target
+// (it still takes its one wander draw) and walks home, and `exposureAt` lets only a hungry predator bite. At 0 energy it starves,
+// at `maxAge` it dies of age (`predatorLife`, once per tick after the world events expire; the node is removed, a log event is
+// written and bots forget it as they do any missing node). A predator that has made `killsPerCub` kills, is an adult and keeps
+// `huntBelow` energy after paying `cubCost` breeds alone: it looks up to `homeTries` times for a free territory (two `predator`
+// draws a try: an angle and a distance around its own home, valid when inside the map margin, outside every shelter and at least
+// `homeSpacing` from every other home) and, if one is found, a cub appears at the parent with that home. No spot means nothing
+// changes. Every starting or placed predator marks a den; a den with no predator homed within `denRadius` for `recolonizeTicks`
+// is taken by a newcomer from the nearest map edge (no draw). Cubs never make dens. Draws: one per predator per tick, plus two
+// per territory try when a cub is attempted.
 
 import { atan2, cos, hypot, sin } from './exactMath.ts'
 import { nextFloat } from './rng.ts'
-import type { Bot, Rules, Tuning, World, WorldNode } from './types.ts'
+import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
+import { makeNode, pushEvent } from './world.ts'
+
+/** Throws when the ecology numbers cannot work: every number above 0 (`drain` may be 0) and `huntBelow` at most `maxEnergy`. */
+export function checkEcology(ecology: Tuning['predator']['ecology']): void {
+  const { enabled: _enabled, drain, ...positive } = ecology
+  if (!(Number.isFinite(drain) && drain >= 0)) throw new RangeError(`predator.ecology.drain must be a number from 0, received ${drain}`)
+  for (const [name, value] of Object.entries(positive)) {
+    if (!(Number.isFinite(value) && value > 0)) throw new RangeError(`predator.ecology.${name} must be a number above 0, received ${value}`)
+  }
+  if (ecology.huntBelow > ecology.maxEnergy) {
+    throw new RangeError(`predator.ecology.huntBelow (${ecology.huntBelow}) must not exceed maxEnergy (${ecology.maxEnergy})`)
+  }
+}
+
+/** Give a predator node its ecology life (energy `cubEnergy`, age 0). Call only with ecology on. */
+export function startLife(world: Pick<World, 'tick'>, node: WorldNode, tuning: Pick<Tuning, 'predator'>, origin: PredatorOrigin, parentId: number | null): void {
+  if (node.hunt === null) return
+  node.hunt.life = { energy: tuning.predator.ecology.cubEnergy, age: 0, born: world.tick, origin, parentId, kidsKills: 0 }
+}
+
+/** Mark a den at (x, y) unless one is already within `denRadius`. A world without ecology has none. */
+export function addDen(world: Pick<World, 'ecology'>, x: number, y: number, tuning: Pick<Tuning, 'predator'>): void {
+  const { ecology } = world
+  if (ecology === undefined) return
+  for (const den of ecology.dens) {
+    if (hypot(den.x - x, den.y - y) <= tuning.predator.ecology.denRadius) return
+  }
+  ecology.dens.push({ x, y, vacantSince: null })
+}
+
+/** True when a predator may hunt and bite: ecology off, no life yet, or energy below `huntBelow`. */
+export function isHungry(hunt: NonNullable<WorldNode['hunt']>, tuning: Pick<Tuning, 'predator'>): boolean {
+  const ecology = tuning.predator.ecology
+  return !ecology.enabled || hunt.life === undefined || hunt.life.energy < ecology.huntBelow
+}
 
 /** True when a point is inside a shelter's radius (the edge counts as inside, as in `exposureAt`). */
 export function insideShelter(shelters: readonly WorldNode[], x: number, y: number): boolean {
@@ -97,7 +145,7 @@ export function movePredators(world: World, rules: Rules): void {
     if (world.tick <= hunt.restUntil) continue
     if (shelters === null) shelters = world.nodes.filter((other) => other.kind === 'shelter')
 
-    const prey = nearestPrey(world.bots, shelters, node.x, node.y, predator.senseRadius)
+    const prey = isHungry(hunt, rules.tuning) ? nearestPrey(world.bots, shelters, node.x, node.y, predator.senseRadius) : null
     if (prey === null) {
       hunt.targetId = null
       hunt.chase = 0
@@ -132,4 +180,133 @@ export function creditKill(world: World, predatorId: number, tick: number, tunin
   hunt.restUntil = tick + tuning.predator.digestTicks
   hunt.targetId = null
   hunt.chase = 0
+  const life = hunt.life
+  if (life !== undefined) {
+    life.energy = Math.min(tuning.predator.ecology.maxEnergy, life.energy + tuning.predator.ecology.killEnergy)
+    life.kidsKills += 1
+  }
+}
+
+function logPredator(world: World, tuning: Tuning, node: WorldNode, kind: PredatorEventKind): void {
+  pushEvent(world, tuning, { tick: world.tick, type: 'predator', nodeId: node.id, predatorEvent: kind, x: node.x, y: node.y })
+}
+
+/** True when a living predator is homed within `radius` of (x, y). */
+function homedNear(nodes: readonly WorldNode[], x: number, y: number, radius: number): boolean {
+  for (const node of nodes) {
+    const hunt = node.hunt
+    if (node.kind === 'predator' && hunt !== null && hypot(hunt.homeX - x, hunt.homeY - y) <= radius) return true
+  }
+  return false
+}
+
+/** The point on the map edge nearest to (x, y); a tie goes left, right, top, bottom. */
+function nearestEdgePoint(world: Pick<World, 'width' | 'height'>, x: number, y: number): { x: number; y: number } {
+  const best = Math.min(x, world.width - x, y, world.height - y)
+  if (x === best) return { x: 0, y }
+  if (world.width - x === best) return { x: world.width, y }
+  if (y === best) return { x, y: 0 }
+  return { x, y: world.height }
+}
+
+/**
+ * Predator ecology for one tick (E1), after the world events expire: ageing and starvation, cubs, then dens. Does nothing
+ * with ecology off or in a world made without it. Predators are visited in id order and every list is built in a fixed order.
+ */
+export function predatorLife(world: World, rules: Rules): void {
+  const { tuning } = rules
+  const eco = tuning.predator.ecology
+  const ecology = world.ecology
+  if (!eco.enabled || ecology === undefined) return
+
+  const gone = new Set<number>()
+  for (const node of world.nodes) {
+    const life = node.hunt?.life
+    if (node.kind !== 'predator' || life === undefined) continue
+    life.age += 1
+    life.energy -= eco.drain
+    if (life.energy <= 0) {
+      gone.add(node.id)
+      ecology.stats.starved += 1
+      logPredator(world, tuning, node, 'starved')
+    } else if (life.age >= eco.maxAge) {
+      gone.add(node.id)
+      ecology.stats.aged += 1
+      logPredator(world, tuning, node, 'aged')
+    }
+  }
+  if (gone.size > 0) world.nodes = world.nodes.filter((node) => !gone.has(node.id))
+
+  // Cubs: each adult predator that has earned one looks for free territory around its own home.
+  const shelters = world.nodes.filter((node) => node.kind === 'shelter')
+  const parents = world.nodes.filter((node) => node.kind === 'predator' && node.hunt?.life !== undefined)
+  const homes: { x: number; y: number }[] = []
+  let count = 0
+  for (const node of world.nodes) {
+    if (node.kind !== 'predator' || node.hunt === null) continue
+    count += 1
+    homes.push({ x: node.hunt.homeX, y: node.hunt.homeY })
+  }
+  const cubs: WorldNode[] = []
+  for (const parent of parents) {
+    const hunt = parent.hunt
+    const life = hunt?.life
+    if (hunt === null || life === undefined) continue
+    if (life.kidsKills < eco.killsPerCub || life.age < eco.adultAge || life.energy < eco.cubCost + eco.huntBelow) continue
+    if (count + cubs.length >= tuning.predator.maxCount) continue
+    for (let attempt = 0; attempt < eco.homeTries; attempt += 1) {
+      const angle = 2 * Math.PI * nextFloat(world.rng.predator)
+      const distance = eco.homeSpacing * (1 + nextFloat(world.rng.predator))
+      const x = hunt.homeX + cos(angle) * distance
+      const y = hunt.homeY + sin(angle) * distance
+      if (x < eco.homeMargin || y < eco.homeMargin || x > world.width - eco.homeMargin || y > world.height - eco.homeMargin) continue
+      if (insideShelter(shelters, x, y)) continue
+      if (homes.some((home) => hypot(home.x - x, home.y - y) < eco.homeSpacing)) continue
+      const cub = makeNode(0, 'predator', parent.x, parent.y, rules.nodeDefs.predator)
+      if (cub.hunt !== null) {
+        cub.hunt.homeX = x
+        cub.hunt.homeY = y
+      }
+      startLife(world, cub, tuning, 'cub', parent.id)
+      cubs.push(cub)
+      homes.push({ x, y })
+      life.energy -= eco.cubCost
+      life.kidsKills = 0
+      break
+    }
+  }
+  for (const cub of cubs) {
+    cub.id = world.nextId
+    world.nextId += 1
+    world.nodes.push(cub)
+    ecology.stats.births += 1
+    logPredator(world, tuning, cub, 'born')
+  }
+  count += cubs.length
+
+  // Dens: an empty one is taken by a newcomer from the nearest map edge after `recolonizeTicks`.
+  for (const den of ecology.dens) {
+    if (homedNear(world.nodes, den.x, den.y, eco.denRadius)) {
+      den.vacantSince = null
+      continue
+    }
+    if (den.vacantSince === null) {
+      den.vacantSince = world.tick
+      continue
+    }
+    if (world.tick - den.vacantSince < eco.recolonizeTicks || count >= tuning.predator.maxCount) continue
+    const edge = nearestEdgePoint(world, den.x, den.y)
+    const newcomer = makeNode(world.nextId, 'predator', edge.x, edge.y, rules.nodeDefs.predator)
+    world.nextId += 1
+    if (newcomer.hunt !== null) {
+      newcomer.hunt.homeX = den.x
+      newcomer.hunt.homeY = den.y
+    }
+    startLife(world, newcomer, tuning, 'arrived', null)
+    world.nodes.push(newcomer)
+    count += 1
+    den.vacantSince = null
+    ecology.stats.arrivals += 1
+    logPredator(world, tuning, newcomer, 'arrived')
+  }
 }

@@ -98,6 +98,32 @@ export type PredatorState = {
   chase: number
   restUntil: number
   kills: number
+  /** Predator ecology (E1): energy, age and breeding bookkeeping. The key is absent unless `predator.ecology.enabled` was on at creation or placement. */
+  life?: PredatorLife
+}
+
+/** Where a predator came from (E1): the preset, the player, a parent's litter, or a re-colonising newcomer from the map edge. */
+export type PredatorOrigin = 'founder' | 'placed' | 'cub' | 'arrived'
+
+/** One predator's life (E1, see predators.ts): energy falls by `drain` a tick and rises by `killEnergy` a kill; `kidsKills` counts kills since its last cub. */
+export type PredatorLife = {
+  energy: number
+  age: number
+  /** Tick it appeared (0 for a preset predator). */
+  born: number
+  origin: PredatorOrigin
+  /** The parent predator's node id for a cub, else null. */
+  parentId: number | null
+  kidsKills: number
+}
+
+/** A predator territory marker (E1): an empty den (no predator homed within `denRadius`) is re-colonised after `recolonizeTicks`. */
+export type Den = { x: number; y: number; vacantSince: number | null }
+
+/** Predator ecology state (E1). Present on the world only when `predator.ecology.enabled` was on at creation. */
+export type PredatorEcology = {
+  dens: Den[]
+  stats: { births: number; arrivals: number; starved: number; aged: number; removed: number }
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -176,7 +202,10 @@ export type Sex = 'female' | 'male'
 export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age'
 
 /** `event` is the sim announcing that a world event ended (its start is the player's `command`). */
-export type SimEventType = 'birth' | 'death' | 'command' | 'event'
+export type SimEventType = 'birth' | 'death' | 'command' | 'event' | 'predator'
+
+/** What happened to a predator (E1), carried by a `predator` log event. */
+export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
 
@@ -197,6 +226,8 @@ export type SimEvent = {
   nodeKind?: NodeKind
   /** triggerEvent commands, and `event` entries: which world event. */
   eventKind?: EventKind
+  /** `predator` events (E1): what happened to the predator in `nodeId`. */
+  predatorEvent?: PredatorEventKind
   x: number
   y: number
 }
@@ -222,6 +253,8 @@ export type Sample = {
   deaths: number
   food: number
   traits: Traits | null
+  /** Predators alive (E1). Present only in a world with predator ecology on. */
+  predators?: number
 }
 
 export type DeathsByCause = Record<DeathCause, number>
@@ -299,6 +332,8 @@ export type World = {
   lineage: LineageRecord[]
   /** Records dropped from `lineage` so far. */
   lineagePruned: number
+  /** Predator ecology (E1): dens and counters. Absent unless `predator.ecology.enabled` was on at creation. */
+  ecology?: PredatorEcology
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -601,6 +636,43 @@ export type Tuning = {
     homeRange: number
     /** Radians between the headings tried when steering around a shelter. */
     steerStep: number
+    /**
+     * Predator ecology (E1, switched off until E2). With it on a predator has energy (`life`): it loses `drain` a tick, gains
+     * `killEnergy` a kill (up to `maxEnergy`), hunts only below `huntBelow`, starves at 0 and dies of age at `maxAge`. After
+     * `killsPerCub` kills, once adult and fed, it breeds alone into free territory. Empty dens are re-colonised from the map edge.
+     */
+    ecology: {
+      /** Off: no `life`, no dens, no extra draws; the world is as it was before E1. */
+      enabled: boolean
+      /** Energy lost per predator per tick (may be 0). */
+      drain: number
+      /** Energy a kill gives. */
+      killEnergy: number
+      /** Energy ceiling. */
+      maxEnergy: number
+      /** A predator hunts and bites only while its energy is below this (at most `maxEnergy`); a sated one wanders home. */
+      huntBelow: number
+      /** Age (ticks) at which a predator dies of age. */
+      maxAge: number
+      /** Age below which a predator cannot breed. */
+      adultAge: number
+      /** Kills needed since its last cub before it breeds again. */
+      killsPerCub: number
+      /** Energy a cub starts with. */
+      cubEnergy: number
+      /** Energy the parent pays for a cub (it must also stay above `huntBelow` afterwards). */
+      cubCost: number
+      /** Territory spots tried for a cub (two `predator` draws each). */
+      homeTries: number
+      /** Cells: a new home is between this and twice this from the parent's home, and at least this far from every other home. */
+      homeSpacing: number
+      /** Cells: a new home stays this far inside the map edge. */
+      homeMargin: number
+      /** Cells: a predator homed within this of a den occupies it. */
+      denRadius: number
+      /** Ticks a den stays empty before a newcomer arrives from the map edge. */
+      recolonizeTicks: number
+    }
   }
   /**
    * Seasons (S1): food regrowth swings with the tick, multiplier = base + amplitude * sin(2 * pi * tick / period), so tick 0

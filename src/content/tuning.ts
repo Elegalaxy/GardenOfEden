@@ -235,6 +235,24 @@ export const tuning: Tuning = {
     memoryTicks: 400,
     homeRange: 11,
     steerStep: 0.5,
+    // Predator ecology (E1 mechanics, off until E2 retunes it): see `Tuning.predator.ecology`. With it off nothing below is read.
+    ecology: {
+      enabled: false,
+      drain: 0.02,
+      killEnergy: 60,
+      maxEnergy: 100,
+      huntBelow: 70,
+      maxAge: 15000,
+      adultAge: 2000,
+      killsPerCub: 3,
+      cubEnergy: 60,
+      cubCost: 30,
+      homeTries: 8,
+      homeSpacing: 18,
+      homeMargin: 4,
+      denRadius: 4,
+      recolonizeTicks: 3000,
+    },
   },
   // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by
   // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the

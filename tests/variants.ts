@@ -53,6 +53,18 @@ export function noSeasons(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
 }
 
+/** The same rules with predator ecology switched on (E1; it is off in the shipped numbers), with optional number overrides. */
+export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predator']['ecology']> = {}): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, ...over, enabled: true } } } }
+}
+
+/** The same rules with predator ecology off: fixed predators (the same as the shipped rules until E2). */
+export function staticPredators(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false } } } }
+}
+
 export function stage1(rules: Rules): Rules {
   const { tuning } = rules
   return {
