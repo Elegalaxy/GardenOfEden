@@ -267,13 +267,15 @@ export const tuning: Tuning = {
   // bring intake back within a few percent. amplitude may not exceed 0.5. Retuned in S2 (doc/GAME_DESIGN.md
   // changelog has the sweep): a 3,000-tick year with a 0.4 swing gives clear waves and no more lost runs than before.
   seasons: { enabled: true, period: 3000, amplitude: 0.4, base: 1.02 },
-  // Directional sensing (V1 mechanics, switched off). Reach = senseRadius * (rear + (front - rear) * (1 + cos) / 2), where cos is the
-  // angle off the heading. botFront 1 keeps the forward reach of the old disc; botRear 0.4 means a bot notices only what is within
-  // 40% of its radius behind it (a back-turned bot can be ambushed, a close one is never missed). predatorFront 1 and predatorRear
-  // 0.5: a hunter loses less behind, so it still finds prey that circles round. trackTicks 10: a hunter the bot saw itself stays
-  // tracked for 10 ticks after it leaves the cone, so turning away does not make it vanish at once. Not tuned yet (V2).
+  // Directional sensing (V1 mechanics, V2 retune and switch-on). Reach = senseRadius * (rear + (front - rear) * (1 + cos) / 2), where cos is the
+  // angle off the heading. botFront 1 keeps the forward reach of the old disc; botRear 0.7 means a bot notices what is within
+  // 70% of its radius behind it (a back-turned bot can still be ambushed, a close one is never missed). predatorFront 1 and
+  // predatorRear 0.35: a hunter sees less behind it than a bot does, so prey that slips round it can escape. trackTicks 10: a
+  // hunter the bot saw itself stays tracked for 10 ticks after it leaves the cone. V2 sweep (doc/GAME_DESIGN.md changelog): a
+  // narrower bot rear (0.55 or less) or a wider predator rear (0.7 or more) lowered caution or lost colonies over 60,000 ticks.
+  // Cost: about 17% more time per 20,000-tick run than the all-round disc (an accepted deviation).
   perception: {
-    cone: { enabled: false, botFront: 1, botRear: 0.4, predatorFront: 1, predatorRear: 0.5, trackTicks: 10 },
+    cone: { enabled: true, botFront: 1, botRear: 0.7, predatorFront: 1, predatorRear: 0.35, trackTicks: 10 },
   },
   logCap: 500,
 }

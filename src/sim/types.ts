@@ -690,7 +690,7 @@ export type Tuning = {
     base: number
   }
   /**
-   * Directional sensing (V1): reach depends on the angle off the heading. Off by default; with it off nothing changes and nothing
+   * Directional sensing (V1): reach depends on the angle off the heading. On in Eden since V2; with it off nothing changes and nothing
    * extra is hashed. No random draws; see perception.ts and predators.ts.
    */
   perception: {

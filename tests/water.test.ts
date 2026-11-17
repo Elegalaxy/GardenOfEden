@@ -6,7 +6,8 @@ import { stateHash } from '../src/sim/hash.ts'
 import { replayWorld } from '../src/sim/replay.ts'
 import { meetsReproductionNeeds } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
-import type { Command, Preset, World } from '../src/sim/types.ts'
+import type { Command, Preset, Rules, World } from '../src/sim/types.ts'
+import { noCone } from './variants.ts'
 import { createWorld, totalDeaths } from '../src/sim/world.ts'
 
 // Water and thirst (M7b). These need the real numbers from src/content, so
@@ -22,10 +23,10 @@ function scene(over: Partial<Preset>): Preset {
 const lone = scene({ bots: [{ x: 20, y: 20 }] })
 
 /** Keeps the bots from starving, so only thirst can end the test. */
-function stepFed(world: World, ticks: number): void {
+function stepFed(world: World, ticks: number, active: Rules = rules): void {
   for (let i = 0; i < ticks; i += 1) {
     for (const bot of world.bots) bot.energy = botRules.maxEnergy
-    step(world, rules)
+    step(world, active)
   }
 }
 
@@ -185,10 +186,12 @@ describe('water near danger', () => {
   })
 
   it('is worth the risk to a bot that is desperate', () => {
-    const world = createWorld('a', risky, rules)
+    // All-round sensing: the bot faces a random way and the test is about desperation, not the V2 vision cone.
+    const open = noCone(rules)
+    const world = createWorld('a', risky, open)
     world.bots[0]!.traits.senseRadius = 12
     world.bots[0]!.thirst = 10
-    stepFed(world, 1)
+    stepFed(world, 1, open)
     expect(world.bots[0]?.intent.kind).toBe('seekWater')
   })
 })

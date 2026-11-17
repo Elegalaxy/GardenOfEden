@@ -8,7 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Bot, Preset, Rules, Sex, World } from '../src/sim/types.ts'
 import { autoSex, createWorld } from '../src/sim/world.ts'
-import { edenWithDanger, neutralTraits, noSeasons, stage1 } from './variants.ts'
+import { edenWithDanger, neutralTraits, noCone, noSeasons, stage1 } from './variants.ts'
 
 // Two sexes (M17): founders alternate, children get a sex, and a birth needs a ready female and a ready
 // male in shelters within mateRange. The one-tick scenes use rules with speed 0, so nobody walks and
@@ -321,7 +321,8 @@ describe('asexual control', () => {
 
   it.each(['a', 'b'] as const)('reproduces the pre-M17 numbers on seed %s', { timeout: 60_000 }, (seed) => {
     // Without seasons (S2): the pre-M17 world had a fixed regrowth rate.
-    const old = noSeasons(stage1(neutralTraits(rules)))
+    // And without the V2 vision cone.
+    const old = noCone(noSeasons(stage1(neutralTraits(rules))))
     // Eden as it was before M21b (`edenWithDanger`): the numbers belong to that map.
     const world = createWorld(seed, edenWithDanger(), old)
     for (let i = 0; i < 5000; i += 1) step(world, old)

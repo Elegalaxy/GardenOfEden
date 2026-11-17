@@ -20,7 +20,7 @@
 // rests `digestTicks`, drops its target and counts the kill. The dead bot leaves a normal ruin.
 // Numbers come only from `Tuning.predator`, the bot turn rate and the node's own radius and damage.
 //
-// Directional sensing (V1, `Tuning.perception.cone`, off by default; with it off `nearestPrey` runs as before): the predator then sees
+// Directional sensing (V1, `Tuning.perception.cone`, on in Eden since V2; with it off `nearestPrey` runs as before): the predator then sees
 // along `hunt.heading` with a cone (`nearestPreyCone`: reach range * coneFactor(cos, predatorFront, predatorRear)) and keeps a lock:
 // the bot it is already chasing (`hunt.targetId`) stays a candidate while within range * predatorFront in any direction. The nearest
 // candidate outside the shelters wins as before; chase counter, give-up and the one draw per tick are unchanged.

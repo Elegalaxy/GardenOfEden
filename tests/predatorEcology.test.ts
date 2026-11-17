@@ -11,7 +11,7 @@ import { step } from '../src/sim/step.ts'
 import type { MemoryEntry, Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { createGapTracker, formatSurvey, surveySeed } from '../src/harness/survey.ts'
-import { staticPredators, withEcology } from './variants.ts'
+import { noCone, staticPredators, withEcology } from './variants.ts'
 
 // Predator ecology (E1): hunger, kills, starving and ageing, cubs, dens and re-colonising, commands and determinism, and the
 // harness columns. The shipped rules have it off; most tests switch it on with `withEcology` and call `predatorLife` or
@@ -72,7 +72,7 @@ describe('ecology off equals before E1', () => {
 
   it('Eden seed a with a placed and a removed predator hashes as it did before E1, with no new keys', () => {
     // Fixed predators: the pin belongs to the world without ecology, whatever the shipped rules say.
-    const off = staticPredators(rules)
+    const off = noCone(staticPredators(rules)) // and all-round sensing: the pin predates the V2 vision cone
     const world = createWorld('a', edenPreset, off)
     let predatorDraws = 0
     for (let i = 0; i < 5000; i += 1) {

@@ -12,7 +12,7 @@
 // `--no-family` (either form) switches that sharing off, for comparing against a run with it.
 // `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
 // survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
-// `--no-cone` (either form) switches directional sensing off (V1; it is off by default, so this the flag applies before `--set` overrides).
+// `--no-cone` (either form) switches directional sensing off (V1; it is on in Eden since V2, so this flag applies before `--set` overrides).
 // `--no-seasons` (either form) switches seasonal regrowth off (S1; seasons are on in Eden since S2, so this gives the pre-season control).
 // `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
 // The last survey columns (E1) are `preds` (predators at the end), `pMin`/`pMax` (their range after the warmup), `pBorn`, `pArr`, `pStarve`,

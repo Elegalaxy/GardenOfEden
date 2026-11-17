@@ -7,6 +7,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { ruinAmount } from '../src/sim/ruins.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World } from '../src/sim/types.ts'
+import { noCone } from './variants.ts'
 import { createWorld, makeNode, placedNodeCount } from '../src/sim/world.ts'
 
 // Ruins (M7a): what a dead bot leaves behind. These need the real numbers from
@@ -204,13 +205,15 @@ describe('eating ruins', () => {
   })
 
   it('is safe when the ruin a bot is heading for disappears', () => {
-    const world = createWorld('a', hungry, rules)
+    // All-round sensing: the bot faces a random way and the test is about a vanished target, not the V2 vision cone.
+    const open = noCone(rules)
+    const world = createWorld('a', hungry, open)
     world.bots[0].energy = 30
     const id = addRuin(world, 26, 20, 40)
-    step(world, rules)
+    step(world, open)
     expect(world.bots[0].intent).toEqual({ kind: 'seekFood', targetId: id })
-    expect(applyCommand(world, rules, { type: 'removeNode', id }).ok).toBe(true)
-    expect(() => step(world, rules)).not.toThrow()
+    expect(applyCommand(world, open, { type: 'removeNode', id }).ok).toBe(true)
+    expect(() => step(world, open)).not.toThrow()
     expect(world.bots[0].intent.targetId).not.toBe(id)
     expect(world.bots[0].memory.some((entry) => entry.nodeId === id)).toBe(false)
     for (let i = 0; i < 20; i += 1) step(world, rules)

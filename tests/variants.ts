@@ -65,13 +65,13 @@ export function staticPredators(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false } } } }
 }
 
-/** The same rules with the V1 vision cone switched on (it is off in the shipped numbers), with optional number overrides. */
+/** The same rules with the V1 vision cone switched on (it is on in the shipped numbers since V2), with optional number overrides. */
 export function withCone(rules: Rules, over: Partial<Rules['tuning']['perception']['cone']> = {}): Rules {
   const { perception } = rules.tuning
   return { ...rules, tuning: { ...rules.tuning, perception: { ...perception, cone: { ...perception.cone, ...over, enabled: true } } } }
 }
 
-/** The same rules with the vision cone off (all-round sensing, the shipped setting). */
+/** The same rules with the vision cone off (all-round sensing, as before V2). */
 export function noCone(rules: Rules): Rules {
   const { perception } = rules.tuning
   return { ...rules, tuning: { ...rules.tuning, perception: { ...perception, cone: { ...perception.cone, enabled: false } } } }

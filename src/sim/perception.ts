@@ -19,7 +19,7 @@
 // entries and predator sightings alike, so fleeing, steering and the food and water choices avoid both.
 // Memory is always trimmed and aged in `remember`, before any decision, so a predator entry read there is fresh.
 //
-// Directional sensing (V1, `Tuning.perception.cone`, off by default; with it off `perceive` runs the old loop unchanged and adds
+// Directional sensing (V1, `Tuning.perception.cone`, on in Eden since V2; with it off `perceive` runs the old loop unchanged and adds
 // nothing hashed). On, reach depends on the angle off the bot's heading: a node is sensed when its reach (d for a predator, d minus
 // radius otherwise) is within senseRadius * coneFactor, which runs from `botFront` straight ahead down to `botRear` straight behind
 // (so anything within senseRadius * botRear is always seen). A predator the bot saw itself (not learned from family) and that has

@@ -10,7 +10,7 @@ import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { noCone, staticPredators, withCone } from './variants.ts'
 
-// Directional sensing (V1): the vision cone for bots and predators. Shipped off; `withCone` switches it on. Perception and
+// Directional sensing (V1): the vision cone for bots and predators. On in Eden since V2 (p1 numbers); `noCone` switches it off, `withCone` sets numbers. The tiny-scene tests use the V1 numbers explicitly so they pin the mechanics, not the tuning. Perception and
 // predator tests build tiny worlds and call `perceive` / `remember` / `movePredators` directly with the tick set by hand.
 
 const PI = Math.PI
@@ -27,8 +27,8 @@ function hashAfter(r: Rules, ticks: number): string {
   return stateHash(world)
 }
 
-const base = staticPredators(shippedRules)
-const cone = withCone(base) // botFront 1, botRear 0.4 (reach behind 2.4 at sense radius 6), predator 1 / 0.5
+const base = noCone(staticPredators(shippedRules))
+const cone = withCone(base, { botFront: 1, botRear: 0.4, predatorFront: 1, predatorRear: 0.5, trackTicks: 10 }) // reach behind 2.4 at sense radius 6, predator 1 / 0.5
 
 /** A world with one bot at (30, 30) heading 0, sense radius 6, plus the given nodes (radius forced to 0 so reach = distance). */
 function setup(r: Rules, nodes: Preset['nodes']): World {
@@ -42,9 +42,23 @@ function setup(r: Rules, nodes: Preset['nodes']): World {
 const idsOf = (nodes: WorldNode[]): number[] => nodes.map((node) => node.id)
 
 describe('cone off, and neutral cone', () => {
-  it('shipped rules have the cone off and the hash is the pre-V1 one', () => {
-    expect(shippedRules.tuning.perception.cone.enabled).toBe(false)
-    expect(hashAfter(shippedRules, 5000)).toBe(PRE_V1_HASH)
+  it('with the cone off the hash is the pre-V1 one', () => {
+    expect(hashAfter(noCone(shippedRules), 5000)).toBe(PRE_V1_HASH)
+  })
+
+  it('ships on with the V2 numbers', () => {
+    expect(shippedRules.tuning.perception.cone).toEqual({
+      enabled: true,
+      botFront: 1,
+      botRear: 0.7,
+      predatorFront: 1,
+      predatorRear: 0.35,
+      trackTicks: 10,
+    })
+  })
+
+  it('Eden as shipped differs from noCone', () => {
+    expect(hashAfter(shippedRules, 1500)).not.toBe(hashAfter(noCone(shippedRules), 1500))
   })
 
   it('front = rear = 1 gives the same hash as off', () => {

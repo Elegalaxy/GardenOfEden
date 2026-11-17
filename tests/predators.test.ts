@@ -14,7 +14,7 @@ import { createRng, nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { MemoryEntry, NodeKind, Preset, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld, placedNodeCount } from '../src/sim/world.ts'
-import { staticPredators } from './variants.ts'
+import { noCone, staticPredators } from './variants.ts'
 
 // Predators (M21a): the hunter node, its movement, bites, kills and what bots remember of it. These need
 // the real numbers from src/content, so they live here and not next to src/sim. Most tests call
@@ -357,8 +357,10 @@ describe('what bots remember of a predator', () => {
       nodes: [{ kind: 'predator', x: 24, y: 20 }, { kind: 'resource', x: 24, y: 20 }],
       bots: [{ x: 12, y: 20 }],
     })
+    // All-round sensing: the scene has the bot facing a random way, and the test is about caution, not the cone (V2).
+    const open = noCone(rules)
     function approach(caution: number, energy: number): number {
-      const world = createWorld('a', grove, rules)
+      const world = createWorld('a', grove, open)
       predatorsOf(world)[0]!.hunt!.restUntil = 1_000_000
       const bot = world.bots[0]!
       bot.traits.senseRadius = 12
@@ -368,7 +370,7 @@ describe('what bots remember of a predator', () => {
         bot.energy = energy
         bot.thirst = tuning.bot.maxThirst
         bot.health = tuning.bot.maxHealth
-        step(world, rules)
+        step(world, open)
         closest = Math.min(closest, Math.hypot(bot.x - 24, bot.y - 20))
       }
       return closest
