@@ -415,14 +415,14 @@ describe('harness', () => {
     expect(tracker.record(world)).toEqual([])
   })
 
-  it('the survey table ends with the predator columns, one cell per heading', () => {
+  it('the survey table ends with the predator and prey columns, one cell per heading', () => {
     const row = surveySeed('a', edenPreset, staticPredators(rules), 300, 100)
     expect(row.preds).toBe(3)
     expect(row.predMin).toBe(3)
     expect(row.predBorn + row.predArrived + row.predStarved + row.predAged).toBe(0)
     const [head, line] = formatSurvey([row]).split('\n') as [string, string]
     const headings = head.trim().split(/\s+/)
-    expect(headings.slice(-11)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%'])
+    expect(headings.slice(-15)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft'])
     expect(headings.slice(0, 27).at(-1)).toBe('inb')
     expect(line.trim().split(/\s+/)).toHaveLength(headings.length)
   })

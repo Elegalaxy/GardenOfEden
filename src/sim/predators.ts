@@ -37,6 +37,12 @@
 // changes. Every starting or placed predator marks a den; a den with no predator homed within `denRadius` for `recolonizeTicks`
 // is taken by a newcomer from the nearest map edge (no draw). Cubs never make dens. Draws: one per predator per tick, plus two
 // per territory try when a cub is attempted.
+//
+// Prey rule (P1, `Tuning.predator.prey`, off; acts only with ecology on and only in a world made with both, whose `ecology.prey` holds
+// `overSince` and `left`). `predatorLimit` is floor(bots / perPredator) within `minCount` and `maxCount`. Order inside `predatorLife`:
+// age and starve, leaving, cubs, dens. Over the limit for `leaveAfter` ticks, the predator with the lowest energy (ties lowest id)
+// that is not player-placed leaves (a `left` log event) and the timer restarts; at or under the limit the timer clears. Cubs and
+// newcomers are gated by the limit instead of `maxCount` (a gated parent takes no draws). No draws, no tick-order change.
 
 import { atan2, cos, hypot, sin } from './exactMath.ts'
 import { coneFactor } from './perception.ts'
@@ -61,6 +67,26 @@ export function checkEcology(ecology: Tuning['predator']['ecology']): void {
       `predator.ecology.cubCost (${ecology.cubCost}) + huntBelow (${ecology.huntBelow}) must not exceed maxEnergy (${ecology.maxEnergy}) minus drain (${drain}), or no predator could ever breed`,
     )
   }
+}
+
+/** Throws when the prey rule numbers cannot work: `perPredator` above 0, `minCount` a whole number from 0 to `maxCount`, `leaveAfter` a whole number from 1. */
+export function checkPrey(prey: Tuning['predator']['prey'], maxCount: number): void {
+  if (!(Number.isFinite(prey.perPredator) && prey.perPredator > 0)) {
+    throw new RangeError(`predator.prey.perPredator must be a number above 0, received ${prey.perPredator}`)
+  }
+  if (!(Number.isInteger(prey.minCount) && prey.minCount >= 0 && prey.minCount <= maxCount)) {
+    throw new RangeError(`predator.prey.minCount must be a whole number from 0 to maxCount (${maxCount}), received ${prey.minCount}`)
+  }
+  if (!(Number.isInteger(prey.leaveAfter) && prey.leaveAfter >= 1)) {
+    throw new RangeError(`predator.prey.leaveAfter must be a whole number from 1, received ${prey.leaveAfter}`)
+  }
+}
+
+/** How many predators the bots can carry: `maxCount` with the prey rule (or ecology) off, else floor(bots / perPredator) kept within `minCount` and `maxCount`. */
+export function predatorLimit(botCount: number, tuning: Pick<Tuning, 'predator'>): number {
+  const { maxCount, ecology, prey } = tuning.predator
+  if (!ecology.enabled || !prey.enabled) return maxCount
+  return Math.min(maxCount, Math.max(prey.minCount, Math.floor(botCount / prey.perPredator)))
 }
 
 /** Give a predator node its ecology life (energy `cubEnergy`, age 0). Call only with ecology on. */
@@ -270,7 +296,7 @@ function nearestEdgePoint(world: Pick<World, 'width' | 'height'>, x: number, y: 
 }
 
 /**
- * Predator ecology for one tick (E1), after the world events expire: ageing and starvation, cubs, then dens. Does nothing
+ * Predator ecology for one tick (E1), after the world events expire: ageing and starvation, leaving (P1 prey rule, off by default), cubs, then dens. Does nothing
  * with ecology off or in a world made without it. Predators are visited in id order and every list is built in a fixed order.
  */
 export function predatorLife(world: World, rules: Rules): void {
@@ -297,6 +323,34 @@ export function predatorLife(world: World, rules: Rules): void {
   }
   if (gone.size > 0) world.nodes = world.nodes.filter((node) => !gone.has(node.id))
 
+  // Prey rule (P1): more predators than the bots can carry for `leaveAfter` ticks sends the hungriest non-placed one away. No draws.
+  const limit = predatorLimit(world.bots.length, tuning)
+  const prey = ecology.prey
+  if (prey !== undefined && tuning.predator.prey.enabled) {
+    let living = 0
+    for (const node of world.nodes) if (node.kind === 'predator') living += 1
+    if (living > limit) {
+      prey.overSince ??= world.tick
+      if (world.tick - prey.overSince >= tuning.predator.prey.leaveAfter) {
+        let leaver: WorldNode | null = null
+        for (const node of world.nodes) {
+          const life = node.hunt?.life
+          if (node.kind !== 'predator' || life === undefined || life.origin === 'placed') continue
+          if (leaver === null || life.energy < (leaver.hunt?.life?.energy ?? Infinity)) leaver = node
+        }
+        if (leaver !== null) {
+          const id = leaver.id
+          logPredator(world, tuning, leaver, 'left')
+          world.nodes = world.nodes.filter((node) => node.id !== id)
+          prey.left += 1
+          prey.overSince = world.tick
+        }
+      }
+    } else {
+      prey.overSince = null
+    }
+  }
+
   // Cubs: each adult predator that has earned one looks for free territory around its own home.
   const shelters = world.nodes.filter((node) => node.kind === 'shelter')
   const parents = world.nodes.filter((node) => node.kind === 'predator' && node.hunt?.life !== undefined)
@@ -313,7 +367,7 @@ export function predatorLife(world: World, rules: Rules): void {
     const life = hunt?.life
     if (hunt === null || life === undefined) continue
     if (life.kidsKills < eco.killsPerCub || life.age < eco.adultAge || life.energy < eco.cubCost + eco.huntBelow) continue
-    if (count + cubs.length >= tuning.predator.maxCount) continue
+    if (count + cubs.length >= limit) continue
     for (let attempt = 0; attempt < eco.homeTries; attempt += 1) {
       const angle = 2 * Math.PI * nextFloat(world.rng.predator)
       const distance = eco.homeSpacing * (1 + nextFloat(world.rng.predator))
@@ -354,7 +408,7 @@ export function predatorLife(world: World, rules: Rules): void {
       den.vacantSince = world.tick
       continue
     }
-    if (world.tick - den.vacantSince < eco.recolonizeTicks || count >= tuning.predator.maxCount) continue
+    if (world.tick - den.vacantSince < eco.recolonizeTicks || count >= limit) continue
     const edge = nearestEdgePoint(world, den.x, den.y)
     const newcomer = makeNode(world.nextId, 'predator', edge.x, edge.y, rules.nodeDefs.predator)
     world.nextId += 1

@@ -124,6 +124,11 @@ export type Den = { x: number; y: number; vacantSince: number | null }
 export type PredatorEcology = {
   dens: Den[]
   stats: { births: number; arrivals: number; starved: number; aged: number; removed: number }
+  /**
+   * Prey rule (P1) bookkeeping: `overSince` is the tick the predator count first exceeded the prey limit (null while it does not),
+   * `left` the predators that have left the map. The key is last and absent unless both `ecology` and `prey` were on at creation.
+   */
+  prey?: { overSince: number | null; left: number }
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -205,7 +210,7 @@ export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 
 export type SimEventType = 'birth' | 'death' | 'command' | 'event' | 'predator'
 
 /** What happened to a predator (E1), carried by a `predator` log event. */
-export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged'
+export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged' | 'left'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
 
@@ -672,6 +677,20 @@ export type Tuning = {
       denRadius: number
       /** Ticks a den stays empty before a newcomer arrives from the map edge. */
       recolonizeTicks: number
+    }
+    /**
+     * Predator-prey rule (P1; off). Acts only when `ecology.enabled` is also true. The predator count is limited to
+     * `floor(bots / perPredator)` (at least `minCount`, at most `maxCount`): over the limit no cub is born and no newcomer arrives,
+     * and after `leaveAfter` ticks over it the hungriest non-placed predator leaves the map. Player-placed predators never leave.
+     */
+    prey: {
+      enabled: boolean
+      /** Living bots needed to support one predator. */
+      perPredator: number
+      /** Predators the limit never goes below (0 up to `maxCount`). */
+      minCount: number
+      /** Ticks the count must stay over the limit before one predator leaves (at least 1). */
+      leaveAfter: number
     }
   }
   /**

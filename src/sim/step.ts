@@ -14,7 +14,7 @@
 // After the loop, in this order: dead bots are removed, (sexual mode: mates are paired,) children are added, the lineage store is
 // pruned if it holds more than `lineage.maxRecords` records (lineage.ts), each dead bot leaves a ruin (in id order), resources regrow, ruins decay and
 // the emptied ones are removed, world events and meteor craters whose time is up are
-// removed (logging each), then predator ecology runs (predators.ts, E1: ageing, starvation, cubs, dens; nothing while it is off), then family knowledge is shared (a living parent and child close
+// removed (logging each), then predator ecology runs (predators.ts, E1: ageing, starvation, leaving under the P1 prey rule, cubs, dens; nothing while it is off), then family knowledge is shared (a living parent and child close
 // together swap memory on every `family.shareEvery`-th tick), then a stats row is recorded every
 // `stats.sampleEvery` ticks. A plague hurts inside the bot loop (metabolise); a drought or
 // bounty acts in the regrow phase (the season multiplies it too, seasons.ts, off by default); both are still in force on their last tick. A ruin made this tick is already decaying by its

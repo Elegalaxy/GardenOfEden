@@ -260,6 +260,10 @@ export const tuning: Tuning = {
       denRadius: 4,
       recolonizeTicks: 3000,
     },
+    // Predator-prey rule (P1 mechanics, off; works only with ecology on): see `Tuning.predator.prey`. The predator limit is
+    // floor(bots / perPredator), never below `minCount` (1: they cannot die out this way) nor above `maxCount`. Over the limit cubs and
+    // newcomers wait, and after `leaveAfter` ticks over it the lowest-energy predator that was not placed by the player leaves.
+    prey: { enabled: false, perPredator: 12, minCount: 1, leaveAfter: 500 },
   },
   // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by
   // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the

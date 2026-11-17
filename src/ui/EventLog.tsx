@@ -58,7 +58,7 @@ function describe({ event, located }: LogEntry): string {
       return kind === 'meteor' ? `Meteor crater faded at ${where}` : `${EVENT_LABEL[kind]} ended`
     }
     case 'predator': {
-      const what = { born: 'born', arrived: 'arrived', starved: 'starved', aged: 'died of age' }[event.predatorEvent ?? 'born']
+      const what = { born: 'born', arrived: 'arrived', starved: 'starved', aged: 'died of age', left: 'left the map (too few bots)' }[event.predatorEvent ?? 'born']
       return `Predator #${event.nodeId} ${what} at ${where}`
     }
     case 'command': {

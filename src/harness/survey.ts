@@ -20,6 +20,10 @@
 // so it is how long a predator spent looking for the next bot; both are null (a dash) when no predator killed twice.
 // E2 adds `pZero` (the longest run of ticks after the warmup with no predator at all) and `pCap%` (the share of ticks after the warmup with
 // `predator.maxCount` predators), the two bars that show a predator population dying out or filling the map; both after `idle`.
+// P1 adds `pCorr`, `pCorrL`, `pLag` and `pLeft` after `pCap%`: the Pearson correlation between the predator count and the bot count, taken every
+// `stats.sampleEvery` ticks after the warmup, at lag 0 and at the best of the lags in `PREY_LAGS` (predators now against bots that many ticks earlier,
+// with that lag), and the predators that left the map under the prey rule (0 with it off; `withoutPrey` and `--no-prey` switch it off). A dash
+// means the series had no variance or was too short.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
@@ -71,6 +75,12 @@ export type SeedSurvey = {
   predZeroRun: number
   /** Ticks after the warmup with `predator.maxCount` predators alive (E2). */
   predCapTicks: number
+  /** Correlation of the predator count with the bot count at the same time (P1), and the best one over `PREY_LAGS` with its lag in ticks; null without variance. */
+  predCorr: number | null
+  predCorrBest: number | null
+  predLag: number | null
+  /** Predators that left the map under the prey rule (P1). */
+  predLeft: number
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -127,6 +137,52 @@ export function withoutEcology(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false } } } }
 }
 
+/** The same rules with the P1 prey rule off: `--no-prey`. */
+export function withoutPrey(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, prey: { ...predator.prey, enabled: false } } } }
+}
+
+/** Lags (ticks) at which the predator count is compared with the bot count (P1). */
+export const PREY_LAGS = [0, 500, 1000, 1500, 2000, 3000]
+
+/** Pearson correlation of two equal-length series; null when shorter than 2 or either has no variance. */
+export function pearson(xs: readonly number[], ys: readonly number[]): number | null {
+  const n = Math.min(xs.length, ys.length)
+  if (n < 2) return null
+  let sx = 0
+  let sy = 0
+  for (let i = 0; i < n; i += 1) {
+    sx += xs[i]
+    sy += ys[i]
+  }
+  const mx = sx / n
+  const my = sy / n
+  let sxx = 0
+  let syy = 0
+  let sxy = 0
+  for (let i = 0; i < n; i += 1) {
+    const dx = xs[i] - mx
+    const dy = ys[i] - my
+    sxx += dx * dx
+    syy += dy * dy
+    sxy += dx * dy
+  }
+  if (sxx === 0 || syy === 0) return null
+  return sxy / Math.sqrt(sxx * syy)
+}
+
+/** The lag (in samples, from `lags`) at which predators(t) correlates best (highest value) with bots(t - lag); null when no lag gives a correlation. */
+export function bestLag(pred: readonly number[], bots: readonly number[], lags: readonly number[]): { lag: number; corr: number } | null {
+  let best: { lag: number; corr: number } | null = null
+  for (const lag of lags) {
+    if (lag >= pred.length) continue
+    const corr = pearson(pred.slice(lag), bots.slice(0, bots.length - lag))
+    if (corr !== null && (best === null || corr > best.corr)) best = { lag, corr }
+  }
+  return best
+}
+
 /** Remembers each predator's kill count and last kill tick; `record` is called once a tick and returns the gaps between kills seen this tick. */
 export function createGapTracker(): { record: (world: Pick<World, 'tick' | 'nodes'>) => number[] } {
   const seen = new Map<number, { kills: number; last: number | null }>()
@@ -164,6 +220,11 @@ function capCell(r: SeedSurvey): string {
   return counted <= 0 ? '-' : ((100 * r.predCapTicks) / counted).toFixed(0)
 }
 
+/** A correlation for a table cell: two decimals, or a dash. */
+export function corrCell(value: number | null): string {
+  return value === null ? '-' : value.toFixed(2)
+}
+
 /** A mean trait for a table cell: two decimals, or a dash when nobody is alive. */
 export function traitCell(traits: Traits | null, name: keyof Traits): string {
   return traits === null ? '-' : traits[name].toFixed(2)
@@ -189,6 +250,8 @@ export function surveySeed(
   let predCapTicks = 0
   const gapTracker = createGapTracker()
   const gaps: number[] = []
+  const botSeries: number[] = []
+  const predSeries: number[] = []
   const predatorCount = (): number => world.nodes.filter((node) => node.kind === 'predator').length
   for (let i = 0; i < ticks; i += 1) {
     refused.push(...scripted.due(world, rules))
@@ -203,6 +266,10 @@ export function surveySeed(
       zeroRun = predators === 0 ? zeroRun + 1 : 0
       predZeroRun = Math.max(predZeroRun, zeroRun)
       if (predators >= rules.tuning.predator.maxCount) predCapTicks += 1
+      if ((world.tick - warmup) % rules.tuning.stats.sampleEvery === 0) {
+        botSeries.push(world.bots.length)
+        predSeries.push(predators)
+      }
     }
   }
   if (min === Infinity) {
@@ -214,6 +281,8 @@ export function surveySeed(
     predMax = predMin
   }
   const stats = world.ecology?.stats
+  const every = rules.tuning.stats.sampleEvery
+  const best = bestLag(predSeries, botSeries, PREY_LAGS.map((lag) => lag / every))
   const gapMean = gaps.length === 0 ? null : gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length
   return {
     seed,
@@ -243,13 +312,17 @@ export function surveySeed(
     idle: gapMean === null ? null : gapMean - rules.tuning.predator.digestTicks,
     predZeroRun,
     predCapTicks,
+    predCorr: pearson(predSeries, botSeries),
+    predCorrBest: best === null ? null : best.corr,
+    predLag: best === null ? null : best.lag * every,
+    predLeft: world.ecology?.prey?.left ?? 0,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -292,6 +365,10 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       gapCell(r.idle),
       r.predZeroRun,
       capCell(r),
+      corrCell(r.predCorr),
+      corrCell(r.predCorrBest),
+      r.predLag === null ? '-' : r.predLag,
+      r.predLeft,
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

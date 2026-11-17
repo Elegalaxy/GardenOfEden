@@ -377,8 +377,9 @@ function GoneNotice({ selection, world }: { selection: Selection; world: ViewWor
       detail = `Removed at tick ${event.tick}.`
       break
     }
-    if (selection.kind === 'node' && event.type === 'predator' && event.nodeId === selection.id && (event.predatorEvent === 'starved' || event.predatorEvent === 'aged')) {
-      detail = `${event.predatorEvent === 'starved' ? 'Starved' : 'Died of age'} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
+    if (selection.kind === 'node' && event.type === 'predator' && event.nodeId === selection.id && (event.predatorEvent === 'starved' || event.predatorEvent === 'aged' || event.predatorEvent === 'left')) {
+      const verb = { starved: 'Starved', aged: 'Died of age', left: 'Left the map (too few bots)' }[event.predatorEvent]
+      detail = `${verb} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
       break
     }
     if (selection.kind === 'node' && event.type === 'event' && event.nodeId === selection.id) {

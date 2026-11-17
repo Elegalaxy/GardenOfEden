@@ -8,7 +8,7 @@
 import { goldenHue } from './genes.ts'
 import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
-import { addDen, checkEcology, startLife } from './predators.ts'
+import { addDen, checkEcology, checkPrey, startLife } from './predators.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
@@ -159,6 +159,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   assertPositive(preset.width, 'preset width')
   assertPositive(preset.height, 'preset height')
   if (rules.tuning.predator.ecology.enabled) checkEcology(rules.tuning.predator.ecology)
+  if (rules.tuning.predator.ecology.enabled && rules.tuning.predator.prey.enabled) checkPrey(rules.tuning.predator.prey, rules.tuning.predator.maxCount)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
 
   const world: World = {
@@ -225,6 +226,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   // Predator ecology (E1): every preset predator gets a life and marks a den. No draws.
   if (rules.tuning.predator.ecology.enabled) {
     world.ecology = { dens: [], stats: { births: 0, arrivals: 0, starved: 0, aged: 0, removed: 0 } }
+    if (rules.tuning.predator.prey.enabled) world.ecology.prey = { overSince: null, left: 0 }
     for (const node of world.nodes) {
       if (node.kind !== 'predator') continue
       startLife(world, node, rules.tuning, 'founder', null)

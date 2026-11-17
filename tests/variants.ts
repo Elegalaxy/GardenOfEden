@@ -53,10 +53,35 @@ export function noSeasons(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
 }
 
-/** The same rules with predator ecology switched on (E1; it is off in the shipped numbers), with optional number overrides. */
+/** E1/E2 ecology without the prey rule: predator ecology switched on (it is on in the shipped numbers since E2), prey rule forced off, with optional number overrides. */
 export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predator']['ecology']> = {}): Rules {
   const { predator } = rules.tuning
-  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, ...over, enabled: true } } } }
+  return {
+    ...rules,
+    tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, ...over, enabled: true }, prey: { ...predator.prey, enabled: false } } },
+  }
+}
+
+/** The same rules with the P1 prey rule (and ecology, which it needs) switched on, with optional number overrides for the prey rule and the ecology. */
+export function withPrey(
+  rules: Rules,
+  over: Partial<Rules['tuning']['predator']['prey']> = {},
+  ecologyOver: Partial<Rules['tuning']['predator']['ecology']> = {},
+): Rules {
+  const { predator } = rules.tuning
+  return {
+    ...rules,
+    tuning: {
+      ...rules.tuning,
+      predator: { ...predator, ecology: { ...predator.ecology, ...ecologyOver, enabled: true }, prey: { ...predator.prey, ...over, enabled: true } },
+    },
+  }
+}
+
+/** The same rules with the prey rule off (as shipped). */
+export function noPreyRule(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, prey: { ...predator.prey, enabled: false } } } }
 }
 
 /** The same rules with predator ecology off: fixed predators (the shipped rules have it on since E2). */
