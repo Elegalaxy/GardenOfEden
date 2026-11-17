@@ -59,7 +59,7 @@ export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predato
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, ...over, enabled: true } } } }
 }
 
-/** The same rules with predator ecology off: fixed predators (the same as the shipped rules until E2). */
+/** The same rules with predator ecology off: fixed predators (the shipped rules have it on since E2). */
 export function staticPredators(rules: Rules): Rules {
   const { predator } = rules.tuning
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false } } } }

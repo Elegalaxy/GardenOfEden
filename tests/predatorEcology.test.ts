@@ -48,8 +48,26 @@ function ready(node: WorldNode): void {
 const BIG = { width: 200, height: 200 }
 
 describe('ecology off equals before E1', () => {
-  it('shipped rules have ecology off', () => {
-    expect(eco.enabled).toBe(false)
+  it('ships on with the E2 numbers', () => {
+    expect(eco).toEqual({
+      enabled: true,
+      drain: 0.02,
+      killEnergy: 60,
+      maxEnergy: 100,
+      huntBelow: 60,
+      maxAge: 12000,
+      adultAge: 1500,
+      killsPerCub: 6,
+      cubEnergy: 50,
+      cubCost: 30,
+      homeTries: 8,
+      homeSpacing: 24,
+      homeMargin: 4,
+      denRadius: 4,
+      recolonizeTicks: 3000,
+    })
+    expect(() => checkEcology(eco)).not.toThrow()
+    expect(eco.cubEnergy).toBeLessThan(eco.huntBelow)
   })
 
   it('Eden seed a with a placed and a removed predator hashes as it did before E1, with no new keys', () => {
@@ -78,14 +96,17 @@ describe('ecology off equals before E1', () => {
     expect(world.rng.predator).toEqual(reference)
   })
 
-  it('staticPredators gives the same world as the shipped rules', () => {
+  it("Eden as shipped differs from staticPredators, and only the shipped world has 'ecology'", () => {
     const a = createWorld('b', edenPreset, rules)
-    const b = createWorld('b', edenPreset, staticPredators(rules))
+    const off = staticPredators(rules)
+    const b = createWorld('b', edenPreset, off)
+    expect('ecology' in a).toBe(true)
+    expect('ecology' in b).toBe(false)
     for (let i = 0; i < 300; i += 1) {
       step(a, rules)
-      step(b, staticPredators(rules))
+      step(b, off)
     }
-    expect(stateHash(a)).toBe(stateHash(b))
+    expect(stateHash(a)).not.toBe(stateHash(b))
   })
 })
 

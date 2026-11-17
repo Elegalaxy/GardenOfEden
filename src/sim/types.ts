@@ -637,7 +637,7 @@ export type Tuning = {
     /** Radians between the headings tried when steering around a shelter. */
     steerStep: number
     /**
-     * Predator ecology (E1, switched off until E2). With it on a predator has energy (`life`): it loses `drain` a tick, gains
+     * Predator ecology (E1; switched on in Eden by E2). With it on a predator has energy (`life`): it loses `drain` a tick, gains
      * `killEnergy` a kill (up to `maxEnergy`), hunts only below `huntBelow`, starves at 0 and dies of age at `maxAge`. After
      * `killsPerCub` kills, once adult and fed, it breeds alone into free territory. Empty dens are re-colonised from the map edge.
      */

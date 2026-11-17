@@ -20,7 +20,7 @@
 // rests `digestTicks`, drops its target and counts the kill. The dead bot leaves a normal ruin.
 // Numbers come only from `Tuning.predator`, the bot turn rate and the node's own radius and damage.
 //
-// Predator ecology (E1, `Tuning.predator.ecology`, off by default; with it off none of this runs, no key is added to the
+// Predator ecology (E1, `Tuning.predator.ecology`, on in Eden since E2; with it off none of this runs, no key is added to the
 // world and no draw is taken). A predator then has `hunt.life` (energy, age, kills since its last cub). Energy falls by `drain`
 // each tick and a kill adds `killEnergy` (up to `maxEnergy`); a predator below `huntBelow` hunts, a fed one skips its target
 // (it still takes its one wander draw) and walks home, and `exposureAt` lets only a hungry predator bite. At 0 energy it starves,

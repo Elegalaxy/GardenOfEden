@@ -13,7 +13,7 @@
 // `--asexual` (either form) switches the two sexes off (a bot breeds alone, as before M17); the last
 // survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
 // `--no-seasons` (either form) switches seasonal regrowth off (S1; seasons are on in Eden since S2, so this gives the pre-season control).
-// `--static-predators` (either form) switches predator ecology off (E1; it is off by default, so this changes nothing until E2 turns it on).
+// `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
 // The last survey columns (E1) are `preds` (predators at the end), `pMin`/`pMax` (their range after the warmup), `pBorn`, `pArr`, `pStarve`,
 // `pAged` (cubs born, newcomers arrived, predators starved or dead of age), `huntGap` (mean ticks between one predator's kills, the first
 // of each predator skipped) and `idle` (huntGap minus `predator.digestTicks`: the time a predator spent looking); a dash when there is no data.

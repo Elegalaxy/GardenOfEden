@@ -235,20 +235,27 @@ export const tuning: Tuning = {
     memoryTicks: 400,
     homeRange: 11,
     steerStep: 0.5,
-    // Predator ecology (E1 mechanics, off until E2 retunes it): see `Tuning.predator.ecology`. With it off nothing below is read.
+    // Predator ecology (E1 mechanics, switched on and retuned in E2; the sweep is in the doc/GAME_DESIGN.md changelog): see
+    // `Tuning.predator.ecology`. A predator loses `drain` energy a tick and a kill gives `killEnergy` (to `maxEnergy`); below `huntBelow` it
+    // hunts, at or above it it wanders home. It dies of age at `maxAge`. After `killsPerCub` kills (and `adultAge`) a predator with at least
+    // `cubCost` + `huntBelow` energy breeds a cub into free territory (`homeSpacing` from any other home). A kill tops energy up to at most
+    // `maxEnergy` and the drain comes off before the cub check, so a cub needs cubCost + huntBelow <= maxEnergy - drain (checkEcology refuses
+    // anything else). `cubEnergy` must stay below `huntBelow`, or newborns start sated. E2 found that predators are limited by their
+    // digest time, not by prey, so breeding is made rare (6 kills a cub, a 12,000-tick life): a predator breeds about once and the
+    // count peaks near 6 instead of sitting at the cap of 8, which cost the colony 60,000-tick extinctions.
     ecology: {
-      enabled: false,
+      enabled: true,
       drain: 0.02,
       killEnergy: 60,
       maxEnergy: 100,
-      huntBelow: 70,
-      maxAge: 15000,
-      adultAge: 2000,
-      killsPerCub: 3,
-      cubEnergy: 60,
-      cubCost: 25,
+      huntBelow: 60,
+      maxAge: 12000,
+      adultAge: 1500,
+      killsPerCub: 6,
+      cubEnergy: 50,
+      cubCost: 30,
       homeTries: 8,
-      homeSpacing: 18,
+      homeSpacing: 24,
       homeMargin: 4,
       denRadius: 4,
       recolonizeTicks: 3000,

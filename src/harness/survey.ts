@@ -15,7 +15,7 @@
 // mother's age). `fem` (M17) is the number of females among the bots alive at the end.
 // `inb` (M18) is the number of births whose parents were close relatives (inbreeding score above 0).
 // The E1 columns come after `inb`: `preds` is the predators alive at the end, `pMin`/`pMax` their range after the warmup, `pBorn`/`pArr`/`pStarve`/`pAged`
-// the cubs born, newcomers arrived and predators starved or dead of age (0 with ecology off). `huntGap` is the mean ticks between one
+// the cubs born, newcomers arrived and predators starved or dead of age (0 with ecology off, which `--static-predators` gives). `huntGap` is the mean ticks between one
 // predator's kills (its first kill has no gap before it; read from `hunt.kills` once a tick) and `idle` the mean of gap minus `predator.digestTicks`,
 // so it is how long a predator spent looking for the next bot; both are null (a dash) when no predator killed twice.
 // E2 adds `pZero` (the longest run of ticks after the warmup with no predator at all) and `pCap%` (the share of ticks after the warmup with
