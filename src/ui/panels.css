@@ -502,6 +502,23 @@ h4 {
   font-variant-numeric: tabular-nums;
 }
 
+.sex-option {
+  min-width: 44px;
+}
+
+/* Below 1280px it wraps under the Place count (its own reserved row, hidden by visibility for other tools) and lines up
+   with the right edge. From 1280px it fits on the notice row; other tools then drop it (display) so the notice keeps the
+   room it has without the picker, and the row height is the same as before the picker existed. */
+.sex-picker {
+  margin-left: auto;
+}
+
+@media (min-width: 1280px) {
+  .sex-picker.sex-off {
+    display: none;
+  }
+}
+
 .place-option[aria-pressed='true'] {
   background: #26324a;
   border-color: #9ec1ff;

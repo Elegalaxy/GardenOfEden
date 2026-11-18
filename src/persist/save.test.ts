@@ -100,6 +100,28 @@ describe('encodeSave and decodeSave', () => {
     expect(validateSave(value).ok).toBe(true)
   })
 
+  it('round-trips placeBot with and without a sex, in the sim key order', () => {
+    const value = raw()
+    value.commands = [
+      { tick: 1, cmd: { type: 'placeBot', x: 1, y: 2 } },
+      { tick: 2, cmd: { type: 'placeBot', x: 1, y: 2, sex: 'female' } },
+      { tick: 3, cmd: { sex: 'male', y: 2, x: 1, type: 'placeBot' } }, // keys in another order
+    ]
+    const result = validateSave(value)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.save.commands.map((c) => Object.keys(c.cmd))).toEqual([['type', 'x', 'y'], ['type', 'x', 'y', 'sex'], ['type', 'x', 'y', 'sex']])
+    expect(result.save.commands[2]?.cmd).toEqual({ type: 'placeBot', x: 1, y: 2, sex: 'male' })
+  })
+
+  it('refuses a placeBot with a bad sex', () => {
+    for (const sex of ['other', '', 1, null, true, 'Female']) {
+      const value = raw()
+      value.commands = [{ tick: 0, cmd: { type: 'placeBot', x: 1, y: 1, sex } }]
+      expectError(value, 'bad-command')
+    }
+  })
+
   it('makeSave copies the commands so later play cannot change the save', () => {
     const live = [{ tick: 1, cmd: { type: 'placeBot' as const, x: 1, y: 2 } }]
     const save = makeSave({ seed: 'a', tick: 5, commands: live }, 'eden', HASH, 1)

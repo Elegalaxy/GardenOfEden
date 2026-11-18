@@ -5,7 +5,7 @@
 // placeBot command, so a saved run replays exactly. Spots are distinct cell centres, so two nodes of one kind never fall
 // in the same cell (the sim refuses a gap under `player.minNodeGap`).
 
-import type { Command, NodeKind } from '../sim/types.ts'
+import type { Command, NodeKind, Sex } from '../sim/types.ts'
 
 /** The counts the player can choose. 1 is a plain click. */
 export const PLACE_COUNTS = [1, 10, 50, 200] as const
@@ -86,14 +86,20 @@ export function bulkCommands(
   height: number,
   random: () => number,
   around?: { x: number; y: number },
+  sex?: Sex | null,
 ): Command[] {
   const points =
     around === undefined
       ? spreadPoints(count, width, height, random)
       : clusterPoints(count, around, width, height, random, kind === null ? BOT_CELLS_EACH : NODE_CELLS_EACH)
   return points.map((point): Command =>
-    kind === null ? { type: 'placeBot', x: point.x, y: point.y } : { type: 'placeNode', kind, x: point.x, y: point.y },
+    kind === null ? botCommand(point.x, point.y, sex ?? null) : { type: 'placeNode', kind, x: point.x, y: point.y },
   )
+}
+
+/** A placeBot command; `sex` is the last key and only present for a chosen sex (null is Auto: the sim picks). */
+export function botCommand(x: number, y: number, sex: Sex | null): Command {
+  return sex === null ? { type: 'placeBot', x, y } : { type: 'placeBot', x, y, sex }
 }
 
 function plain(reason: string): string {

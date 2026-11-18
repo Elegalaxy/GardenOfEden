@@ -17,9 +17,9 @@ export const KIND_LABEL: Record<NodeKind, string> = {
 }
 
 /** What the Add bot tool will place next, with the living count of each sex: "Next: female (20 F / 21 M alive)". */
-export function nextBotSexLabel(bots: readonly { sex: 'female' | 'male' }[]): string {
+export function nextBotSexLabel(bots: readonly { sex: 'female' | 'male' }[], chosen: 'female' | 'male' | null = null): string {
   const females = bots.filter((bot) => bot.sex === 'female').length
-  return `Next: ${autoSex(bots)} (${females} F / ${bots.length - females} M alive)`
+  return `Next: ${chosen ?? autoSex(bots)} (${females} F / ${bots.length - females} M alive)`
 }
 
 export const KIND_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W', predator: 'V' }

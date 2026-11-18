@@ -63,6 +63,7 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
       return world.nodes.some((node) => node.id === cmd.id) ? null : 'There is no such node.'
     case 'placeBot':
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
+      if (cmd.sex !== undefined && cmd.sex !== 'female' && cmd.sex !== 'male') return 'The sex must be female or male.'
       if (world.bots.length >= tuning.population.cap) {
         return `The population cap (${tuning.population.cap}) is reached.`
       }
@@ -128,7 +129,7 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       world.nextId += 1
       const heading = nextFloat(world.rng.world) * Math.PI * 2
       // New ids are the largest so far, so pushing keeps `bots` in ascending id order.
-      const bot = makeBot(id, cmd.x, cmd.y, heading, rules, autoSex(world.bots), goldenHue(id))
+      const bot = makeBot(id, cmd.x, cmd.y, heading, rules, cmd.sex ?? autoSex(world.bots), goldenHue(id))
       world.bots.push(bot)
       addRecord(world, id, null, null, bot.sex, bot.generation, bot.traits, bot.hue)
       pushEvent(world, tuning, {

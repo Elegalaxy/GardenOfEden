@@ -241,7 +241,8 @@ export type SimEvent = {
 export type Command =
   | { type: 'placeNode'; kind: NodeKind; x: number; y: number }
   | { type: 'removeNode'; id: number }
-  | { type: 'placeBot'; x: number; y: number }
+  /** `sex` is the player's choice; absent means Auto (`autoSex`). It is the last key, and only present when given. */
+  | { type: 'placeBot'; x: number; y: number; sex?: Sex }
   /** `x` and `y` are needed for plague and meteor (the centre) and ignored for drought and bounty. */
   | { type: 'triggerEvent'; event: EventKind; x?: number; y?: number }
 

@@ -21,6 +21,7 @@ import {
   resetWorld,
   select,
   setPaused,
+  setBotSex,
   setPlaceCount,
   setSimClient,
   setTool,
@@ -35,6 +36,7 @@ beforeEach(async () => {
   setPaused(false)
   setTool('inspect')
   setPlaceCount(1)
+  setBotSex(null)
   resetWorld('store-test')
   await settled()
 })
@@ -411,5 +413,32 @@ describe('dispatchBatch (bulk placing)', () => {
     clickMap(5.5, 5.5, 1)
     await settled()
     expect(getSnapshot().population).toBe(before + 11)
+  })
+})
+
+describe('the Add bot sex picker', () => {
+  it('places the chosen sex with one click and with a bulk click, and Auto sends no key', async () => {
+    setTool('bot')
+    setBotSex('male')
+    clickMap(30.5, 30.5, 1)
+    await settled()
+    expect(getSnapshot().world.commands.at(-1)?.cmd).toEqual({ type: 'placeBot', x: 30.5, y: 30.5, sex: 'male' })
+    setPlaceCount(10)
+    clickMap(40.5, 40.5, 1)
+    await settled()
+    const placed = getSnapshot().world.commands.slice(-10).map((entry) => entry.cmd)
+    expect(placed.every((cmd) => cmd.type === 'placeBot' && cmd.sex === 'male')).toBe(true)
+    setBotSex(null)
+    setPlaceCount(1)
+    clickMap(20.5, 20.5, 1)
+    await settled()
+    expect(getSnapshot().world.commands.at(-1)?.cmd).toEqual({ type: 'placeBot', x: 20.5, y: 20.5 })
+  })
+
+  it('is kept across a new world', async () => {
+    setBotSex('female')
+    resetWorld('another')
+    await settled()
+    expect(getSnapshot().botSex).toBe('female')
   })
 })

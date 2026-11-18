@@ -40,9 +40,9 @@ import { SIM_VERSION, edenPreset, rules, tuning } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
-import type { Command, DeathsByCause, NodeKind } from '../sim/types.ts'
+import type { Command, DeathsByCause, NodeKind, Sex } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
-import { DEFAULT_PLACE_COUNT, batchNotice, bulkCommands } from './bulk.ts'
+import { DEFAULT_PLACE_COUNT, batchNotice, botCommand, bulkCommands } from './bulk.ts'
 import type { BatchResult, PlaceCount } from './bulk.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
@@ -136,6 +136,8 @@ export type WorldSnapshot = {
   heat: HeatSnapshot | null
   /** How many the placement tools put down per click (bulk placing, M19); 1 is a plain click. */
   placeCount: PlaceCount
+  /** The sex the Add bot tool gives a placed bot, or null for Auto (the sim alternates). Page only, not saved. */
+  botSex: Sex | null
   /** How the map colours the bots (M20): a mode, and the trait for the trait mode. A new object whenever it changes. */
   botColour: BotColour
 }
@@ -158,6 +160,7 @@ let heatLayer: HeatLayer | null = null
 let heatRange: HeatRange = 'all'
 let heat: HeatSnapshot | null = null
 let placeCount: PlaceCount = DEFAULT_PLACE_COUNT
+let botSex: Sex | null = null
 let botColour: BotColour = DEFAULT_BOT_COLOUR
 
 // The clock's side of the conversation with the worker.
@@ -203,6 +206,7 @@ function makeSnapshot(): WorldSnapshot {
     // A snapshot of the run before a reset or a load is not shown for the new one.
     heat: heat !== null && heat.runId === view.runId ? heat : null,
     placeCount,
+    botSex,
     botColour,
   }
 }
@@ -503,6 +507,13 @@ export function setPlaceCount(next: PlaceCount): void {
   publish()
 }
 
+/** The sex a placed bot gets (null: Auto). Kept across a new world, like the colour mode. */
+export function setBotSex(next: Sex | null): void {
+  if (next === botSex) return
+  botSex = next
+  publish()
+}
+
 export function setTool(next: Tool): void {
   if (next === tool) return
   tool = next
@@ -618,10 +629,10 @@ export function clickMap(x: number, y: number, reach: number): void {
       return
     case 'bot':
       if (placeCount > 1) {
-        void dispatchBatch(bulkCommands(null, placeCount, view.width, view.height, Math.random, centre), 'bots')
+        void dispatchBatch(bulkCommands(null, placeCount, view.width, view.height, Math.random, centre, botSex), 'bots')
         return
       }
-      void dispatch({ type: 'placeBot', x: centre.x, y: centre.y })
+      void dispatch(botCommand(centre.x, centre.y, botSex))
       return
     case 'plague':
     case 'meteor':

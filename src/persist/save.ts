@@ -18,9 +18,10 @@
 // whether the replay accepts every command, is checked by the ui when it loads.
 // New formats bump `SAVE_VERSION`; an older save is upgraded in `upgradeSave`. Version 3 (M21b) only retired
 // the `danger` node kind from `placeNode`: a version 1 or 2 save that places one is refused (`retired-kind`),
-// any other older save is the same data.
+// any other older save is the same data. A `placeBot` may carry an optional last key `sex` (the Add bot sex picker); it
+// is absent for Auto, so older saves read unchanged, but a save that has it cannot be opened by an older build.
 
-import type { Command, EventKind, NodeKind } from '../sim/types.ts'
+import type { Command, EventKind, NodeKind, Sex } from '../sim/types.ts'
 
 export const SAVE_VERSION = 3
 
@@ -38,6 +39,7 @@ const MAX_ID = 1_000_000_000
 
 /** Kinds a `placeNode` command may carry (ruins are made by the sim, danger zones were retired in M21b). Kept in step with content by tests/save.test.ts. */
 export const PLACEABLE_KINDS = ['resource', 'predator', 'shelter', 'water'] as const satisfies readonly NodeKind[]
+export const SEXES = ['female', 'male'] as const satisfies readonly Sex[]
 export const EVENT_KINDS = ['drought', 'bounty', 'plague', 'meteor'] as const satisfies readonly EventKind[]
 
 export type SavedCommand = { tick: number; cmd: Command }
@@ -112,8 +114,10 @@ function readCommand(raw: unknown): Command | null {
       if (typeof raw.id !== 'number' || !Number.isInteger(raw.id) || raw.id < 0 || raw.id > MAX_ID) return null
       return { type: 'removeNode', id: raw.id }
     case 'placeBot':
-      if (!onlyKeys(raw, ['type', 'x', 'y']) || !isCoord(raw.x) || !isCoord(raw.y)) return null
-      return { type: 'placeBot', x: raw.x, y: raw.y }
+      if (!onlyKeys(raw, ['type', 'x', 'y', 'sex']) || !isCoord(raw.x) || !isCoord(raw.y)) return null
+      if (raw.sex === undefined) return { type: 'placeBot', x: raw.x, y: raw.y }
+      if (!inList(SEXES, raw.sex)) return null
+      return { type: 'placeBot', x: raw.x, y: raw.y, sex: raw.sex }
     case 'triggerEvent': {
       if (!onlyKeys(raw, ['type', 'event', 'x', 'y']) || !inList(EVENT_KINDS, raw.event)) return null
       if (raw.x !== undefined && !isCoord(raw.x)) return null

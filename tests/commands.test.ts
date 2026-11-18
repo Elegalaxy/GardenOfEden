@@ -166,3 +166,35 @@ describe('replay', () => {
     ).toThrow(/tick order/)
   })
 })
+
+describe('placeBot with a chosen sex', () => {
+  it('places the chosen sex, records sex as the last key, and Auto leaves no key', () => {
+    const world = createWorld('a', empty, rules)
+    for (let i = 0; i < 4; i += 1) expect(applyCommand(world, rules, { type: 'placeBot', x: 3 + i, y: 3, sex: 'male' }).ok).toBe(true)
+    expect(world.bots.map((b) => b.sex)).toEqual(['male', 'male', 'male', 'male'])
+    expect(Object.keys(world.commands[0]!.cmd)).toEqual(['type', 'x', 'y', 'sex'])
+    applyCommand(world, rules, { type: 'placeBot', x: 9, y: 9, sex: 'female' })
+    expect(world.bots.at(-1)?.sex).toBe('female')
+    applyCommand(world, rules, { type: 'placeBot', x: 10, y: 10 })
+    expect(world.bots.at(-1)?.sex).toBe('female') // Auto balances the four males and one female
+    expect(Object.keys(world.commands.at(-1)!.cmd)).toEqual(['type', 'x', 'y'])
+  })
+
+  it('refuses a value that is not a sex', () => {
+    const world = createWorld('a', empty, rules)
+    const bad = { type: 'placeBot', x: 5, y: 5, sex: 'other' } as unknown as Command
+    expect(checkCommand(world, rules, bad)).toBe('The sex must be female or male.')
+    expect(applyCommand(world, rules, bad).ok).toBe(false)
+    expect(world.bots).toHaveLength(0)
+  })
+
+  it('replays to the same hash', () => {
+    const live = createWorld('a', edenPreset, rules)
+    advanceTo(live, 20)
+    applyCommand(live, rules, { type: 'placeBot', x: 10.5, y: 10.5, sex: 'male' })
+    applyCommand(live, rules, { type: 'placeBot', x: 11.5, y: 10.5 })
+    advanceTo(live, 200)
+    const copy = replayWorld('a', edenPreset, rules, live.commands, 200)
+    expect(stateHash(copy)).toBe(stateHash(live))
+  })
+})

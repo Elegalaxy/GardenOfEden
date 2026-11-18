@@ -84,3 +84,18 @@ describe('batchNotice', () => {
     )
   })
 })
+
+describe('bulkCommands with a chosen sex', () => {
+  it('gives every placed bot the sex as the last key, and none for Auto', () => {
+    const males = bulkCommands(null, 4, 96, 64, counter(), undefined, 'male')
+    expect(males.every((c) => c.type === 'placeBot' && c.sex === 'male')).toBe(true)
+    expect(Object.keys(males[0]!)).toEqual(['type', 'x', 'y', 'sex'])
+    for (const auto of [bulkCommands(null, 3, 96, 64, counter()), bulkCommands(null, 3, 96, 64, counter(), undefined, null)]) {
+      expect(auto.every((c) => !('sex' in c))).toBe(true)
+    }
+  })
+
+  it('ignores a sex for nodes', () => {
+    expect(bulkCommands('water', 2, 96, 64, counter(), undefined, 'female').every((c) => c.type === 'placeNode' && !('sex' in c))).toBe(true)
+  })
+})

@@ -10,7 +10,7 @@ import { useEffect } from 'react'
 import { KIND_LETTER, nextBotSexLabel } from './labels.ts'
 import { globalEventForKey } from './eventInfo.ts'
 import { PLACE_COUNTS } from './bulk.ts'
-import { dispatch, setPlaceCount, setTool, useWorldStore } from './store.ts'
+import { dispatch, setBotSex, setPlaceCount, setTool, useWorldStore } from './store.ts'
 import { isTypingTarget } from './typing.ts'
 import { PredatorKey } from './PredatorKey.tsx'
 import { TOOLS, placesThings, toolForKey, toolInfo } from './tools.ts'
@@ -121,15 +121,51 @@ function PlaceCount() {
   )
 }
 
+const SEX_CHOICES = [
+  { id: null, label: 'Auto', short: 'Auto' },
+  { id: 'female', label: 'Female', short: 'F' },
+  { id: 'male', label: 'Male', short: 'M' },
+] as const
+
+/**
+ * The sex of a placed bot (Add bot tool only). Like `PlaceCount` it keeps its room, hidden, for every other tool.
+ * Compact (Auto / F / M) so that on the widest layouts it shares the row with the notice and the Place count.
+ * Auto sends no sex and the sim alternates; the chosen button is marked by `aria-pressed` and a bar, not colour alone.
+ */
+function BotSexPicker() {
+  const { tool, botSex } = useWorldStore()
+  const shown = tool === 'bot'
+  return (
+    <div className={`place-count sex-picker${shown ? '' : ' sex-off'}`} role="group" aria-label="Sex of placed bots" style={shown ? undefined : { visibility: 'hidden' }}>
+      <span className="place-label">Sex</span>
+      <div className="place-options">
+        {SEX_CHOICES.map((choice) => (
+          <button
+            key={choice.label}
+            type="button"
+            className="secondary place-option sex-option"
+            aria-pressed={botSex === choice.id}
+            aria-label={choice.label}
+            title={choice.label}
+            onClick={() => setBotSex(choice.id)}
+          >
+            {choice.short}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /** What the active tool does and what the last click did. Fixed height: see `.tool-status` in panels.css. */
 export function ToolStatus() {
-  const { tool, notice, world } = useWorldStore()
+  const { tool, notice, world, botSex } = useWorldStore()
   const active = toolInfo(tool)
   return (
     <section className="tool-status" aria-label="Tool help">
       <p className="tool-hint">
         <strong>{active.label}.</strong> {active.hint}{' '}
-        {active.id === 'bot' ? <span className="figure">{nextBotSexLabel(world.bots)}.</span> : null} <span className="tool-hint-keys">Esc returns to Inspect.</span>
+        {active.id === 'bot' ? <span className="figure">{nextBotSexLabel(world.bots, botSex)}.</span> : null} <span className="tool-hint-keys">Esc returns to Inspect.</span>
       </p>
       <div className="tool-notice-row">
         <p
@@ -146,6 +182,7 @@ export function ToolStatus() {
           )}
         </p>
         <PlaceCount />
+        <BotSexPicker />
       </div>
     </section>
   )

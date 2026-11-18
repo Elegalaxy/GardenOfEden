@@ -107,6 +107,20 @@ describe('replaying a saved run', () => {
     expect(stateHash(replayed)).toBe(stateHash(live))
   })
 
+  it('a run with chosen-sex bots survives save, decode and replay with the same hash', () => {
+    const plan: Timed[] = [
+      { tick: 10, cmd: { type: 'placeBot', x: 30.5, y: 30.5, sex: 'male' } },
+      { tick: 10, cmd: { type: 'placeBot', x: 31.5, y: 30.5, sex: 'male' } },
+      { tick: 50, cmd: { type: 'placeBot', x: 32.5, y: 30.5 } },
+    ]
+    const live = playRun('save-sex', plan, 300)
+    const decoded = decodeSave(encodeSave(saveOf(live)))
+    if (!decoded.ok) throw new Error('decode failed')
+    expect(decoded.save.commands[0]?.cmd).toEqual({ type: 'placeBot', x: 30.5, y: 30.5, sex: 'male' })
+    const replayed = replayWorld(decoded.save.seed, edenPreset, rules, decoded.save.commands, decoded.save.tick)
+    expect(stateHash(replayed)).toBe(stateHash(live))
+  })
+
   it('a different seed or a missing command gives a different hash (the check can fail)', () => {
     const live = playRun('save-a', PLAN, END_TICK)
     const save = saveOf(live)
