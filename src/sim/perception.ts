@@ -74,17 +74,23 @@ export function perceive(world: World, bot: Bot, tuning?: Pick<Tuning, 'percepti
     return sensed
   }
   const reachMax = bot.traits.senseRadius
+  // Heading cos/sin once per bot, and the per-pair constants once (same values and operation order as coneFactor).
   const hx = cos(bot.heading)
   const hy = sin(bot.heading)
+  const { botFront, botRear } = cone
+  const reachFront = reachMax * botFront
+  const spread = botFront - botRear
+  const bx = bot.x
+  const by = bot.y
   for (const node of world.nodes) {
-    const dx = node.x - bot.x
-    const dy = node.y - bot.y
-    const d = distance(bot.x, bot.y, node.x, node.y)
+    const dx = node.x - bx
+    const dy = node.y - by
+    const d = hypot(dx, dy)
     const isPredator = node.kind === 'predator'
     const reach = isPredator ? d : d - node.radius
-    if (reach > reachMax * cone.botFront) continue
+    if (reach > reachFront) continue
     const c = d > 0 ? (dx * hx + dy * hy) / d : 1
-    if (reach <= reachMax * coneFactor(c, cone.botFront, cone.botRear)) {
+    if (reach <= reachMax * (botRear + (spread * (1 + c)) / 2)) {
       sensed.push(node)
     } else if (isPredator) {
       // Tracking: a hunter the bot saw itself a moment ago stays in sight while it is within reach in any direction.
