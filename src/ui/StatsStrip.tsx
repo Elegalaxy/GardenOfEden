@@ -6,12 +6,13 @@
 // tile counts resource food (what the chart plots); food in ruins is shown
 // beside it, not added in. The Season tile (S3) shows the name, the regrowth
 // multiplier and the ticks to the next season (`seasonInfo.ts`); "Off" when disabled. The Predators tile (E3) shows how many
-// predators are alive, their change over the same minute and the room the bots leave them (the prey limit, out of the cap); its hover text says how many are hungry and where they came from.
+// predators are alive, their change over the same minute and the room the bots leave them (the prey limit, out of the cap); its hover text says how many are hungry, where they came from and (H3) their mean traits.
 
 import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
 import { takeSample, totalRuinFood } from '../sim/world.ts'
-import { predatorChange, predatorCounts, preyPressure } from './predatorInfo.ts'
+import { predatorTraitStats } from '../sim/predatorTraits.ts'
+import { multiplierText, predatorChange, predatorCounts, preyPressure } from './predatorInfo.ts'
 import { seasonSummary } from './seasonInfo.ts'
 import { useWorldStore } from './store.ts'
 
@@ -62,6 +63,11 @@ export function StatsStrip() {
     byOrigin.placed > 0 ? `${byOrigin.placed} placed` : '',
     byOrigin.arrived > 0 ? `${byOrigin.arrived} arrived` : '',
   ].filter((part) => part !== '')
+  const traitStats = predatorTraitStats(world.nodes)
+  const traitHint =
+    traitStats === null
+      ? ''
+      : ` Mean traits (vs founders): sense ${multiplierText(traitStats.stats.sense.mean)}, speed ${multiplierText(traitStats.stats.speed.mean)}, stamina ${multiplierText(traitStats.stats.stamina.mean)}; newest generation ${traitStats.maxGeneration}.`
   const rate = (value: number | null): string => (value === null ? '—' : rateFormat.format(value))
   return (
     <section className="panel stats-panel" aria-label="Society">
@@ -89,7 +95,7 @@ export function StatsStrip() {
           label="Predators"
           value={numberFormat.format(predators.total)}
           detail={predatorDelta === null ? cap : `${changeText(predatorDelta.delta)} · ${cap}`}
-          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}`}
+          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}${traitHint}`}
         />
       </dl>
     </section>

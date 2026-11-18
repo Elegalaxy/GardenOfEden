@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { tuning } from '../content/index.ts'
 import type { Den, PredatorLife, PredatorState, Sample, WorldNode } from '../sim/types.ts'
-import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries, preyPressure } from './predatorInfo.ts'
+import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries, predatorTraitRows, preyPressure, multiplierText, multiplierTrend } from './predatorInfo.ts'
 
 const eco = tuning.predator.ecology
 
@@ -142,5 +142,40 @@ describe('prey limit', () => {
   it('is inert with the prey rule off', () => {
     const off = { predator: { ...tuning.predator, prey: { ...tuning.predator.prey, enabled: false } } }
     expect(preyPressure({ prey: { overSince: 0, left: 0 } }, 0, 5, 10, off)).toEqual({ limit: tuning.predator.maxCount, over: false, leavesIn: null })
+  })
+})
+
+describe('predatorTraitRows', () => {
+  const base = hunt(undefined)
+  it('is null without traits', () => {
+    expect(predatorTraitRows(base, tuning)).toBeNull()
+  })
+
+  it('gives founders neutral rows in the shipped units', () => {
+    const rows = predatorTraitRows({ ...base, traits: { sense: 1, speed: 1, stamina: 1 }, generation: 0 }, tuning)!
+    expect(rows.map((r) => r.key)).toEqual(['sense', 'speed', 'stamina', 'generation'])
+    expect(rows[0]!.value).toBe(`${tuning.predator.senseRadius.toFixed(1)} cells`)
+    expect(rows[1]!.value).toBe(`${tuning.predator.speed.toFixed(2)} /tick`)
+    expect(rows[2]!.value).toBe(`${tuning.predator.chaseTicks} ticks`)
+    expect(rows.slice(0, 3).every((r) => r.multiplier === '×1.00' && r.trend === 'flat')).toBe(true)
+    expect(rows[3]).toMatchObject({ value: '0', multiplier: null, trend: null })
+  })
+
+  it('scales each number by its trait and marks the direction', () => {
+    const rows = predatorTraitRows({ ...base, traits: { sense: 1.15, speed: 1.08, stamina: 0.5 }, generation: 3 }, tuning)!
+    expect(rows[0]).toMatchObject({ value: `${(tuning.predator.senseRadius * 1.15).toFixed(1)} cells`, multiplier: '×1.15', trend: 'up' })
+    expect(rows[1]).toMatchObject({ value: `${(tuning.predator.speed * 1.08).toFixed(2)} /tick`, multiplier: '×1.08', trend: 'up' })
+    expect(rows[1]!.note).toContain('1.08')
+    expect(rows[2]).toMatchObject({ value: `${Math.round(tuning.predator.chaseTicks * 0.5)} ticks`, multiplier: '×0.50', trend: 'down' })
+    expect(rows[3]!.value).toBe('3')
+  })
+})
+
+describe('multiplier text', () => {
+  it('rounds to two decimals and calls 1.004 flat', () => {
+    expect(multiplierText(1.2345)).toBe('×1.23')
+    expect(multiplierTrend(1.004)).toBe('flat')
+    expect(multiplierTrend(1.02)).toBe('up')
+    expect(multiplierTrend(0.98)).toBe('down')
   })
 })

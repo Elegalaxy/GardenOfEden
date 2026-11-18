@@ -1,7 +1,7 @@
 // Words for things, shared by the inspector, the event log, the chart and the
 // notices, so the same thing is always called the same name.
 
-import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, SimEvent, TraitName } from '../sim/types.ts'
+import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
 import { fertilityAt } from '../sim/reproduction.ts'
 import { autoSex } from '../sim/world.ts'
 import type { Tuning } from '../sim/types.ts'
@@ -155,6 +155,15 @@ export const TRAIT_HELP: Record<TraitName, string> = {
   longevity: 'Scales lifespan and the whole fertility curve: lives longer but matures and breeds later.',
   hardiness: 'Divides all health damage (bites, plague, craters, meteors). Costs extra energy every tick.',
   wariness: 'How far a bot keeps from predators and how long it remembers one. Wary bots lose access to food and water near haunts.',
+}
+
+/** The three heritable predator traits (H3), as multipliers of the shipped predator numbers. */
+export const PREDATOR_TRAIT_LABEL: Record<PredatorTraitName, string> = { sense: 'Sense', speed: 'Speed', stamina: 'Stamina' }
+
+export const PREDATOR_TRAIT_HELP: Record<PredatorTraitName, string> = {
+  sense: 'Multiplier on how far a predator sees. Costs extra hunger.',
+  speed: 'Multiplier on how fast a predator chases. Costs extra hunger.',
+  stamina: 'Multiplier on how long a chase lasts before the predator gives up. Costs a little extra hunger.',
 }
 
 /** A trait value with its unit: "6.4 cells", "0.45", "62.0 energy", "×1.05". */

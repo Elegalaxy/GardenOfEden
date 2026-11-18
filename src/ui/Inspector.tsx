@@ -11,7 +11,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { denFor, originText, predatorCounts, predatorLifeInfo } from './predatorInfo.ts'
+import { MULTIPLIER_GLYPH, denFor, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
 import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
@@ -259,6 +259,33 @@ function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
   )
 }
 
+/** The heritable traits of a predator (H3): value in the shipped units, then the multiplier against founders with a glyph. The block always has its four rows (dashes when the predator has none). */
+function PredatorTraitSection({ hunt }: { hunt: NonNullable<WorldNode['hunt']> }) {
+  const rows = predatorTraitRows(hunt, tuning)
+  const labels = ['Sense', 'Speed', 'Stamina', 'Generation']
+  return (
+    <>
+      <h4>Traits</h4>
+      <dl className="kv">
+        {(rows ?? labels.map((label) => ({ key: label, label, value: '—', multiplier: null, trend: null, note: null }))).map((row) => (
+          <div className="kv-row" key={row.key} title={row.note ?? undefined}>
+            <dt>{row.label}</dt>
+            <dd className="figure">
+              {row.value}
+              {row.multiplier !== null && row.trend !== null && (
+                <span className="trait-mult">
+                  {' '}
+                  <span aria-hidden="true">{MULTIPLIER_GLYPH[row.trend]}</span> {row.multiplier}
+                </span>
+              )}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </>
+  )
+}
+
 /** Why the next cub has to wait, in a few words (the kills case shows the kill count itself). */
 const CUB_BLOCK_TEXT = {
   age: 'too young',
@@ -362,6 +389,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
       {node.kind === 'predator' && node.hunt !== null && node.hunt.life !== undefined && (
         <PredatorLifeSection hunt={node.hunt} life={predatorLifeInfo(node.hunt, tuning, predatorCounts(world.nodes, tuning).total, world.bots.length)!} world={world} />
       )}
+      {node.kind === 'predator' && node.hunt !== null && tuning.predator.traits.enabled && tuning.predator.ecology.enabled && <PredatorTraitSection hunt={node.hunt} />}
     </>
   )
 }

@@ -3,9 +3,9 @@
 // pass their own. `isHungry` is the sim's own rule, so the page can never disagree with the sim about who bites. No state.
 
 import { isHungry, predatorLimit } from '../sim/predators.ts'
-import { predatorDrain } from '../sim/predatorTraits.ts'
+import { predatorDrain, PREDATOR_TRAIT_NAMES } from '../sim/predatorTraits.ts'
 import { sampleAtOrBefore } from '../sim/stats.ts'
-import type { Den, PredatorEcology, PredatorOrigin, PredatorState, Sample, Tuning, WorldNode } from '../sim/types.ts'
+import type { Den, PredatorEcology, PredatorOrigin, PredatorState, PredatorTraitName, Sample, Tuning, WorldNode } from '../sim/types.ts'
 
 type EcologyTuning = Pick<Tuning, 'predator'>
 
@@ -162,4 +162,59 @@ export function preyPressure(
   const since = ecology?.prey?.overSince ?? null
   const leavesIn = over && since !== null ? Math.max(0, since + tuning.predator.prey.leaveAfter - tick) : null
   return { limit, over, leavesIn }
+}
+
+/** A trait multiplier as text: "×1.15". */
+export function multiplierText(value: number): string {
+  return `×${value.toFixed(2)}`
+}
+
+/** Which way a multiplier points once rounded to two decimals (so "×1.00" is flat). */
+export function multiplierTrend(value: number): 'up' | 'down' | 'flat' {
+  const rounded = Number(value.toFixed(2))
+  return rounded > 1 ? 'up' : rounded < 1 ? 'down' : 'flat'
+}
+
+export const MULTIPLIER_GLYPH = { up: '▲', down: '▼', flat: '■' } as const
+
+export type PredatorTraitRow = {
+  key: PredatorTraitName | 'generation'
+  label: string
+  /** The trait in the units of the shipped number: "9.2 cells", "0.97 /tick", "46 ticks"; the generation as a plain count. */
+  value: string
+  /** The multiplier against founders ("×1.15"); null for the generation. */
+  multiplier: string | null
+  trend: 'up' | 'down' | 'flat' | null
+  /** Extra words for the tooltip. */
+  note: string | null
+}
+
+/** A predator's heritable traits as rows (sense, speed, stamina, generation), or null when it has none (traits off, or a predator made before they were on). */
+export function predatorTraitRows(hunt: Pick<PredatorState, 'traits' | 'generation'>, tuning: Pick<Tuning, 'predator' | 'bot' | 'mutation'>): PredatorTraitRow[] | null {
+  const traits = hunt.traits
+  if (traits === undefined) return null
+  const { senseRadius, speed, chaseTicks } = tuning.predator
+  const fastestFlee = tuning.bot.speed * tuning.mutation.bounds.sprint.max
+  const base = { sense: senseRadius, speed, stamina: chaseTicks }
+  const unit = {
+    sense: (value: number) => `${value.toFixed(1)} cells`,
+    speed: (value: number) => `${value.toFixed(2)} /tick`,
+    stamina: (value: number) => `${Math.round(value)} ticks`,
+  }
+  const label = { sense: 'Sense', speed: 'Speed', stamina: 'Stamina' }
+  const notes = {
+    sense: 'Sense radius: how far it sees. Costs extra hunger.',
+    speed: `Chase speed. Bots flee at up to ${fastestFlee.toFixed(2)}, so a faster predator can catch even a full sprinter.`,
+    stamina: 'How long a chase lasts before it gives up.',
+  }
+  const rows: PredatorTraitRow[] = PREDATOR_TRAIT_NAMES.map((name) => ({
+    key: name,
+    label: label[name],
+    value: unit[name](base[name] * traits[name]),
+    multiplier: multiplierText(traits[name]),
+    trend: multiplierTrend(traits[name]),
+    note: notes[name],
+  }))
+  rows.push({ key: 'generation', label: 'Generation', value: String(hunt.generation ?? 0), multiplier: null, trend: null, note: 'Founders, placed and arriving predators are generation 0; a cub is its parent plus 1.' })
+  return rows
 }

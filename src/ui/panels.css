@@ -1311,6 +1311,16 @@ button.log-button[aria-pressed='true'] {
   background: var(--text-strong);
 }
 
+.trait-sub {
+  margin: 10px 0 2px;
+  font-size: 0.9rem;
+}
+
+.trait-mult {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .trait-note {
   min-height: 2.9em; /* the empty and filled notes take the same room */
 }
