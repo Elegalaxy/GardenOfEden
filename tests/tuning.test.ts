@@ -70,4 +70,28 @@ describe('eden predators over ten seeds', () => {
     expect(median).toBeGreaterThanOrEqual(0.5)
     expect(sorted.filter((c) => c >= 0.3).length).toBeGreaterThanOrEqual(7)
   })
+
+  // H2: predator traits are on. They must be inherited (a cub generation is reached), must move off the founders' 1 on some seeds, and no mean may
+  // sit against a bound after 20,000 ticks (within 5% of the bound range). The 60,000-tick version of the bound check was run in the H2 sweep, not here.
+  it('inherit their traits: cubs carry a generation, the means move, and none sits at a bound', { timeout: 180_000 }, async () => {
+    const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
+    expect(rows.every((r) => r.predMaxGen !== null)).toBe(true)
+    expect(rows.filter((r) => r.predMaxGen! >= 2).length).toBeGreaterThanOrEqual(8)
+    const bounds = rules.tuning.predator.traits.bounds
+    const names = ['sense', 'speed', 'stamina'] as const
+    let moved = 0
+    for (const r of rows) {
+      if (r.predTraits === null) continue
+      let drifted = false
+      for (const name of names) {
+        const { min, max } = bounds[name]
+        const mean = r.predTraits[name]
+        expect(mean, `seed ${r.seed} ${name}`).toBeGreaterThan(min + 0.05 * (max - min))
+        expect(mean, `seed ${r.seed} ${name}`).toBeLessThan(max - 0.05 * (max - min))
+        if (Math.abs(mean - 1) >= 0.02) drifted = true
+      }
+      if (drifted) moved += 1
+    }
+    expect(moved).toBeGreaterThanOrEqual(5)
+  })
 })

@@ -265,16 +265,17 @@ export const tuning: Tuning = {
     // newcomers wait, and after `leaveAfter` ticks over it the lowest-energy predator that was not placed by the player leaves.
     // P2: one predator per 16 bots, and with the limit now doing the capping, a cub only needs 3 kills (E2 had 6 to keep the count down). The sweep is in the doc/GAME_DESIGN.md changelog.
     prey: { enabled: true, perPredator: 16, minCount: 1, leaveAfter: 500 },
-    // Heritable predator traits (H1 mechanics, off; works only with ecology on): a cub inherits its parent's sense, speed and stamina multipliers
+    // Heritable predator traits (H1 mechanics, H2 retune and switch-on; works only with ecology on): a cub inherits its parent's sense, speed and stamina multipliers
     // with a seeded mutation (rate and strength as for bots); founders, placed and arriving predators start at 1. Speed max 1.2 gives 0.9 x 1.2 = 1.08,
     // the fastest a bot can flee (0.6 x sprint 1.8). price: extra drain per unit away from 1 (signed: drain x (1 + sum of price x (trait - 1)), so a slower or shorter-sighted predator
     // is a little cheaper than the base). Caveat: more drain shortens the fed period, so a costly predator becomes hungry (and hunts) sooner.
-    // The prices are starting guesses to be tuned in H2.
+    // H2: prices three times the H1 guesses (0.15, 0.3, 0.06) and mutation strength 0.2 (rate stays 0.5): strength 0.1 left the means within a few percent of 1,
+    // while 0.3 (or strength 0.15 with the same prices) cost bots caution or a colony over 60,000 ticks. The sweep is in the doc/GAME_DESIGN.md changelog.
     traits: {
-      enabled: false,
-      mutation: { rate: 0.5, strength: 0.1 },
+      enabled: true,
+      mutation: { rate: 0.5, strength: 0.2 },
       bounds: { sense: { min: 0.75, max: 1.5 }, speed: { min: 0.8, max: 1.2 }, stamina: { min: 0.5, max: 2 } },
-      price: { sense: 0.05, speed: 0.1, stamina: 0.02 },
+      price: { sense: 0.15, speed: 0.3, stamina: 0.06 },
     },
   },
   // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by

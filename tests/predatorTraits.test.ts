@@ -22,7 +22,7 @@ import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { noCone, noPredatorTraits, withEcology, withPredatorTraits } from './variants.ts'
 
-// Heritable predator traits (H1, off): the pins that prove the shipped world is untouched, the keys and defaults, inheritance and its
+// Heritable predator traits (H1 mechanics, on in Eden since H2): the pins that prove the world with them off is untouched, the keys and defaults, inheritance and its
 // draws, the effect of each trait in a crafted single-predator world, the drain price, the checks and determinism.
 
 const pt = rules.tuning.predator
@@ -49,28 +49,47 @@ function ready(node: WorldNode): void {
 
 describe('traits off equals before H1', () => {
   it('Eden seed a with a placed and a removed predator hashes as it did before H1, with the same predator stream', () => {
-    const world = createWorld('a', edenPreset, rules)
+    const off = noPredatorTraits(rules)
+    const world = createWorld('a', edenPreset, off)
     for (let i = 0; i < 5000; i += 1) {
-      if (world.tick === 1000) expect(applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 40.5, y: 30.5 }).ok).toBe(true)
-      if (world.tick === 3000) expect(applyCommand(world, rules, { type: 'removeNode', id: predatorsOf(world).slice(-1)[0]!.id }).ok).toBe(true)
-      step(world, rules)
+      if (world.tick === 1000) expect(applyCommand(world, off, { type: 'placeNode', kind: 'predator', x: 40.5, y: 30.5 }).ok).toBe(true)
+      if (world.tick === 3000) expect(applyCommand(world, off, { type: 'removeNode', id: predatorsOf(world).slice(-1)[0]!.id }).ok).toBe(true)
+      step(world, off)
     }
-    // Recorded on the untouched tree (before H1) with the same script and the shipped rules.
+    // Recorded on the untouched tree (before H1) with the same script and the shipped rules (traits off, as they were until H2).
     expect(stateHash(world)).toBe('d97a4c85e3ca126c')
     expect(world.rng.predator).toEqual({ a: 4040596244, b: 1153508164, c: 935765933, d: 1357574499 })
     expect(predatorsOf(world).every((node) => node.hunt !== null && !('traits' in node.hunt) && !('generation' in node.hunt))).toBe(true)
   })
 
   it('Eden seed b at 20,000 ticks hashes as it did before H1', () => {
-    const world = createWorld('b', edenPreset, rules)
-    for (let i = 0; i < 20000; i += 1) step(world, rules)
+    const off = noPredatorTraits(rules)
+    const world = createWorld('b', edenPreset, off)
+    for (let i = 0; i < 20000; i += 1) step(world, off)
     expect(stateHash(world)).toBe('002b6a896d393fad')
   })
 
-  it('the shipped numbers are off, within the checks, and speed max is the fastest bot flee speed', () => {
-    expect(pt.traits.enabled).toBe(false)
+  it('ships on with the H2 numbers, within the checks, and speed max is the fastest bot flee speed', () => {
+    expect(pt.traits.enabled).toBe(true)
+    expect(pt.traits.mutation).toEqual({ rate: 0.5, strength: 0.2 })
+    expect(pt.traits.price).toEqual({ sense: 0.15, speed: 0.3, stamina: 0.06 })
+    expect(pt.traits.bounds).toEqual({ sense: { min: 0.75, max: 1.5 }, speed: { min: 0.8, max: 1.2 }, stamina: { min: 0.5, max: 2 } })
     expect(() => checkPredatorTraits(pt.traits)).not.toThrow()
     expect(pt.speed * pt.traits.bounds.speed.max).toBeCloseTo(rules.tuning.bot.speed * rules.tuning.mutation.bounds.sprint.max, 9)
+  })
+
+  it('Eden as shipped differs from noPredatorTraits: the predators carry traits and the hash moves', () => {
+    const off = noPredatorTraits(rules)
+    const on = createWorld('a', edenPreset, rules)
+    const plain = createWorld('a', edenPreset, off)
+    expect(predatorsOf(on).every((n) => 'traits' in n.hunt! && 'generation' in n.hunt!)).toBe(true)
+    expect(predatorsOf(plain).every((n) => !('traits' in n.hunt!))).toBe(true)
+    expect(stateHash(on)).not.toBe(stateHash(plain))
+    for (let i = 0; i < 3000; i += 1) {
+      step(on, rules)
+      step(plain, off)
+    }
+    expect(stateHash(on)).not.toBe(stateHash(plain))
   })
 })
 
@@ -100,12 +119,13 @@ describe('who has traits', () => {
   })
 
   it('the keys exist only when traits and ecology are both on', () => {
-    for (const r of [rules, noPredatorTraits(rules), withEcology(rules)]) {
+    for (const r of [noPredatorTraits(rules), withEcology(rules)]) {
       const world = createWorld('a', edenPreset, r)
       expect(predatorsOf(world).every((n) => !('traits' in n.hunt!) && !('generation' in n.hunt!))).toBe(true)
     }
     const world = createWorld('a', edenPreset, on)
     expect(predatorsOf(world).every((n) => 'traits' in n.hunt! && 'generation' in n.hunt!)).toBe(true)
+    expect(predatorsOf(createWorld('a', edenPreset, rules)).every((n) => 'traits' in n.hunt!)).toBe(true)
     // Traits on with ecology off: nothing (no life to hang them on).
     const noEco: Rules = { ...on, tuning: { ...on.tuning, predator: { ...on.tuning.predator, ecology: { ...eco, enabled: false } } } }
     const fixed = createWorld('a', edenPreset, noEco)
@@ -294,7 +314,7 @@ describe('determinism and summary', () => {
     const live = run()
     expect(stateHash(run())).toBe(stateHash(live))
     expect(stateHash(replayWorld('a', edenPreset, on, live.commands, live.tick))).toBe(stateHash(live))
-    expect(stateHash(live)).not.toBe(stateHash(createWorld('a', edenPreset, rules)))
+    expect(stateHash(live)).not.toBe(stateHash(createWorld('a', edenPreset, noPredatorTraits(rules))))
   })
 
   it('predatorTraitStats summarises the predators that have traits, in array order, and is null with none', () => {
