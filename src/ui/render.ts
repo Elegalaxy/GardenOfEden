@@ -27,6 +27,7 @@
 
 import { coneFactor } from '../sim/perception.ts'
 import { isHungry } from '../sim/predators.ts'
+import { predatorTrait } from '../sim/predatorTraits.ts'
 import type { ActiveEvent, Den, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
@@ -519,7 +520,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
       const node = findNode(world, sel.id)
       if (node !== undefined && node.kind === 'predator' && node.hunt !== null) {
         const p = predatorPosition(node, alpha)
-        drawSight(ctx, layout, p.x, p.y, node.hunt.heading, tuning.predator.senseRadius, cone.predatorFront, cone.predatorRear, cone.enabled)
+        drawSight(ctx, layout, p.x, p.y, node.hunt.heading, tuning.predator.senseRadius * predatorTrait(node.hunt, 'sense'), cone.predatorFront, cone.predatorRear, cone.enabled)
       }
     }
     if (sel.kind === 'bot') {

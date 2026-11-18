@@ -20,6 +20,7 @@
 // so it is how long a predator spent looking for the next bot; both are null (a dash) when no predator killed twice.
 // E2 adds `pZero` (the longest run of ticks after the warmup with no predator at all) and `pCap%` (the share of ticks after the warmup with
 // `predator.maxCount` predators), the two bars that show a predator population dying out or filling the map; both after `idle`.
+// H1 adds `pSense pSpeed pStam pGen` last: the mean sense, speed and stamina of the predators alive at the end and the highest predator generation seen (a dash with predator traits off, or when no predator is alive for the means).
 // P1 adds `pCorr`, `pCorrL`, `pLag` and `pLeft` after `pCap%`: the Pearson correlation between the predator count and the bot count, taken every
 // `stats.sampleEvery` ticks after the warmup, at lag 0 and at the best of the lags in `PREY_LAGS` (predators now against bots that many ticks earlier,
 // with that lag), and the predators that left the map under the prey rule (0 with it off; `withoutPrey` and `--no-prey` switch it off). A dash
@@ -29,6 +30,7 @@
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
+import { predatorTraitStats } from '../sim/predatorTraits.ts'
 import { meanTraits } from '../sim/traits.ts'
 import { findRecord } from '../sim/lineage.ts'
 import type { DeathsByCause, Eaten, Preset, Rules, Traits, World } from '../sim/types.ts'
@@ -81,6 +83,9 @@ export type SeedSurvey = {
   predLag: number | null
   /** Predators that left the map under the prey rule (P1). */
   predLeft: number
+  /** Mean sense, speed and stamina of the predators alive at the end, and the highest generation seen over the run (H1); null with predator traits off. */
+  predTraits: { sense: number; speed: number; stamina: number } | null
+  predMaxGen: number | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -248,6 +253,8 @@ export function surveySeed(
   let zeroRun = 0
   let predZeroRun = 0
   let predCapTicks = 0
+  let predMaxGen = 0
+  const traitsTracked = rules.tuning.predator.traits.enabled
   const gapTracker = createGapTracker()
   const gaps: number[] = []
   const botSeries: number[] = []
@@ -257,6 +264,12 @@ export function surveySeed(
     refused.push(...scripted.due(world, rules))
     step(world, rules)
     gaps.push(...gapTracker.record(world))
+    if (traitsTracked) {
+      for (const node of world.nodes) {
+        const generation = node.hunt?.generation
+        if (generation !== undefined && generation > predMaxGen) predMaxGen = generation
+      }
+    }
     if (world.tick > warmup) {
       min = Math.min(min, world.bots.length)
       max = Math.max(max, world.bots.length)
@@ -281,6 +294,7 @@ export function surveySeed(
     predMax = predMin
   }
   const stats = world.ecology?.stats
+  const traitSummary = predatorTraitStats(world.nodes)
   const every = rules.tuning.stats.sampleEvery
   const best = bestLag(predSeries, botSeries, PREY_LAGS.map((lag) => lag / every))
   const gapMean = gaps.length === 0 ? null : gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length
@@ -316,13 +330,15 @@ export function surveySeed(
     predCorrBest: best === null ? null : best.corr,
     predLag: best === null ? null : best.lag * every,
     predLeft: world.ecology?.prey?.left ?? 0,
+    predTraits: traitSummary === null ? null : { sense: traitSummary.stats.sense.mean, speed: traitSummary.stats.speed.mean, stamina: traitSummary.stats.stamina.mean },
+    predMaxGen: traitsTracked ? predMaxGen : null,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -369,6 +385,10 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       corrCell(r.predCorrBest),
       r.predLag === null ? '-' : r.predLag,
       r.predLeft,
+      r.predTraits === null ? '-' : r.predTraits.sense.toFixed(2),
+      r.predTraits === null ? '-' : r.predTraits.speed.toFixed(2),
+      r.predTraits === null ? '-' : r.predTraits.stamina.toFixed(2),
+      r.predMaxGen === null ? '-' : r.predMaxGen,
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

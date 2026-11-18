@@ -58,7 +58,15 @@ export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predato
   const { predator } = rules.tuning
   return {
     ...rules,
-    tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, ...over, enabled: true }, prey: { ...predator.prey, enabled: false } } },
+    tuning: {
+      ...rules.tuning,
+      predator: {
+        ...predator,
+        ecology: { ...predator.ecology, ...over, enabled: true },
+        prey: { ...predator.prey, enabled: false },
+        traits: { ...predator.traits, enabled: false },
+      },
+    },
   }
 }
 
@@ -87,7 +95,22 @@ export function noPreyRule(rules: Rules): Rules {
 /** The same rules with predator ecology off: fixed predators (the shipped rules have it on since E2). */
 export function staticPredators(rules: Rules): Rules {
   const { predator } = rules.tuning
-  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false } } } }
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false }, traits: { ...predator.traits, enabled: false } } } }
+}
+
+/** The same rules with H1 heritable predator traits (and ecology, which they need) switched on, with optional overrides for the trait numbers. */
+export function withPredatorTraits(rules: Rules, over: Partial<Rules['tuning']['predator']['traits']> = {}): Rules {
+  const { predator } = rules.tuning
+  return {
+    ...rules,
+    tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: true }, traits: { ...predator.traits, ...over, enabled: true } } },
+  }
+}
+
+/** The same rules with predator traits off (as shipped). */
+export function noPredatorTraits(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, traits: { ...predator.traits, enabled: false } } } }
 }
 
 /** The same rules with the V1 vision cone switched on (it is on in the shipped numbers since V2), with optional number overrides. */

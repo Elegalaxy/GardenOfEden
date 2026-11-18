@@ -5,6 +5,7 @@
 
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
+import { predatorTrait } from '../sim/predatorTraits.ts'
 import { ruinDecayRate } from '../sim/ruins.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
@@ -248,7 +249,7 @@ function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
       )}
       <div className="kv-row" title={SIGHT_HELP}>
         <dt>Sight</dt>
-        <dd className="figure">{sightText(tuning.predator.senseRadius, cone.predatorFront, cone.predatorRear, cone.enabled)}</dd>
+        <dd className="figure">{sightText(tuning.predator.senseRadius * predatorTrait(hunt, 'sense'), cone.predatorFront, cone.predatorRear, cone.enabled)}</dd>
       </div>
       <Row label="Threat radius">{fixed1(node.radius)} cells</Row>
       <Row label="Bite range">{fixed1(tuning.predator.biteRange)} cells</Row>

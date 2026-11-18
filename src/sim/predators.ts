@@ -43,9 +43,16 @@
 // age and starve, leaving, cubs, dens. Over the limit for `leaveAfter` ticks, the predator with the lowest energy (ties lowest id)
 // that is not player-placed leaves (a `left` log event) and the timer restarts; at or under the limit the timer clears. Cubs and
 // newcomers are gated by the limit instead of `maxCount` (a gated parent takes no draws). No draws, no tick-order change.
+//
+// Predator traits (H1, `Tuning.predator.traits`, off; see predatorTraits.ts; acts only with ecology on). A predator with `hunt.traits` senses at
+// predator.senseRadius * sense (cone and all-round alike), walks at predator.speed * speed (the chase step and the wander step) and gives up a
+// chase at predator.chaseTicks * stamina; `life.energy` falls by `predatorDrain` instead of `ecology.drain`. A cub inherits its parent's traits
+// (`inheritPredatorTraits`: six `predator` draws, after the territory draws and only once a spot is found); founders, placed and arriving predators get
+// the defaults (no draws). With the key absent every factor is 1 and the drain is `ecology.drain` itself, so nothing changes.
 
 import { atan2, cos, hypot, sin } from './exactMath.ts'
 import { coneFactor } from './perception.ts'
+import { DEFAULT_PREDATOR_TRAITS, inheritPredatorTraits, predatorDrain, predatorTrait, startTraits, traitsOn } from './predatorTraits.ts'
 import { nextFloat } from './rng.ts'
 import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
@@ -223,14 +230,17 @@ export function movePredators(world: World, rules: Rules): void {
     if (world.tick <= hunt.restUntil) continue
     if (shelters === null) shelters = world.nodes.filter((other) => other.kind === 'shelter')
 
+    const senseMult = predatorTrait(hunt, 'sense')
+    const speed = predator.speed * predatorTrait(hunt, 'speed')
+    const range = predator.senseRadius * senseMult
     let prey: Bot | null = null
     if (isHungry(hunt, rules.tuning)) {
       prey = cone.enabled
         ? nearestPreyCone(
-            world.bots, shelters, node.x, node.y, predator.senseRadius,
+            world.bots, shelters, node.x, node.y, range,
             cos(hunt.heading), sin(hunt.heading), cone.predatorFront, cone.predatorRear, hunt.targetId,
           )
-        : nearestPrey(world.bots, shelters, node.x, node.y, predator.senseRadius)
+        : nearestPrey(world.bots, shelters, node.x, node.y, range)
     }
     if (prey === null) {
       hunt.targetId = null
@@ -239,12 +249,12 @@ export function movePredators(world: World, rules: Rules): void {
       if (hypot(node.x - hunt.homeX, node.y - hunt.homeY) > predator.homeRange) {
         heading = atan2(hunt.homeY - node.y, hunt.homeX - node.x)
       }
-      stepPredator(world, node, hunt, shelters, heading, predator.speed, predator.steerStep)
+      stepPredator(world, node, hunt, shelters, heading, speed, predator.steerStep)
       continue
     }
     hunt.targetId = prey.id
     hunt.chase += 1
-    if (hunt.chase >= predator.chaseTicks) {
+    if (hunt.chase >= predator.chaseTicks * predatorTrait(hunt, 'stamina')) {
       // Gives up: rest, forget the target, start over after the rest.
       hunt.restUntil = world.tick + predator.giveUpRest
       hunt.targetId = null
@@ -252,7 +262,7 @@ export function movePredators(world: World, rules: Rules): void {
       continue
     }
     const heading = atan2(prey.y - node.y, prey.x - node.x)
-    const length = Math.min(predator.speed, hypot(prey.x - node.x, prey.y - node.y))
+    const length = Math.min(speed, hypot(prey.x - node.x, prey.y - node.y))
     stepPredator(world, node, hunt, shelters, heading, length, predator.steerStep)
   }
 }
@@ -310,7 +320,7 @@ export function predatorLife(world: World, rules: Rules): void {
     const life = node.hunt?.life
     if (node.kind !== 'predator' || life === undefined) continue
     life.age += 1
-    life.energy -= eco.drain
+    life.energy -= predatorDrain(node.hunt, tuning)
     if (life.energy <= 0) {
       gone.add(node.id)
       ecology.stats.starved += 1
@@ -376,12 +386,14 @@ export function predatorLife(world: World, rules: Rules): void {
       if (x < eco.homeMargin || y < eco.homeMargin || x > world.width - eco.homeMargin || y > world.height - eco.homeMargin) continue
       if (insideShelter(shelters, x, y)) continue
       if (homes.some((home) => hypot(home.x - x, home.y - y) < eco.homeSpacing)) continue
+      const childTraits = traitsOn(world, tuning) && hunt.traits !== undefined ? inheritPredatorTraits(hunt.traits, tuning.predator.traits, world.rng.predator) : null
       const cub = makeNode(0, 'predator', parent.x, parent.y, rules.nodeDefs.predator)
       if (cub.hunt !== null) {
         cub.hunt.homeX = x
         cub.hunt.homeY = y
       }
       startLife(world, cub, tuning, 'cub', parent.id)
+      if (childTraits !== null) startTraits(cub.hunt, childTraits, (hunt.generation ?? 0) + 1)
       cubs.push(cub)
       homes.push({ x, y })
       life.energy -= eco.cubCost
@@ -417,6 +429,7 @@ export function predatorLife(world: World, rules: Rules): void {
       newcomer.hunt.homeY = den.y
     }
     startLife(world, newcomer, tuning, 'arrived', null)
+    if (traitsOn(world, tuning)) startTraits(newcomer.hunt, DEFAULT_PREDATOR_TRAITS, 0)
     world.nodes.push(newcomer)
     count += 1
     den.vacantSince = null

@@ -3,6 +3,7 @@
 // pass their own. `isHungry` is the sim's own rule, so the page can never disagree with the sim about who bites. No state.
 
 import { isHungry, predatorLimit } from '../sim/predators.ts'
+import { predatorDrain } from '../sim/predatorTraits.ts'
 import { sampleAtOrBefore } from '../sim/stats.ts'
 import type { Den, PredatorEcology, PredatorOrigin, PredatorState, Sample, Tuning, WorldNode } from '../sim/types.ts'
 
@@ -36,6 +37,7 @@ export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, cou
   if (life === undefined) return null
   const eco = tuning.predator.ecology
   const hungry = isHungry(hunt, tuning)
+  const drain = predatorDrain(hunt, tuning)
   let cubBlock: CubBlock = null
   if (life.kidsKills < eco.killsPerCub) cubBlock = 'kills'
   else if (life.age < eco.adultAge) cubBlock = 'age'
@@ -47,8 +49,8 @@ export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, cou
     maxEnergy: eco.maxEnergy,
     huntBelow: eco.huntBelow,
     hungry,
-    ticksToHungry: !hungry && eco.drain > 0 ? Math.ceil((life.energy - eco.huntBelow) / eco.drain) : null,
-    ticksToStarve: eco.drain > 0 ? Math.ceil(life.energy / eco.drain) : null,
+    ticksToHungry: !hungry && drain > 0 ? Math.ceil((life.energy - eco.huntBelow) / drain) : null,
+    ticksToStarve: drain > 0 ? Math.ceil(life.energy / drain) : null,
     age: life.age,
     maxAge: eco.maxAge,
     adult: life.age >= eco.adultAge,

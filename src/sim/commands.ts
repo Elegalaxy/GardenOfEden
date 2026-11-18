@@ -25,6 +25,7 @@ import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { goldenHue } from './genes.ts'
 import { addDen, startLife } from './predators.ts'
+import { DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
 import type { CheckableWorld } from './worldEvents.ts'
@@ -86,6 +87,7 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       world.nodes.push(placed)
       if (cmd.kind === 'predator' && world.ecology !== undefined) {
         startLife(world, placed, tuning, 'placed', null)
+        if (traitsOn(world, tuning)) startTraits(placed.hunt, DEFAULT_PREDATOR_TRAITS, 0)
         addDen(world, cmd.x, cmd.y, tuning)
       }
       pushEvent(world, tuning, {

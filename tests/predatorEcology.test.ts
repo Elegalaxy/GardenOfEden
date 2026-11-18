@@ -422,8 +422,9 @@ describe('harness', () => {
     expect(row.predBorn + row.predArrived + row.predStarved + row.predAged).toBe(0)
     const [head, line] = formatSurvey([row]).split('\n') as [string, string]
     const headings = head.trim().split(/\s+/)
-    expect(headings.slice(-15)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft'])
+    expect(headings.slice(-19, -4)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft'])
     expect(headings.slice(0, 27).at(-1)).toBe('inb')
+    expect(headings.slice(-4)).toEqual(['pSense', 'pSpeed', 'pStam', 'pGen'])
     expect(line.trim().split(/\s+/)).toHaveLength(headings.length)
   })
 })

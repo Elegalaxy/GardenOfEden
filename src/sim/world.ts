@@ -9,6 +9,7 @@ import { goldenHue } from './genes.ts'
 import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
 import { addDen, checkEcology, checkPrey, startLife } from './predators.ts'
+import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
@@ -160,6 +161,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   assertPositive(preset.height, 'preset height')
   if (rules.tuning.predator.ecology.enabled) checkEcology(rules.tuning.predator.ecology)
   if (rules.tuning.predator.ecology.enabled && rules.tuning.predator.prey.enabled) checkPrey(rules.tuning.predator.prey, rules.tuning.predator.maxCount)
+  checkPredatorTraits(rules.tuning.predator.traits)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
 
   const world: World = {
@@ -230,6 +232,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     for (const node of world.nodes) {
       if (node.kind !== 'predator') continue
       startLife(world, node, rules.tuning, 'founder', null)
+      if (traitsOn(world, rules.tuning)) startTraits(node.hunt, DEFAULT_PREDATOR_TRAITS, 0)
       addDen(world, node.x, node.y, rules.tuning)
     }
   }

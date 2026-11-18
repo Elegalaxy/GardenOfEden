@@ -100,7 +100,15 @@ export type PredatorState = {
   kills: number
   /** Predator ecology (E1): energy, age and breeding bookkeeping. The key is absent unless `predator.ecology.enabled` was on at creation or placement. */
   life?: PredatorLife
+  /** Heritable predator traits (H1): absent unless `predator.traits.enabled` and ecology were on when the predator appeared. After `life`. */
+  traits?: PredatorTraits
+  /** Generations from a founder, placed or arrived predator (0); present exactly when `traits` is. After `traits`. */
+  generation?: number
 }
+
+/** The three heritable predator traits (H1), each a multiplier of the shipped number (1 = as before). */
+export type PredatorTraitName = 'sense' | 'speed' | 'stamina'
+export type PredatorTraits = Record<PredatorTraitName, number>
 
 /** Where a predator came from (E1): the preset, the player, a parent's litter, or a re-colonising newcomer from the map edge. */
 export type PredatorOrigin = 'founder' | 'placed' | 'cub' | 'arrived'
@@ -692,6 +700,17 @@ export type Tuning = {
       minCount: number
       /** Ticks the count must stay over the limit before one predator leaves (at least 1). */
       leaveAfter: number
+    }
+    /**
+     * Heritable predator traits (H1; off). Acts only when `ecology.enabled` is also true. A cub inherits its parent's sense (range),
+     * speed and stamina (chase length) multipliers with a seeded mutation; founders, placed and arriving predators start at 1.
+     * `price` is the extra share of `ecology.drain` per unit a trait is above 1 (a trait below 1 lowers it): drain x (1 + sum of price x (trait - 1)).
+     */
+    traits: {
+      enabled: boolean
+      mutation: { rate: number; strength: number }
+      bounds: Record<PredatorTraitName, { min: number; max: number }>
+      price: Record<PredatorTraitName, number>
     }
   }
   /**

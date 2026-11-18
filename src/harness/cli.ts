@@ -14,6 +14,7 @@
 // survey column `fem` is the number of females alive at the end, and `inb` (M18) counts inbred births.
 // `--no-cone` (either form) switches directional sensing off (V1; it is on in Eden since V2, so this flag applies before `--set` overrides).
 // `--no-seasons` (either form) switches seasonal regrowth off (S1; seasons are on in Eden since S2, so this gives the pre-season control).
+// `--predator-traits` (H1, either form) is shorthand for `--set predator.traits.enabled=true`; the last survey columns are then pSense pSpeed pStam pGen.
 // `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
 // The last survey columns (E1) are `preds` (predators at the end), `pMin`/`pMax` (their range after the warmup), `pBorn`, `pArr`, `pStarve`,
 // `pAged` (cubs born, newcomers arrived, predators starved or dead of age), `huntGap` (mean ticks between one predator's kills, the first
@@ -45,7 +46,7 @@ const USAGE = [
   '       npm run sim -- --seeds <seed,seed,...> --ticks <1-1000000> [--preset <id>] [--warmup <0-1000000>]',
   `       either form also takes ${EVENT_USAGE} and --no-family (no knowledge sharing between parent and child)`,
   '       and --asexual (no two sexes: a bot breeds alone), --no-seasons (no seasonal regrowth), --no-cone (all-round sensing)',
-  '       and --static-predators (predator ecology off: fixed predators), --no-prey (P1 prey rule off)',
+  '       and --static-predators (predator ecology off: fixed predators), --no-prey (P1 prey rule off), --predator-traits (H1 heritable predator traits on)',
   '       and --set path.to.setting=value (repeatable: replace one existing tuning number or boolean for this run)',
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
 ].join('\n')
@@ -112,6 +113,9 @@ function parseArgs(argv: string[]): Options {
       i -= 1
     } else if (flag === '--static-predators') {
       staticPredators = true
+      i -= 1
+    } else if (flag === '--predator-traits') {
+      overrides.push(parseOverride('predator.traits.enabled=true'))
       i -= 1
     } else if (flag === '--no-prey') {
       noPrey = true
