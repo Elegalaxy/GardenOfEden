@@ -17,6 +17,9 @@
 // so how stale it is travels with it and the usual retry rule still applies. Then the usual trim
 // runs, so a shared entry can only push out an older one. Each copy records who it came from in
 // `learnedFrom`; a bot that sees the node itself clears it again (see `remember`).
+// Toxic food (T1): the `toxic` flag travels with an entry and is never lost to a newer clean sighting: a copy that replaces the receiver's
+// entry is toxic if either side knew, and when the receiver's entry is newer but the sender knows the node is toxic the receiver's entry gets
+// the flag (a new object, not counted as learned). With poison off no entry has the flag and nothing changes.
 //
 // Determinism: no random draws. Bots are visited in id order and each checks only its own parent,
 // so the work is linear in the population. Both sides of a pair merge from copies taken before
@@ -67,10 +70,17 @@ export function mergeMemory(bot: Pick<Bot, 'memory'>, from: MemoryEntry[], fromI
     if (index < 0) {
       bot.memory.push({ ...theirs, learnedFrom: fromId })
       touched.add(theirs.nodeId)
-    } else if (theirs.seenTick > bot.memory[index]!.seenTick) {
-      // Replace the object rather than edit it, so snapshots of this memory stay unchanged.
-      bot.memory[index] = { ...theirs, learnedFrom: fromId }
-      touched.add(theirs.nodeId)
+    } else {
+      const mine = bot.memory[index]!
+      if (theirs.seenTick > mine.seenTick) {
+        // Replace the object rather than edit it, so snapshots of this memory stay unchanged.
+        const copy: MemoryEntry = { ...theirs, learnedFrom: fromId }
+        if (mine.toxic === true && copy.toxic === undefined) copy.toxic = true
+        bot.memory[index] = copy
+        touched.add(theirs.nodeId)
+      } else if (theirs.toxic === true && mine.toxic !== true) {
+        bot.memory[index] = { ...mine, toxic: true }
+      }
     }
   }
   if (touched.size === 0) return 0

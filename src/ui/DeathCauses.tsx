@@ -30,7 +30,7 @@ export function DeathCauses() {
         </thead>
         <tbody>
           {CAUSES.map((cause) => {
-            const count = deathsByCause[cause]
+            const count = deathsByCause[cause] ?? 0
             const share = deaths > 0 ? count / deaths : 0
             return (
               <tr key={cause}>

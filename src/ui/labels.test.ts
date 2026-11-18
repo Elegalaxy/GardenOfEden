@@ -55,10 +55,11 @@ describe('labels', () => {
       meteor: 'Killed by a meteor',
       predator: 'Killed by a predator',
       age: 'Died of old age',
+      poison: 'Poisoned by toxic food',
     }
     for (const cause of Object.keys(expected) as DeathCause[]) expect(causeSentence(cause)).toBe(expected[cause])
     expect(causeSentence(undefined)).toBe('Died of hunger')
-    for (const cause of Object.keys(CAUSE_LABEL) as DeathCause[]) expect(CAUSE_SENTENCE[cause]).toMatch(/^(Died of|Killed by|Killed in) /)
+    for (const cause of Object.keys(CAUSE_LABEL) as DeathCause[]) expect(CAUSE_SENTENCE[cause]).toMatch(/^(Died of|Killed by|Killed in|Poisoned by) /)
   })
 
   it('gives each world event a marker letter that clashes with no other marker (R V S W B X)', () => {

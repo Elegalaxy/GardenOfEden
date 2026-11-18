@@ -53,6 +53,16 @@ export function noSeasons(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, seasons: { ...rules.tuning.seasons, enabled: false } } }
 }
 
+/** Toxic food (T1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withPoison(rules: Rules, over: Partial<Rules['tuning']['poison']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: true, ...over } } }
+}
+
+/** The same rules with toxic food forced off. */
+export function noPoison(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
+}
+
 /** E1/E2 ecology without the prey rule: predator ecology switched on (it is on in the shipped numbers since E2), prey rule forced off, with optional number overrides. */
 export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predator']['ecology']> = {}): Rules {
   const { predator } = rules.tuning

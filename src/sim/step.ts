@@ -25,6 +25,8 @@
 // reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick, plus two per territory try when predator ecology is on and a cub is attempted) and
 // the `birth` stream (nineteen per asexual child, twenty-eight per sexual one). Ruins, family sharing and lineage records draw nothing.
+// Toxic food (T1, poison.ts): `act` reports the poison dose of the bite a bot took (`intake`, reset before each bot), which `metabolise` and
+// `deathCause` then count with the other health damage; a poison death adds to `deathsByCause.poison`. Nothing changes with poison off.
 
 import { decide } from './brain.ts'
 import { buildMateIndex } from './mating.ts'
@@ -59,20 +61,22 @@ export function step(world: World, rules: Rules): void {
   const conceptions: Conception[] = []
   const ready: Bot[] = []
   const sexual = tuning.sex.enabled
+  const intake = { poison: 0 }
   // Ready females as the tick starts, for the males that look for one (mating.ts).
   const mates = sexual ? buildMateIndex(world.bots, tuning) : null
   for (const bot of world.bots) {
     const sensed = perceive(world, bot, tuning)
     remember(world, bot, sensed, tuning, live)
     decide(world, bot, tuning, mates)
-    const moved = act(world, bot, rules, nodesById)
+    intake.poison = 0
+    const moved = act(world, bot, rules, nodesById, intake)
     const exposure = exposureAt(world, bot.x, bot.y, tuning)
-    metabolise(bot, moved, exposure, tuning)
-    const cause = deathCause(bot, exposure)
+    metabolise(bot, moved, exposure, tuning, intake.poison)
+    const cause = deathCause(bot, exposure, intake.poison)
     if (cause !== null) {
       dead.add(bot.id)
       fallen.push(bot)
-      world.deathsByCause[cause] += 1
+      world.deathsByCause[cause] = (world.deathsByCause[cause] ?? 0) + 1
       recordDeath(world, bot.id, cause)
       if (cause === 'predator' && exposure.predatorId !== null) creditKill(world, exposure.predatorId, world.tick, tuning)
       pushEvent(world, tuning, { tick: world.tick, type: 'death', botId: bot.id, cause, x: bot.x, y: bot.y })

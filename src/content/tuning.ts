@@ -294,5 +294,9 @@ export const tuning: Tuning = {
   perception: {
     cone: { enabled: true, botFront: 1, botRear: 0.7, predatorFront: 1, predatorRear: 0.35, trackTicks: 10 },
   },
+  // Toxic food (T1, mechanics only, OFF): with it on, the last `toxicCount` scattered food nodes of a new world are toxic. A bite
+  // still gives full energy but costs `damagePerUnit` health per unit eaten (divided by hardiness), so a bot that learns which nodes
+  // are toxic can avoid them (and tell its family) unless it is desperate. See src/sim/poison.ts.
+  poison: { enabled: false, toxicCount: 6, damagePerUnit: 5 },
   logCap: 500,
 }

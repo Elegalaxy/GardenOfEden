@@ -25,6 +25,8 @@
 // `stats.sampleEvery` ticks after the warmup, at lag 0 and at the best of the lags in `PREY_LAGS` (predators now against bots that many ticks earlier,
 // with that lag), and the predators that left the map under the prey rule (0 with it off; `withoutPrey` and `--no-prey` switch it off). A dash
 // means the series had no variance or was too short.
+// T1 adds `pois tox toxK` last (toxic food, `--set poison.enabled=true`; a dash for each with poison off): bots dead of poison, the food units eaten from toxic
+// nodes, and the share (percent) of the bots alive at the end that remember at least one toxic node. `withoutPoison` and `--no-poison` switch it off.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
@@ -86,6 +88,8 @@ export type SeedSurvey = {
   /** Mean sense, speed and stamina of the predators alive at the end, and the highest generation seen over the run (H1); null with predator traits off. */
   predTraits: { sense: number; speed: number; stamina: number } | null
   predMaxGen: number | null
+  /** Toxic food (T1): poison deaths, units eaten from toxic nodes and the percentage of living bots that know a toxic node; null with poison off. */
+  poison: { deaths: number; eaten: number; knowing: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -146,6 +150,11 @@ export function withoutEcology(rules: Rules): Rules {
 export function withoutPrey(rules: Rules): Rules {
   const { predator } = rules.tuning
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, prey: { ...predator.prey, enabled: false } } } }
+}
+
+/** The same rules with toxic food off: `--no-poison`. */
+export function withoutPoison(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
 }
 
 /** Lags (ticks) at which the predator count is compared with the bot count (P1). */
@@ -332,13 +341,21 @@ export function surveySeed(
     predLeft: world.ecology?.prey?.left ?? 0,
     predTraits: traitSummary === null ? null : { sense: traitSummary.stats.sense.mean, speed: traitSummary.stats.speed.mean, stamina: traitSummary.stats.stamina.mean },
     predMaxGen: traitsTracked ? predMaxGen : null,
+    poison:
+      world.eaten.toxic === undefined
+        ? null
+        : {
+            deaths: world.deathsByCause.poison ?? 0,
+            eaten: world.eaten.toxic,
+            knowing: world.bots.length === 0 ? 0 : (100 * world.bots.filter((bot) => bot.memory.some((entry) => entry.toxic === true)).length) / world.bots.length,
+          },
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -389,6 +406,9 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.predTraits === null ? '-' : r.predTraits.speed.toFixed(2),
       r.predTraits === null ? '-' : r.predTraits.stamina.toFixed(2),
       r.predMaxGen === null ? '-' : r.predMaxGen,
+      r.poison === null ? '-' : r.poison.deaths,
+      r.poison === null ? '-' : r.poison.eaten.toFixed(0),
+      r.poison === null ? '-' : r.poison.knowing.toFixed(0),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

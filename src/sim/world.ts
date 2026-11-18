@@ -3,12 +3,13 @@
 // items are placed first, then scattered ones, so a preset's layout does not
 // depend on how many things are scattered after it. Every founder gets a lineage record. Founders
 // alternate female, male, ... in creation order (preset bots first, then scattered ones). With predator ecology on (E1) the
-// preset's predators get a life and a den after every node is placed (no draws).
+// preset's predators get a life and a den after every node is placed (no draws). With poison on (T1) the last scattered food nodes are toxic (poison.ts).
 
 import { goldenHue } from './genes.ts'
 import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
 import { addDen, checkEcology, checkPrey, startLife } from './predators.ts'
+import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { meanTraits } from './traits.ts'
@@ -132,7 +133,7 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
 
 export function totalDeaths(world: Pick<World, 'deathsByCause'>): number {
   const d = world.deathsByCause
-  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age
+  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age + (d.poison ?? 0)
 }
 
 /** One stats row for the world as it stands now. */
@@ -163,6 +164,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   if (rules.tuning.predator.ecology.enabled && rules.tuning.predator.prey.enabled) checkPrey(rules.tuning.predator.prey, rules.tuning.predator.maxCount)
   checkPredatorTraits(rules.tuning.predator.traits)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
+  checkPoison(rules.tuning.poison)
 
   const world: World = {
     seed,
@@ -186,6 +188,13 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     lineagePruned: 0,
   }
   const stream = world.rng.world
+  // Toxic food (T1): world-made keys are added after the object literal so they stay last; absent with poison off.
+  const poisonOn = rules.tuning.poison.enabled
+  if (poisonOn) {
+    world.eaten.toxic = 0
+    world.deathsByCause.poison = 0
+  }
+  const scatteredFood: WorldNode[] = []
 
   for (const spec of preset.nodes) {
     assertInside(preset, spec.x, spec.y, `preset node (${spec.kind})`)
@@ -198,10 +207,13 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
       // Keep the whole node on the map.
       const x = def.radius + nextFloat(stream) * Math.max(0, preset.width - 2 * def.radius)
       const y = def.radius + nextFloat(stream) * Math.max(0, preset.height - 2 * def.radius)
-      world.nodes.push(makeNode(world.nextId, group.kind, x, y, def))
+      const node = makeNode(world.nextId, group.kind, x, y, def)
+      world.nodes.push(node)
+      if (poisonOn && group.kind === 'resource') scatteredFood.push(node)
       world.nextId += 1
     }
   }
+  if (poisonOn) markToxic(scatteredFood, rules.tuning)
 
   // Founders alternate female, male, ... in creation order (no random draw).
   let founderIndex = 0

@@ -26,6 +26,9 @@
 // slipped out of the cone is still tracked, and its sighting refreshed every tick, while it stays within senseRadius * botFront
 // and the sighting is at most `trackTicks` old. Sightings are never dropped for being out of view, only by `remember`. No draws.
 //
+// Toxic food (T1, poison.ts): a bot that ate from a toxic node remembers it as `toxic` (the flag survives every refresh), and `chooseFood`
+// skips such an entry unless the bot is brave, the same bargain as food inside a remembered danger.
+//
 // Since M10 a bot's memory can also hold sightings copied from its parent or child (family.ts);
 // `learnedFrom` names the source, and seeing the node itself clears it.
 
@@ -237,7 +240,7 @@ export function isFood(kind: NodeKind): boolean {
 /**
  * Nearest remembered food (resource or ruin) worth walking to; ties go to the lower node id.
  * Unless the bot is `brave`, food sitting inside a remembered danger (plus the
- * avoid margin) is skipped.
+ * avoid margin) and food it knows to be toxic (T1) is skipped.
  */
 export function chooseFood(world: World, bot: Bot, tuning: Tuning, brave: boolean): MemoryEntry | null {
   const dangers = brave ? [] : knownDangers(bot)
@@ -249,6 +252,7 @@ export function chooseFood(world: World, bot: Bot, tuning: Tuning, brave: boolea
     const worthIt =
       entry.amount >= tuning.bot.eatRate || (regrows && world.tick - entry.seenTick >= tuning.memory.retryTicks)
     if (!worthIt) continue
+    if (entry.toxic === true && !brave) continue
     if (insideDanger(dangers, entry.x, entry.y, tuning.brain.avoidMargin)) continue
     const d = distance(bot.x, bot.y, entry.x, entry.y)
     if (d < bestDistance || (d === bestDistance && best !== null && entry.nodeId < best.nodeId)) {

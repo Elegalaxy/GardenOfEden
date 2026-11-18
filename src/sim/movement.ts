@@ -19,7 +19,8 @@
 // Steps are `speedOf(bot)` cells long: the base speed scaled by the metabolism
 // trait (metabolism.ts).
 //
-// `act` returns whether the bot moved (moving costs extra energy).
+// `act` returns whether the bot moved (moving costs extra energy). Its optional last argument `intake` receives the poison dose of
+// the bite it took this tick (toxic food, T1); the caller resets it before each bot.
 
 import { atan2, cos, sin } from './exactMath.ts'
 import { isDesperate } from './brain.ts'
@@ -125,7 +126,7 @@ function wander(world: World, bot: Bot, dangers: MemoryEntry[], rules: Rules): b
 }
 
 /** Does the bot move this tick? Used by the energy cost. */
-export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number, WorldNode>): boolean {
+export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number, WorldNode>, intake: { poison: number } | null = null): boolean {
   const { tuning } = rules
   bot.px = bot.x
   bot.py = bot.y
@@ -139,7 +140,8 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
     case 'seekFood':
       if (target) {
         if (distance(bot.x, bot.y, target.x, target.y) <= target.radius) {
-          eat(world, bot, target, tuning)
+          const dose = eat(world, bot, target, tuning)
+          if (intake !== null) intake.poison = dose
           return false
         }
         return walkToward(world, bot, target.x, target.y, dangers, rules)

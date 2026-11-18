@@ -81,6 +81,8 @@ export type WorldNode = {
   expires: number
   /** Predators only (null for every other kind): what the hunter is doing. */
   hunt: PredatorState | null
+  /** Toxic food (T1): health damage per unit eaten from this node. Present only on a toxic resource, absent otherwise (and always, with poison off); last key. */
+  toxin?: number
 }
 
 /**
@@ -175,6 +177,8 @@ export type MemoryEntry = {
   seenTick: number
   amount: number
   learnedFrom: number | null
+  /** Toxic food (T1): the bot knows (from eating it, or from family) that this node poisons. Only ever set to true; absent otherwise; last key. */
+  toxic?: true
 }
 
 export type Bot = {
@@ -212,7 +216,7 @@ export type Bot = {
 
 export type Sex = 'female' | 'male'
 
-export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age'
+export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age' | 'poison'
 
 /** `event` is the sim announcing that a world event ended (its start is the player's `command`). */
 export type SimEventType = 'birth' | 'death' | 'command' | 'event' | 'predator'
@@ -271,9 +275,11 @@ export type Sample = {
   predators?: number
 }
 
-export type DeathsByCause = Record<DeathCause, number>
+/** Deaths by cause. `poison` (T1) exists only in a world made with poison on (last key); read it as `?? 0`. */
+export type DeathsByCause = Record<Exclude<DeathCause, 'poison'>, number> & { poison?: number }
 
-export type Eaten = { resource: number; ruin: number }
+/** Food units eaten per source. `toxic` (T1) is the part of `resource` that came from toxic nodes; present only in a world made with poison on (last key). */
+export type Eaten = { resource: number; ruin: number; toxic?: number }
 
 /**
  * A timed world event in progress (drought, bounty or plague). It is in effect for the ticks
@@ -747,6 +753,17 @@ export type Tuning = {
       /** Ticks a self-seen predator stays tracked after it leaves the cone (whole number from 0). */
       trackTicks: number
     }
+  }
+  /**
+   * Toxic food (T1). Off: no node is toxic and nothing extra is hashed. On, the last `toxicCount` scattered resource nodes of a new world
+   * carry a toxin. Toxic food still gives its full energy; the bite also costs health (see poison.ts). No random draws.
+   */
+  poison: {
+    enabled: boolean
+    /** Scattered resource nodes made toxic when a world is created (a whole number from 0; capped by how many there are). */
+    toxicCount: number
+    /** Health damage per unit of toxic food eaten (finite, 0 or more), before the bot's hardiness divides it. */
+    damagePerUnit: number
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

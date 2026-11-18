@@ -66,6 +66,7 @@ describe('status wording', () => {
       meteor: 'Meteor',
       predator: 'Predator',
       age: 'Old age',
+      poison: 'Poison',
     }
     for (const cause of Object.keys(labels) as DeathCause[]) {
       const dead = record(2, null, { died: 12345, cause })

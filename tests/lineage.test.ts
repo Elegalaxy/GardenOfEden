@@ -123,7 +123,7 @@ describe('records', () => {
     const dead = world.lineage.filter((r) => r.died !== null)
     expect(dead).toHaveLength(Object.values(world.deathsByCause).reduce((a, b) => a + b, 0))
     for (const cause of Object.keys(world.deathsByCause) as DeathCause[]) {
-      expect(dead.filter((r) => r.cause === cause)).toHaveLength(world.deathsByCause[cause])
+      expect(dead.filter((r) => r.cause === cause)).toHaveLength(world.deathsByCause[cause] ?? 0)
     }
     for (const r of world.lineage) {
       if (r.parentId === null) continue

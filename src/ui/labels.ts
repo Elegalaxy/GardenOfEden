@@ -32,6 +32,7 @@ export const CAUSE_LABEL: Record<DeathCause, string> = {
   meteor: 'Meteor',
   predator: 'Predator',
   age: 'Old age',
+  poison: 'Poison',
 }
 
 /** How a death is said in a sentence, capitalised: "Died of hunger", "Killed by a meteor". One scheme everywhere. */
@@ -43,6 +44,7 @@ export const CAUSE_SENTENCE: Record<DeathCause, string> = {
   meteor: 'Killed by a meteor',
   predator: 'Killed by a predator',
   age: 'Died of old age',
+  poison: 'Poisoned by toxic food',
 }
 
 /** The inspector's and the event log's wording for a death. A missing cause reads as hunger. */

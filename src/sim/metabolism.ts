@@ -20,6 +20,8 @@
 // strikes (worldEvents.ts); a bot never dies of it inside `deathCause`.
 // M22 traits: every health damage (danger, plague, predator bite) is divided by the bot's `hardiness`; the energy drain gains
 // a sprint upkeep (`sprintUpkeep` x (sprint - 1), so a slow sprint saves) and is scaled by hardiness and longevity costs.
+// Toxic food (T1): the poison dose of this tick's bite (0 without it) is a fourth health damage, divided by hardiness with the rest; the cause is
+// 'poison' only when the dose was strictly larger than the danger, plague and predator damage (checked first; a dose of 0 never wins).
 
 import { pow } from './exactMath.ts'
 import type { Exposure } from './nodes.ts'
@@ -31,7 +33,7 @@ export function speedOf(bot: Bot, tuning: Tuning): number {
   return t.speed * (1 + t.metabolismSpeed * (bot.traits.metabolism - 1))
 }
 
-export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning: Tuning): void {
+export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning: Tuning, poison = 0): void {
   const t = tuning.bot
   const { sprint, longevity, hardiness } = bot.traits
   const sensing = t.senseDrain * (bot.traits.senseRadius - tuning.traits.senseRadius)
@@ -42,14 +44,15 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   bot.energy -= (t.baseDrain + sensing + upkeep + step) * bot.traits.metabolism * exposure.drainMult * traitMult
   const thirstLoss = t.thirstDrain * pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
-  const harm = (exposure.damage + exposure.plague + exposure.predator) / hardiness
+  const harm = (exposure.damage + exposure.plague + exposure.predator + poison) / hardiness
   bot.health = Math.min(t.maxHealth, bot.health + t.healthRegen + exposure.heal - harm)
   bot.age += 1
   if (bot.cooldown > 0) bot.cooldown -= 1
 }
 
-export function deathCause(bot: Bot, exposure: Exposure): DeathCause | null {
+export function deathCause(bot: Bot, exposure: Exposure, poison = 0): DeathCause | null {
   if (bot.health <= 0) {
+    if (poison > exposure.damage && poison > exposure.plague && poison > exposure.predator) return 'poison'
     if (exposure.predator > exposure.damage && exposure.predator > exposure.plague) return 'predator'
     return exposure.plague > exposure.damage ? 'plague' : 'danger'
   }

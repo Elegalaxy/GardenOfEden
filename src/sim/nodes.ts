@@ -9,9 +9,12 @@
 // and `regrow` multiplies the two. A predator (M21a) bites a bot outside
 // every shelter that stands within `predator.biteRange` of its centre while it is not resting; pass the
 // tuning to `exposureAt` to count it (without, predators are ignored). With predator ecology on (E1) only a hungry one bites.
+// Toxic food (T1, poison.ts): `eat` returns the health dose of the bite (take x the node's `toxin`, 0 for a clean node), counts the units in
+// `eaten.toxic` and makes the bot remember the node as toxic; the energy gained is the same as for clean food.
 
 import { hypot } from './exactMath.ts'
 import { isHungry } from './predators.ts'
+import { learnToxic } from './poison.ts'
 import { seasonAt } from './seasons.ts'
 import type { Bot, Tuning, World, WorldNode } from './types.ts'
 
@@ -75,15 +78,20 @@ export function exposureAt(world: World, x: number, y: number, tuning: Pick<Tuni
 /**
  * The bot takes food from a resource or ruin it stands in, up to `eatRate` and up to its room for
  * energy. An emptied resource stays and regrows; an emptied ruin is removed at the end of the tick.
+ * Returns the poison dose of the bite: take x `node.toxin`, or 0 for a clean node or when nothing was taken.
  */
-export function eat(world: World, bot: Bot, node: WorldNode, tuning: Tuning): void {
+export function eat(world: World, bot: Bot, node: WorldNode, tuning: Tuning): number {
   const t = tuning.bot
   const room = (t.maxEnergy - bot.energy) / t.energyPerUnit
   const take = Math.min(t.eatRate, node.amount, room)
-  if (take <= 0) return
+  if (take <= 0) return 0
   node.amount = Math.max(0, node.amount - take)
   bot.energy = Math.min(t.maxEnergy, bot.energy + take * t.energyPerUnit)
   world.eaten[node.kind === 'ruin' ? 'ruin' : 'resource'] += take
+  if (node.toxin === undefined) return 0
+  world.eaten.toxic = (world.eaten.toxic ?? 0) + take
+  learnToxic(bot, node.id)
+  return take * node.toxin
 }
 
 /** The bot drinks `drinkRate` at a water node it stands in (up to full). The spring is not used up. */
