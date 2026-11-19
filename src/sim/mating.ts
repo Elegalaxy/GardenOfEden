@@ -6,7 +6,10 @@
 // they stood at the start of the tick (`isReadyMother`). The index is a coarse grid of those females
 // only (a handful at a time), built once per tick; a query scans just the grid cells the sense circle
 // touches, so the cost does not grow with the population. No random draws. Ties go to the lowest id.
+// Mate choice (G1, kin.ts): with it on, a male skips females who are close kin and takes the nearest
+// other one; only if none is in range does he take the nearest kin (when lastResort), else no mate.
 
+import { kinship } from './kin.ts'
 import { distance } from './perception.ts'
 import { meetsReproductionNeeds } from './reproduction.ts'
 import type { Bot, Tuning } from './types.ts'
@@ -40,8 +43,9 @@ export function buildMateIndex(bots: readonly Bot[], tuning: Tuning): MateIndex 
 }
 
 /** The nearest indexed female within `radius` of the bot (ties: lowest id), or null. */
-export function nearestMate(index: MateIndex, bot: Bot, radius: number): Bot | null {
+export function nearestMate(index: MateIndex, bot: Bot, radius: number, choice: Tuning['mateChoice'] | null = null): Bot | null {
   if (index.count === 0) return null
+  if (choice !== null) return nearestMateChoosy(index, bot, radius, choice)
   let best: Bot | null = null
   let bestDistance = Infinity
   const x0 = Math.floor((bot.x - radius) / CELL)
@@ -62,6 +66,38 @@ export function nearestMate(index: MateIndex, bot: Bot, radius: number): Bot | n
     }
   }
   return best
+}
+
+/** Mate choice (G1): nearest non-kin female, else (lastResort) the nearest kin one; ties lowest id. */
+function nearestMateChoosy(index: MateIndex, bot: Bot, radius: number, choice: Tuning['mateChoice']): Bot | null {
+  let bestFree: Bot | null = null
+  let freeDistance = Infinity
+  let bestKin: Bot | null = null
+  let kinDistance = Infinity
+  const x0 = Math.floor((bot.x - radius) / CELL)
+  const x1 = Math.floor((bot.x + radius) / CELL)
+  const y0 = Math.floor((bot.y - radius) / CELL)
+  const y1 = Math.floor((bot.y + radius) / CELL)
+  for (let cx = x0; cx <= x1; cx += 1) {
+    for (let cy = y0; cy <= y1; cy += 1) {
+      const list = index.cells.get(key(cx, cy))
+      if (list === undefined) continue
+      for (const other of list) {
+        const d = distance(bot.x, bot.y, other.x, other.y)
+        if (d > radius) continue
+        if (kinship(bot, other) >= choice.avoidAt) {
+          if (d < kinDistance || (d === kinDistance && bestKin !== null && other.id < bestKin.id)) {
+            bestKin = other
+            kinDistance = d
+          }
+        } else if (d < freeDistance || (d === freeDistance && bestFree !== null && other.id < bestFree.id)) {
+          bestFree = other
+          freeDistance = d
+        }
+      }
+    }
+  }
+  return bestFree ?? (choice.lastResort ? bestKin : null)
 }
 
 /** The bot with this id from a list in ascending id order (binary search), or undefined. */

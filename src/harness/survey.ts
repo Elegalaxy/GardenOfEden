@@ -157,6 +157,11 @@ export function withoutPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
 }
 
+/** The same rules with mate choice off: `--no-mate-choice` (G1). */
+export function withoutMateChoice(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: false } } }
+}
+
 /** Lags (ticks) at which the predator count is compared with the bot count (P1). */
 export const PREY_LAGS = [0, 500, 1000, 1500, 2000, 3000]
 
@@ -355,7 +360,7 @@ export function surveySeed(
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -409,6 +414,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.poison === null ? '-' : r.poison.deaths,
       r.poison === null ? '-' : r.poison.eaten.toFixed(0),
       r.poison === null ? '-' : r.poison.knowing.toFixed(0),
+      r.births === 0 ? '-' : ((100 * r.inbred) / r.births).toFixed(1),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

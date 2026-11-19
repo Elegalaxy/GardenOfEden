@@ -121,7 +121,7 @@ export function decide(world: World, bot: Bot, tuning: Tuning, mates: MateIndex 
 
   // A ready male that senses a ready female walks to her (M17). The target is a bot id, not a node id.
   if (mates !== null && bot.sex === 'male' && meetsReproductionNeeds(bot, tuning)) {
-    const mate = nearestMate(mates, bot, bot.traits.senseRadius)
+    const mate = nearestMate(mates, bot, bot.traits.senseRadius, tuning.mateChoice.enabled ? tuning.mateChoice : null)
     if (mate !== null) consider('seekMate', mate.id, b.seekMateScore)
   }
 

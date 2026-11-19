@@ -479,6 +479,15 @@ export type Tuning = {
     energyLoss: number
     healthLoss: number
   }
+  /**
+   * Mate choice (G1, off in Eden). With `enabled`, males seek and `pairMates` pairs unrelated bots first;
+   * a pair with kinship (kin.ts) of at least `avoidAt` (0 to 1) is kin and forms only when `lastResort`.
+   */
+  mateChoice: {
+    enabled: boolean
+    avoidAt: number
+    lastResort: boolean
+  }
   /** Bloodline colour gene (M20): a child's hue drifts up to this many degrees from the parent hue it takes. */
   gene: {
     drift: number

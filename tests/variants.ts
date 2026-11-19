@@ -58,6 +58,16 @@ export function withPoison(rules: Rules, over: Partial<Rules['tuning']['poison']
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: true, ...over } } }
 }
 
+/** Mate choice (G1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withMateChoice(rules: Rules, over: Partial<Rules['tuning']['mateChoice']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: true, ...over } } }
+}
+
+/** The same rules with mate choice forced off. */
+export function noMateChoice(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: false } } }
+}
+
 /** The same rules with toxic food forced off. */
 export function noPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }

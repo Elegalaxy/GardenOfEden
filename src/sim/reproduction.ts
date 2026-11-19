@@ -15,7 +15,10 @@
 // `sex.maleCooldown` / fertility (`payFather`). No random draws in pairing. With sex off a bot breeds alone
 // in the bot loop through `conceive`, as before M17.
 //
-// Inbreeding (M18, `tuning.inbreeding`): there is no bar on pairing, but a child of close relatives
+// Mate choice (G1, `tuning.mateChoice`, off): with it on, pairing ranks unrelated pairs first and a kin pair
+// (kin.ts) forms only as a last resort, or never without `lastResort`. Off, pairing is exactly as before.
+//
+// Inbreeding (M18, `tuning.inbreeding`): there is no bar on pairing unless mate choice is on, but a child of close relatives
 // (score from `lineage.relatedness`: parent and child or full siblings 1, half siblings 0.5, else 0)
 // starts with less energy and health and has a shorter `lifespan`, each cut by its loss fraction times
 // the score. Nothing is drawn for it. The energy the mother paid stays paid; the cut part is lost.
@@ -41,6 +44,7 @@
 import { cos, sin } from './exactMath.ts'
 import { inheritFromParents, inheritMemory } from './family.ts'
 import { childHue } from './genes.ts'
+import { kinship } from './kin.ts'
 import { addRecord, findRecord, relatedness } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import { distance } from './perception.ts'
@@ -151,7 +155,18 @@ export function pairMates(candidates: readonly Bot[], roomLeft: number, tuning: 
       if (d <= tuning.sex.mateRange) options.push({ female, male, d })
     }
   }
-  options.sort((a, b) => a.d - b.d || a.female.id - b.female.id || a.male.id - b.male.id)
+  if (!tuning.mateChoice.enabled) {
+    options.sort((a, b) => a.d - b.d || a.female.id - b.female.id || a.male.id - b.male.id)
+  } else {
+    // Mate choice (G1): unrelated pairs first (by distance), kin pairs after them, and only with lastResort.
+    const avoidAt = tuning.mateChoice.avoidAt
+    const kinOf = new Map<{ female: Bot; male: Bot; d: number }, boolean>()
+    for (const option of options) kinOf.set(option, kinship(option.female, option.male) >= avoidAt)
+    options.sort((a, b) => Number(kinOf.get(a)) - Number(kinOf.get(b)) || a.d - b.d || a.female.id - b.female.id || a.male.id - b.male.id)
+    if (!tuning.mateChoice.lastResort) {
+      for (let i = options.length - 1; i >= 0; i -= 1) if (kinOf.get(options[i])) options.splice(i, 1)
+    }
+  }
   const paired = new Set<number>()
   for (const { female, male } of options) {
     if (conceptions.length >= roomLeft) break
