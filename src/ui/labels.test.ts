@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -121,6 +121,13 @@ describe('chordWidth', () => {
     expect(fertilityLabel(adultAge * 1.2, tuning, 1.2)).toEqual({ percent: Math.round(100 * tuning.fertility.startFraction), phase: 'rising' })
     expect(fertilityLabel(fertileUntil, tuning, 1.2).phase).toBe('declining')
     expect(fertilityLabel(fertileUntil * 1.2, tuning, 1.2)).toEqual({ percent: 0, phase: 'past' })
+  })
+
+  it('formats the inbred births share', () => {
+    expect(inbredBirthsLabel(0, 0)).toBe('—')
+    expect(inbredBirthsLabel(0, 40)).toBe('0.0%')
+    expect(inbredBirthsLabel(1, 8)).toBe('12.5%')
+    expect(inbredBirthsLabel(184, 1000)).toBe('18.4%')
   })
 
   it('labels the inbreeding score', () => {

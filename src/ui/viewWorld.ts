@@ -29,6 +29,7 @@ export type ViewWorld = Pick<
   | 'deathsByCause'
   | 'eaten'
   | 'totalBirths'
+  | 'inbredBirths'
   | 'familyLearned'
   | 'samples'
   | 'log'
@@ -60,6 +61,7 @@ function fresh(frame: Frame): ViewWorld {
     deathsByCause: fast.deathsByCause,
     eaten: fast.eaten,
     totalBirths: fast.totalBirths,
+    inbredBirths: fast.inbredBirths,
     familyLearned: fast.familyLearned,
     lineageLength: fast.lineageLength,
     commandCount: fast.commandCount,
@@ -83,6 +85,7 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   view.deathsByCause = fast.deathsByCause
   view.eaten = fast.eaten
   view.totalBirths = fast.totalBirths
+  view.inbredBirths = fast.inbredBirths
   view.familyLearned = fast.familyLearned
   view.lineageLength = fast.lineageLength
   view.commandCount = fast.commandCount

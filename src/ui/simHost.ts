@@ -98,6 +98,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
       bots: packBots(world.bots),
       events: world.events,
       totalBirths: world.totalBirths,
+      inbredBirths: world.inbredBirths,
       deathsByCause: world.deathsByCause,
       eaten: world.eaten,
       familyLearned: world.familyLearned,

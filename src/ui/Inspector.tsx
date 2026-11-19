@@ -27,9 +27,9 @@ const fixed1 = (value: number): string => (Math.round(value * 10) / 10).toFixed(
 const fixed2 = (value: number): string => (Math.round(value * 100) / 100).toFixed(2)
 const capital = (text: string): string => `${text[0]!.toUpperCase()}${text.slice(1)}`
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Row({ label, children, title }: { label: string; children: ReactNode; title?: string }) {
   return (
-    <div className="kv-row">
+    <div className="kv-row" title={title}>
       <dt>{label}</dt>
       <dd className="figure">{children}</dd>
     </div>
@@ -129,7 +129,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
           {bot.age} ticks · {stage}
         </Row>
         <Row label="Lifespan">{bot.lifespan} ticks</Row>
-        <Row label="Inbred">{inbreedingLabel(bot.inbreeding)}</Row>
+        <Row label="Inbred" title="Eden avoids pairing close kin, so a bot is inbred only if mate choice is off or the world is from an older save.">{inbreedingLabel(bot.inbreeding)}</Row>
         <Row label="Bloodline">
           <HueSwatch hue={bot.hue} /> {hueLabel(bot.hue)}
         </Row>

@@ -9,7 +9,7 @@
 import { tuning } from '../content/index.ts'
 import { PREDATOR_TRAIT_NAMES, predatorTraitStats } from '../sim/predatorTraits.ts'
 import { TRAIT_NAMES, traitStats } from '../sim/traits.ts'
-import { PREDATOR_TRAIT_HELP, PREDATOR_TRAIT_LABEL, TRAIT_HELP, TRAIT_LABEL } from './labels.ts'
+import { INBRED_BIRTHS_HELP, PREDATOR_TRAIT_HELP, PREDATOR_TRAIT_LABEL, TRAIT_HELP, TRAIT_LABEL, inbredBirthsLabel } from './labels.ts'
 import { multiplierText } from './predatorInfo.ts'
 import { useWorldStore } from './store.ts'
 import { fractionOf, traitNumber } from './traitMath.ts'
@@ -36,6 +36,14 @@ export function TraitSummary() {
             {females} / {males}
           </span>
         )}
+      </p>
+      <p className="trait-sexes" title={INBRED_BIRTHS_HELP}>
+        <span className="trait-sexes-label">
+          Inbred births
+        </span>{' '}
+        <span className="figure trait-sexes-value">
+          {inbredBirthsLabel(world.inbredBirths, world.totalBirths)}
+        </span>
       </p>
       <table className="trait-table">
         <thead>

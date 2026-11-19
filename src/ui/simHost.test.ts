@@ -133,6 +133,7 @@ describe('frames', () => {
     expect(frame.fast.nodes).toEqual(host.world.nodes)
     expect(frame.fast.bots.count).toBe(host.world.bots.length)
     expect(frame.fast.totalBirths).toBe(host.world.totalBirths)
+    expect(frame.fast.inbredBirths).toBe(host.world.inbredBirths)
     expect(frame.fast.deathsByCause).toEqual(host.world.deathsByCause)
     expect(frame.fast.lineageLength).toBe(host.world.lineage.length)
     expect(frame.fast.ecology).toEqual(host.world.ecology ?? null)

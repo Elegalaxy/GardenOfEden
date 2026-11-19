@@ -247,6 +247,15 @@ export function inbreedingLabel(score: number): string {
   return `Yes · ${Math.round(100 * score)}%`
 }
 
+/** Inbred births over all births (G3) as a percent with one decimal; a dash before the first birth. */
+export function inbredBirthsLabel(inbred: number, births: number): string {
+  if (births <= 0) return '—'
+  return `${((100 * inbred) / births).toFixed(1)}%`
+}
+
+export const INBRED_BIRTHS_HELP =
+  'Share of births whose parents were close kin (parent and child, full or half siblings). With mate choice on (Eden) kin never pair, so this stays 0% unless the rule is off or the world came from an older save. The child penalty for inbreeding still applies.'
+
 export const FERTILITY_PHASE_LABEL: Record<FertilityPhase, string> = {
   young: 'too young',
   rising: 'rising',

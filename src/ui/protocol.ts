@@ -88,6 +88,8 @@ export type FastData = {
   bots: PackedBots
   events: ActiveEvent[]
   totalBirths: number
+  /** Births of an inbred child so far (G3), for the Inbred births line. */
+  inbredBirths: number
   deathsByCause: DeathsByCause
   eaten: Eaten
   familyLearned: number

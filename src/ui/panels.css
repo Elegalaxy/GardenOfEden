@@ -1224,6 +1224,9 @@ button.log-button[aria-pressed='true'] {
 
 .trait-sexes {
   margin: 0 0 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.85rem;
   line-height: 1.3;
 }
