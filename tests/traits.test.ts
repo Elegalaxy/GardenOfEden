@@ -11,7 +11,7 @@ import { step } from '../src/sim/step.ts'
 import { TRAIT_NAMES, meanTraits } from '../src/sim/traits.ts'
 import type { MemoryEntry, Preset, Rules, TraitName, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { noCone, noSeasons, staticPredators } from './variants.ts'
+import { noCone, noMateChoice, noSeasons, staticPredators } from './variants.ts'
 
 // Trait inheritance (M6) with the real rules and the eden preset: children
 // inherit with a bounded mutation, the result is deterministic, and the
@@ -196,7 +196,7 @@ describe('what a trait costs', () => {
 // tests what a trait costs, and a 4,000-tick race should not hang on which season the founders start in.
 describe('selection', () => {
   // No seasons and fixed predators: the race tests what a trait costs, not how the predator population moves (E2).
-  const noMutation = noCone(noSeasons(staticPredators(withMutation({ strength: 0 })))) // and all-round sensing (V2): the race tests trait costs, not what a cone hides
+  const noMutation = noMateChoice(noCone(noSeasons(staticPredators(withMutation({ strength: 0 }))))) // and all-round sensing (V2): the race tests trait costs, not what a cone hides
   const SEEDS = ['a', 'b', 'c', 'd', 'e', 'f']
 
   function lineages(seed: string, trait: TraitName, even: number, odd: number): { even: number; odd: number } {

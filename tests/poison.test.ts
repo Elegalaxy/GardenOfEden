@@ -11,7 +11,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { MemoryEntry, Preset, Rules } from '../src/sim/types.ts'
 import { createWorld, makeBot, totalDeaths } from '../src/sim/world.ts'
-import { noPoison, withPoison } from './variants.ts'
+import { noMateChoice, noPoison, withPoison } from './variants.ts'
 
 // Toxic food (T1): mechanics, switched off in the shipped numbers. These need the real rules, so they live here.
 
@@ -52,15 +52,16 @@ function entry(nodeId: number, over: Partial<MemoryEntry> = {}): MemoryEntry {
 describe('pins with poison off', () => {
   it('leaves the shipped Eden runs bit-identical', () => {
     expect(rules.tuning.poison.enabled).toBe(false)
-    const a = createWorld('a', edenPreset, rules)
-    while (a.tick < 5000) step(a, rules)
+    const pinned = noMateChoice(rules) // the pins predate mate choice (G2)
+    const a = createWorld('a', edenPreset, pinned)
+    while (a.tick < 5000) step(a, pinned)
     expect(stateHash(a)).toBe(PRE_T1_HASH_A_5000)
-    while (a.tick < 20000) step(a, rules)
+    while (a.tick < 20000) step(a, pinned)
     // The 20,000-tick survey row of seed a (recorded before T1): final population 57, births 1,235.
     expect([a.bots.length, a.totalBirths]).toEqual([57, 1235])
 
-    const b = createWorld('b', edenPreset, rules)
-    while (b.tick < 20000) step(b, rules)
+    const b = createWorld('b', edenPreset, pinned)
+    while (b.tick < 20000) step(b, pinned)
     expect(stateHash(b)).toBe(PRE_T1_HASH_B_20000)
   })
 

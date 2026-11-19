@@ -1,18 +1,20 @@
 import { describe, expect, it } from 'vitest'
 
-import { edenPreset, rules } from '../src/content/index.ts'
+import { edenPreset, rules as shippedRules } from '../src/content/index.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { addRecord, relatedness } from '../src/sim/lineage.ts'
 import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Bot, Preset, Rules, Sex, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { stage1 } from './variants.ts'
+import { noMateChoice, stage1 } from './variants.ts'
 
 // Inbreeding (M18): the score from lineage records (parent-child and full siblings 1, half siblings
 // 0.5, everyone else 0), and what a child of close relatives gets (less health and energy, a shorter
 // lifespan). One-tick scenes use rules with speed 0 so nobody walks.
 
+// These tests make kin pairs on purpose, so they run on the rules without mate choice (on in Eden since G2).
+const rules = noMateChoice(shippedRules)
 const { tuning } = rules
 
 function scene(over: Partial<Preset>): Preset {

@@ -9,7 +9,7 @@ import { step } from '../src/sim/step.ts'
 import type { Tuning, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { applyCommand } from '../src/sim/commands.ts'
-import { asexual, edenWithDanger, neutralTraits, noCone, noSeasons } from './variants.ts'
+import { asexual, edenWithDanger, neutralTraits, noCone, noMateChoice, noSeasons } from './variants.ts'
 
 // Bloodline colour gene (M20): hue helpers, founders, inheritance with drift, replay, and proof that
 // the gene stream changes no behaviour (Eden seeds a and b match the numbers recorded before M20).
@@ -166,7 +166,7 @@ describe('hues in a world', () => {
     // On Eden as it was before M21b (`edenWithDanger`): the recorded numbers belong to that map.
     const old = (seed: string): World => {
       // Without seasons (S2): the recorded numbers come from a world with a fixed regrowth rate.
-      const neutral = noCone(noSeasons(neutralTraits(rules))) // and without the V2 vision cone
+      const neutral = noMateChoice(noCone(noSeasons(neutralTraits(rules)))) // and without the V2 vision cone
       const world = createWorld(seed, edenWithDanger(), neutral)
       for (let i = 0; i < 5000; i += 1) step(world, neutral)
       return world

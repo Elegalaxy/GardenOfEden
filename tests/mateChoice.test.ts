@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { edenPreset, rules } from '../src/content/index.ts'
+import { edenPreset, rules as shippedRules } from '../src/content/index.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { avoidsKin, checkMateChoice, kinship } from '../src/sim/kin.ts'
 import { relatedness } from '../src/sim/lineage.ts'
@@ -33,7 +33,9 @@ const PRE_G1_RNG_B_20000 = {
   predator: { a: 1831911369, b: 62834866, c: 4158602971, d: 2899175820 },
 }
 
-const on = withMateChoice(rules)
+// The unit tests start from the rules with mate choice off (on in Eden since G2) and switch it on where they test it.
+const rules = noMateChoice(shippedRules)
+const on = withMateChoice(rules, { avoidAt: 0.5, lastResort: true }) // the G1 defaults; G2 ships lastResort false
 const onStrict = withMateChoice(rules, { lastResort: false })
 
 /** A ready bot (fed, grown, off cooldown) with chosen id, sex, parents and place. */
@@ -185,4 +187,18 @@ describe('pins with mate choice off', () => {
     expect(stateHash(b)).toBe(PRE_G1_HASH_B_20000)
     expect(b.rng).toEqual(PRE_G1_RNG_B_20000)
   }, 120_000)
+})
+
+describe('switched on in Eden (G2)', () => {
+  it('ships on with avoidAt 0.5 and no last resort, and Eden as shipped differs from noMateChoice', () => {
+    expect(shippedRules.tuning.mateChoice).toEqual({ enabled: true, avoidAt: 0.5, lastResort: false })
+    const shipped = createWorld('a', edenPreset, shippedRules)
+    const off = createWorld('a', edenPreset, noMateChoice(shippedRules))
+    while (shipped.tick < 3000) step(shipped, shippedRules)
+    while (off.tick < 3000) step(off, noMateChoice(shippedRules))
+    expect(stateHash(shipped)).not.toBe(stateHash(off))
+    expect(shipped.totalBirths).toBeGreaterThan(50)
+    expect(shipped.inbredBirths).toBe(0)
+    expect(off.inbredBirths).toBeGreaterThan(0)
+  }, 60_000)
 })

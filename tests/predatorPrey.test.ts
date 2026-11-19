@@ -10,7 +10,7 @@ import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { bestLag, pearson } from '../src/harness/survey.ts'
-import { noPreyRule, withEcology, withPrey } from './variants.ts'
+import { noMateChoice, noPreyRule, withEcology, withPrey } from './variants.ts'
 
 // Prey rule (P1, off): the predator limit, gated cubs and arrivals, leaving, and determinism. Most tests call `predatorLife`
 // directly with the tick set by hand, in worlds with no bots (so the limit is `minCount`).
@@ -59,7 +59,7 @@ describe('prey rule off equals before P1', () => {
 
   it('Eden seed a at 5,000 ticks hashes as it did before P1, with no prey key', () => {
     // P2 switched the prey rule on and lowered killsPerCub from 6 to 3: put both back (withEcology forces the prey rule off).
-    const before = withEcology(rules, { killsPerCub: 6 })
+    const before = noMateChoice(withEcology(rules, { killsPerCub: 6 }))
     const world = createWorld('a', edenPreset, before)
     for (let i = 0; i < 5000; i += 1) step(world, before)
     expect(stateHash(world)).toBe(PRE_P1_HASH)

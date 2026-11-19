@@ -91,15 +91,17 @@ export const tuning: Tuning = {
     energyLoss: 0,
     healthLoss: 0.2,
   },
-  // Mate choice (G1, off): with it on, a ready male seeks the nearest ready female who is not close kin, and
+  // Mate choice (G1 mechanics, switched on in Eden by G2): with it on, a ready male seeks the nearest ready female who is not close kin, and
   // pairing ranks unrelated pairs first. Kin means a kinship (kin.ts: parent and child or full siblings 1,
   // half siblings 0.5, parents and siblings only) of at least avoidAt, so 0.5 avoids half siblings too. With
   // lastResort a kin pair still forms when nobody else is free (a preference with fallback); without it a
   // kin pair never forms. No random draws.
+  // G2 chose avoidAt 0.5 with lastResort false: kin never pair (inbred births 0, the bar was a third of the
+  // baseline 18%); the fallback settings only reached 10 to 14%.
   mateChoice: {
-    enabled: false,
+    enabled: true,
     avoidAt: 0.5,
-    lastResort: true,
+    lastResort: false,
   },
   // Bloodline colour (M20): a child takes its mother's or father's hue and drifts it by up to this many
   // degrees either way (genes.ts, `gene` stream). Cosmetic: no rule reads it.

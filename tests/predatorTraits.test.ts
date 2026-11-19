@@ -20,7 +20,7 @@ import { createRng, nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules, World, WorldNode } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { noCone, noPredatorTraits, withEcology, withPredatorTraits } from './variants.ts'
+import { noCone, noMateChoice, noPredatorTraits, withEcology, withPredatorTraits } from './variants.ts'
 
 // Heritable predator traits (H1 mechanics, on in Eden since H2): the pins that prove the world with them off is untouched, the keys and defaults, inheritance and its
 // draws, the effect of each trait in a crafted single-predator world, the drain price, the checks and determinism.
@@ -49,7 +49,7 @@ function ready(node: WorldNode): void {
 
 describe('traits off equals before H1', () => {
   it('Eden seed a with a placed and a removed predator hashes as it did before H1, with the same predator stream', () => {
-    const off = noPredatorTraits(rules)
+    const off = noMateChoice(noPredatorTraits(rules)) // the pins predate mate choice (G2)
     const world = createWorld('a', edenPreset, off)
     for (let i = 0; i < 5000; i += 1) {
       if (world.tick === 1000) expect(applyCommand(world, off, { type: 'placeNode', kind: 'predator', x: 40.5, y: 30.5 }).ok).toBe(true)
@@ -63,7 +63,7 @@ describe('traits off equals before H1', () => {
   })
 
   it('Eden seed b at 20,000 ticks hashes as it did before H1', () => {
-    const off = noPredatorTraits(rules)
+    const off = noMateChoice(noPredatorTraits(rules))
     const world = createWorld('b', edenPreset, off)
     for (let i = 0; i < 20000; i += 1) step(world, off)
     expect(stateHash(world)).toBe('002b6a896d393fad')

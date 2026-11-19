@@ -71,6 +71,14 @@ describe('eden predators over ten seeds', () => {
     expect(sorted.filter((c) => c >= 0.3).length).toBeGreaterThanOrEqual(7)
   })
 
+  // G2: mate choice is on. The measured baseline (mate choice off, eden a..j, 20,000 ticks) had a median of 18.4% inbred births; the bar is a third of that.
+  it('breed mostly outside the family: median inbred births at most a third of the 18.4% baseline', { timeout: 180_000 }, async () => {
+    const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
+    const shares = rows.map((r) => (100 * r.inbred) / r.births).sort((a, b) => a - b)
+    const median = (shares[shares.length / 2 - 1]! + shares[shares.length / 2]!) / 2
+    expect(median).toBeLessThanOrEqual(18.4 / 3)
+  })
+
   // H2: predator traits are on. They must be inherited (a cub generation is reached), must move off the founders' 1 on some seeds, and no mean may
   // sit against a bound after 20,000 ticks (within 5% of the bound range). The 60,000-tick version of the bound check was run in the H2 sweep, not here.
   it('inherit their traits: cubs carry a generation, the means move, and none sits at a bound', { timeout: 180_000 }, async () => {

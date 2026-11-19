@@ -8,7 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { DeathCause, LineageRecord, Preset, Rules, World } from '../src/sim/types.ts'
 import { createWorld, makeBot } from '../src/sim/world.ts'
-import { staticPredators } from './variants.ts'
+import { noMateChoice, staticPredators } from './variants.ts'
 
 // Lineage records (M11). They need the real numbers from src/content, so they live here and not
 // next to src/sim. The family-tree queries and the pruning order are tested on hand-built records.
@@ -440,7 +440,7 @@ describe('over a long run', () => {
   it.each(['a', 'b'])('seed %s keeps the store within maxRecords and never loses a living bot', (seed) => {
     const founders = foundersIn(edenPreset)
     // Fixed predators (E2): this pins when the store first overflows, which belongs to the pre-ecology birth rate.
-    const fixed = staticPredators(rules)
+    const fixed = noMateChoice(staticPredators(rules)) // and no mate choice (G2): the birth rate is the pre-G2 one
     const world = createWorld(seed, edenPreset, fixed)
     // 100,000 ticks: with predators (M21b) a 60,000-tick eden run makes about 2,400 to 3,300 births, so it does not always
     // pass the 3,000-record cap. 80,000 did until M22 (the new trait costs lower births a little: seed b made 2,894 by 80,000);
