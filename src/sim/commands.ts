@@ -24,7 +24,7 @@ import { addRecord } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { goldenHue } from './genes.ts'
-import { addDen, startLife } from './predators.ts'
+import { addDen, releaseDen, startLife } from './predators.ts'
 import { DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
@@ -107,12 +107,7 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       id = cmd.id
       if (removed?.kind === 'predator' && removed.hunt !== null && world.ecology !== undefined) {
         // Its den goes with it, unless another predator is still homed there.
-        const { homeX, homeY } = removed.hunt
-        const radius = tuning.predator.ecology.denRadius
-        world.ecology.dens = world.ecology.dens.filter((den) => {
-          if (hypot(den.x - homeX, den.y - homeY) > radius) return true
-          return world.nodes.some((node) => node.kind === 'predator' && node.hunt !== null && hypot(node.hunt.homeX - den.x, node.hunt.homeY - den.y) <= radius)
-        })
+        releaseDen(world, removed, tuning)
         world.ecology.stats.removed += 1
       }
       pushEvent(world, tuning, {

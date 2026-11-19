@@ -229,6 +229,9 @@ export const tuning: Tuning = {
     bounty: { duration: 1000, regrowMult: 3 },
     plague: { duration: 800, radius: 14, damage: 0.8 },
     meteor: { radius: 6, damage: 200, craterRadius: 3, craterDamage: 2, craterTicks: 600 },
+    // Events hurt predators (EP1, off). With it on (and predator ecology on) a meteor kills the predators within half its radius
+    // and a plague drains 0.1 energy a tick from those inside it. Off in the shipped numbers, so nothing moves.
+    predatorHarm: { enabled: false, meteorKillFraction: 0.5, plagueDrain: 0.1 },
   },
   // Predators (M21a, retuned in M21b for the eden preset's three). A predator spends most of its time resting after a kill:
   // `digestTicks` 1300 (was a first guess of 300) puts predator deaths at about 5% of all deaths and keeps a small colony alive

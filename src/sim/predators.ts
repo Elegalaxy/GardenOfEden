@@ -89,6 +89,47 @@ export function checkPrey(prey: Tuning['predator']['prey'], maxCount: number): v
   }
 }
 
+/** Throws when the event-harm numbers cannot work: `enabled` a boolean, `meteorKillFraction` above 0 and at most 1, `plagueDrain` 0 or more. */
+export function checkPredatorHarm(harm: Tuning['events']['predatorHarm']): void {
+  if (typeof harm.enabled !== 'boolean') throw new RangeError(`events.predatorHarm.enabled must be true or false, received ${String(harm.enabled)}`)
+  if (!(Number.isFinite(harm.meteorKillFraction) && harm.meteorKillFraction > 0 && harm.meteorKillFraction <= 1)) {
+    throw new RangeError(`events.predatorHarm.meteorKillFraction must be a number above 0 and at most 1, received ${harm.meteorKillFraction}`)
+  }
+  if (!(Number.isFinite(harm.plagueDrain) && harm.plagueDrain >= 0)) {
+    throw new RangeError(`events.predatorHarm.plagueDrain must be a number from 0, received ${harm.plagueDrain}`)
+  }
+}
+
+/** True when events hurt predators (EP1): the rule and predator ecology are both on and the world was made with ecology. */
+export function harmOn(world: Pick<World, 'ecology'>, tuning: Pick<Tuning, 'events' | 'predator'>): boolean {
+  return tuning.events.predatorHarm.enabled && tuning.predator.ecology.enabled && world.ecology !== undefined
+}
+
+/**
+ * A predator node has been taken off the map: its den goes with it unless another predator is still homed there. The caller removes the node from
+ * `world.nodes` first. Shared by the `removeNode` command and the meteor (EP1).
+ */
+export function releaseDen(world: Pick<World, 'ecology' | 'nodes'>, removed: WorldNode, tuning: Pick<Tuning, 'predator'>): void {
+  if (removed.kind !== 'predator' || removed.hunt === null || world.ecology === undefined) return
+  const { homeX, homeY } = removed.hunt
+  const radius = tuning.predator.ecology.denRadius
+  world.ecology.dens = world.ecology.dens.filter((den) => {
+    if (hypot(den.x - homeX, den.y - homeY) > radius) return true
+    return world.nodes.some((node) => node.kind === 'predator' && node.hunt !== null && hypot(node.hunt.homeX - den.x, node.hunt.homeY - den.y) <= radius)
+  })
+}
+
+/**
+ * A meteor killed a predator (EP1): count it and log `struck`. `eventDeaths` is created on the first such death (`??= 0`), a deliberate departure
+ * from the usual present-when-on stats keys, so a world with the rule on but no event deaths hashes the same as one with it off.
+ */
+export function logStruck(world: World, tuning: Tuning, node: WorldNode): void {
+  if (world.ecology === undefined) return
+  world.ecology.stats.eventDeaths ??= 0
+  world.ecology.stats.eventDeaths += 1
+  logPredator(world, tuning, node, 'struck')
+}
+
 /** How many predators the bots can carry: `maxCount` with the prey rule (or ecology) off, else floor(bots / perPredator) kept within `minCount` and `maxCount`. */
 export function predatorLimit(botCount: number, tuning: Pick<Tuning, 'predator'>): number {
   const { maxCount, ecology, prey } = tuning.predator
@@ -315,16 +356,33 @@ export function predatorLife(world: World, rules: Rules): void {
   const ecology = world.ecology
   if (!eco.enabled || ecology === undefined) return
 
+  const harm = harmOn(world, tuning)
   const gone = new Set<number>()
   for (const node of world.nodes) {
     const life = node.hunt?.life
     if (node.kind !== 'predator' || life === undefined) continue
     life.age += 1
     life.energy -= predatorDrain(node.hunt, tuning)
+    // Plague (EP1): each active plague disc around the predator drains energy, stacking like the bots' plague damage.
+    let plagued = false
+    if (harm) {
+      for (const event of world.events) {
+        if (event.kind === 'plague' && hypot(node.x - event.x, node.y - event.y) <= event.radius) {
+          life.energy -= tuning.events.predatorHarm.plagueDrain
+          plagued = true
+        }
+      }
+    }
     if (life.energy <= 0) {
       gone.add(node.id)
-      ecology.stats.starved += 1
-      logPredator(world, tuning, node, 'starved')
+      if (plagued && tuning.events.predatorHarm.plagueDrain > 0) {
+        ecology.stats.eventDeaths ??= 0
+        ecology.stats.eventDeaths += 1
+        logPredator(world, tuning, node, 'plagued')
+      } else {
+        ecology.stats.starved += 1
+        logPredator(world, tuning, node, 'starved')
+      }
     } else if (life.age >= eco.maxAge) {
       gone.add(node.id)
       ecology.stats.aged += 1

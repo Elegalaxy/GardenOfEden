@@ -27,11 +27,13 @@
 // means the series had no variance or was too short.
 // T1 adds `pois tox toxK` last (toxic food, `--set poison.enabled=true`; a dash for each with poison off): bots dead of poison, the food units eaten from toxic
 // nodes, and the share (percent) of the bots alive at the end that remember at least one toxic node. `withoutPoison` and `--no-poison` switch it off.
+// EP1 appends `pEvt` after `inb%` (predators killed by a meteor or drained to death by a plague; a dash with the harm rule or ecology off); `withoutPredatorHarm` and `--no-predator-harm` switch it off.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
+import { harmOn } from '../sim/predators.ts'
 import { predatorTraitStats } from '../sim/predatorTraits.ts'
 import { meanTraits } from '../sim/traits.ts'
 import { findRecord } from '../sim/lineage.ts'
@@ -90,6 +92,8 @@ export type SeedSurvey = {
   predMaxGen: number | null
   /** Toxic food (T1): poison deaths, units eaten from toxic nodes and the percentage of living bots that know a toxic node; null with poison off. */
   poison: { deaths: number; eaten: number; knowing: number } | null
+  /** Predators killed by world events (EP1: meteor strikes and plague drain); null with the rule off. */
+  predEventDeaths: number | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -155,6 +159,11 @@ export function withoutPrey(rules: Rules): Rules {
 /** The same rules with toxic food off: `--no-poison`. */
 export function withoutPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
+}
+
+/** The same rules with predators safe from world events: `--no-predator-harm` (EP1). */
+export function withoutPredatorHarm(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, events: { ...rules.tuning.events, predatorHarm: { ...rules.tuning.events.predatorHarm, enabled: false } } } }
 }
 
 /** The same rules with mate choice off: `--no-mate-choice` (G1). */
@@ -354,13 +363,14 @@ export function surveySeed(
             eaten: world.eaten.toxic,
             knowing: world.bots.length === 0 ? 0 : (100 * world.bots.filter((bot) => bot.memory.some((entry) => entry.toxic === true)).length) / world.bots.length,
           },
+    predEventDeaths: harmOn(world, rules.tuning) ? (world.ecology?.stats.eventDeaths ?? 0) : null,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -415,6 +425,7 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.poison === null ? '-' : r.poison.eaten.toFixed(0),
       r.poison === null ? '-' : r.poison.knowing.toFixed(0),
       r.births === 0 ? '-' : ((100 * r.inbred) / r.births).toFixed(1),
+      r.predEventDeaths === null ? '-' : r.predEventDeaths,
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

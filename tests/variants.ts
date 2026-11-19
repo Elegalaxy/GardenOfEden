@@ -68,6 +68,18 @@ export function noMateChoice(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: false } } }
 }
 
+/** Events hurt predators (EP1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withPredatorHarm(rules: Rules, over: Partial<Rules['tuning']['events']['predatorHarm']> = {}): Rules {
+  const { events } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, events: { ...events, predatorHarm: { ...events.predatorHarm, enabled: true, ...over } } } }
+}
+
+/** The same rules with event harm to predators forced off. */
+export function noPredatorHarm(rules: Rules): Rules {
+  const { events } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, events: { ...events, predatorHarm: { ...events.predatorHarm, enabled: false } } } }
+}
+
 /** The same rules with toxic food forced off. */
 export function noPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }

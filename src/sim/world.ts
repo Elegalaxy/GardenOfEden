@@ -8,7 +8,7 @@
 import { goldenHue } from './genes.ts'
 import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
-import { addDen, checkEcology, checkPrey, startLife } from './predators.ts'
+import { addDen, checkEcology, checkPredatorHarm, checkPrey, startLife } from './predators.ts'
 import { checkMateChoice } from './kin.ts'
 import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
@@ -164,6 +164,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   if (rules.tuning.predator.ecology.enabled) checkEcology(rules.tuning.predator.ecology)
   if (rules.tuning.predator.ecology.enabled && rules.tuning.predator.prey.enabled) checkPrey(rules.tuning.predator.prey, rules.tuning.predator.maxCount)
   checkPredatorTraits(rules.tuning.predator.traits)
+  checkPredatorHarm(rules.tuning.events.predatorHarm)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
   checkPoison(rules.tuning.poison)
   checkMateChoice(rules.tuning.mateChoice)

@@ -30,6 +30,7 @@
 
 import { hypot } from './exactMath.ts'
 import { recordDeath } from './lineage.ts'
+import { harmOn, logStruck, releaseDen } from './predators.ts'
 import { leaveRuin } from './ruins.ts'
 import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, Tuning, World } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
@@ -163,6 +164,20 @@ function strike(world: World, rules: Rules, x: number, y: number): number {
       pushEvent(world, tuning, { tick: world.tick, type: 'death', botId: bot.id, cause: 'meteor', x: bot.x, y: bot.y })
     }
     for (const bot of killed) leaveRuin(world, bot, rules)
+  }
+
+  // Predators in the core zone die too (EP1, off): id order, placed ones included, dens kept in step. No draws.
+  if (harmOn(world, tuning)) {
+    const core = m.radius * tuning.events.predatorHarm.meteorKillFraction
+    const struck = world.nodes.filter((node) => node.kind === 'predator' && node.hunt?.life !== undefined && hypot(node.x - x, node.y - y) <= core)
+    if (struck.length > 0) {
+      const gone = new Set(struck.map((node) => node.id))
+      world.nodes = world.nodes.filter((node) => !gone.has(node.id))
+      for (const node of struck) {
+        releaseDen(world, node, tuning)
+        logStruck(world, tuning, node)
+      }
+    }
   }
   return craterId
 }

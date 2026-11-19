@@ -133,7 +133,7 @@ export type Den = { x: number; y: number; vacantSince: number | null }
 /** Predator ecology state (E1). Present on the world only when `predator.ecology.enabled` was on at creation. */
 export type PredatorEcology = {
   dens: Den[]
-  stats: { births: number; arrivals: number; starved: number; aged: number; removed: number }
+  stats: { births: number; arrivals: number; starved: number; aged: number; removed: number; eventDeaths?: number }
   /**
    * Prey rule (P1) bookkeeping: `overSince` is the tick the predator count first exceeded the prey limit (null while it does not),
    * `left` the predators that have left the map. The key is last and absent unless both `ecology` and `prey` were on at creation.
@@ -222,7 +222,7 @@ export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 
 export type SimEventType = 'birth' | 'death' | 'command' | 'event' | 'predator'
 
 /** What happened to a predator (E1), carried by a `predator` log event. */
-export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged' | 'left'
+export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged' | 'left' | 'struck' | 'plagued'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
 
@@ -636,6 +636,19 @@ export type Tuning = {
       craterDamage: number
       /** ...and stays this many ticks. */
       craterTicks: number
+    }
+    /**
+     * Events hurt predators (EP1, off). Acts only with `predator.ecology.enabled` and only on a predator that has a life (a static
+     * predator is untouched). A meteor removes every predator within `meteor.radius * meteorKillFraction` of the impact (placed ones too);
+     * a plague takes `plagueDrain` energy per tick per plague disc a predator stands in (stacking, like the bots' plague damage), so a
+     * predator that starves on a tick the plague drained it is logged `plagued`, not `starved`.
+     */
+    predatorHarm: {
+      enabled: boolean
+      /** Share of the meteor radius that kills a predator, above 0 up to 1. */
+      meteorKillFraction: number
+      /** Energy a predator loses per tick inside each plague disc, 0 or more. */
+      plagueDrain: number
     }
   }
   /**
