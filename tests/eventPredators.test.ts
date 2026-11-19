@@ -38,8 +38,8 @@ function trigger(world: World, r: Rules, event: 'plague' | 'meteor', x: number, 
 }
 
 describe('shipped numbers', () => {
-  it('ship off, and the checker accepts them', () => {
-    expect(rules.tuning.events.predatorHarm).toEqual({ enabled: false, meteorKillFraction: 0.5, plagueDrain: 0.1 })
+  it('ship on (EP2), and the checker accepts them', () => {
+    expect(rules.tuning.events.predatorHarm).toEqual({ enabled: true, meteorKillFraction: 0.5, plagueDrain: 0.4 })
     expect(() => checkPredatorHarm(rules.tuning.events.predatorHarm)).not.toThrow()
   })
 
@@ -168,39 +168,88 @@ describe('plague', () => {
 })
 
 describe('zero change while off', () => {
-  it('the shipped rules leave an Eden run with a plague and a meteor on a den bit-identical, and the rng too', () => {
-    expect(rules.tuning.events.predatorHarm.enabled).toBe(false)
-    const world = createWorld('a', edenPreset, rules)
-    while (world.tick < 1000) step(world, rules)
+  it('with the rule off, an Eden run with a plague and a meteor on a den is bit-identical to pre-EP1, and the rng too', () => {
+    const off = noPredatorHarm(rules)
+    const world = createWorld('a', edenPreset, off)
+    while (world.tick < 1000) step(world, off)
     const den = world.ecology!.dens[0]!
-    trigger(world, rules, 'plague', den.x, den.y)
-    while (world.tick < 1500) step(world, rules)
-    trigger(world, rules, 'meteor', den.x, den.y)
-    while (world.tick < 3000) step(world, rules)
+    trigger(world, off, 'plague', den.x, den.y)
+    while (world.tick < 1500) step(world, off)
+    trigger(world, off, 'meteor', den.x, den.y)
+    while (world.tick < 3000) step(world, off)
     expect(stateHash(world)).toBe(PRE_EP1_HASH)
     expect(JSON.stringify(world.rng)).toBe(PRE_EP1_RNG)
     expect(world.ecology!.stats.eventDeaths).toBeUndefined()
   })
 
   it('an event-free run is identical with the rule on and off', () => {
-    const on = withPredatorHarm(rules)
-    const a = createWorld('a', edenPreset, rules)
-    const b = createWorld('a', edenPreset, on)
+    const off = noPredatorHarm(rules)
+    const a = createWorld('a', edenPreset, off)
+    const b = createWorld('a', edenPreset, rules)
     while (a.tick < 3000) {
-      step(a, rules)
-      step(b, on)
+      step(a, off)
+      step(b, rules)
     }
     expect(stateHash(b)).toBe(stateHash(a))
     expect(b.ecology!.stats).toEqual(a.ecology!.stats)
   })
 })
 
+describe('Eden as shipped (EP2)', () => {
+  /** Eden seed a to tick 6000 with a plague on the first den at 3000 and a meteor on a predator at 5000, under the given rules. */
+  function scripted(r: Rules): World {
+    const world = createWorld('a', edenPreset, r)
+    while (world.tick < 3000) step(world, r)
+    const den = world.ecology!.dens[0]!
+    trigger(world, r, 'plague', den.x, den.y)
+    while (world.tick < 5000) step(world, r)
+    const target = predatorsOf(world)[0]
+    if (target !== undefined) trigger(world, r, 'meteor', target.x, target.y)
+    while (world.tick < 6000) step(world, r)
+    return world
+  }
+
+  it('differs from noPredatorHarm when events are scripted', () => {
+    const on = scripted(rules)
+    const off = scripted(noPredatorHarm(rules))
+    expect(stateHash(on)).not.toBe(stateHash(off))
+    expect(on.ecology!.stats.eventDeaths ?? 0).toBeGreaterThan(0)
+    expect(off.ecology!.stats.eventDeaths).toBeUndefined()
+  })
+
+  it('a meteor aimed at a predator kills it on every seed a to j, and a plague aimed at one never empties the map', () => {
+    for (const seed of 'abcdefghij'.split('')) {
+      const world = createWorld(seed, edenPreset, rules)
+      while (world.tick < 3000) step(world, rules)
+      const target = predatorsOf(world)[0]!
+      const hit = structuredClone(world)
+      trigger(hit, rules, 'meteor', target.x, target.y)
+      expect(predatorsOf(hit).some((node) => node.id === target.id), seed).toBe(false)
+      expect(hit.ecology!.stats.eventDeaths, seed).toBeGreaterThanOrEqual(1)
+      trigger(world, rules, 'plague', target.x, target.y)
+      while (world.tick < 3900) step(world, rules)
+      expect(predatorsOf(world).length, seed).toBeGreaterThan(0)
+    }
+  })
+
+  it('an event-free run is bit-identical to noPredatorHarm', () => {
+    const off = noPredatorHarm(rules)
+    const a = createWorld('b', edenPreset, rules)
+    const b = createWorld('b', edenPreset, off)
+    while (a.tick < 2000) {
+      step(a, rules)
+      step(b, off)
+    }
+    expect(stateHash(a)).toBe(stateHash(b))
+  })
+})
+
 describe('survey column', () => {
   it('ends with pEvt: a dash with the rule off, a count with it on', () => {
-    const off = formatSurvey([surveySeed('a', edenPreset, rules, 300, 100)]).split('\n') as [string, string]
+    const off = formatSurvey([surveySeed('a', edenPreset, noPredatorHarm(rules), 300, 100)]).split('\n') as [string, string]
     expect(off[0].trim().split(/\s+/).at(-1)).toBe('pEvt')
     expect(off[1].trim().split(/\s+/).at(-1)).toBe('-')
-    const on = formatSurvey([surveySeed('a', edenPreset, withPredatorHarm(rules), 300, 100)]).split('\n') as [string, string]
+    const on = formatSurvey([surveySeed('a', edenPreset, rules, 300, 100)]).split('\n') as [string, string]
     expect(on[1].trim().split(/\s+/).at(-1)).toBe('0')
   })
 })
