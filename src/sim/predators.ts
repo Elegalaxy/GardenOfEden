@@ -54,6 +54,7 @@ import { atan2, cos, hypot, sin } from './exactMath.ts'
 import { coneFactor } from './perception.ts'
 import { DEFAULT_PREDATOR_TRAITS, inheritPredatorTraits, predatorDrain, predatorTrait, startTraits, traitsOn } from './predatorTraits.ts'
 import { nextFloat } from './rng.ts'
+import { onRough } from './terrain.ts'
 import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
 
@@ -257,7 +258,7 @@ function stepPredator(
   }
 }
 
-export function movePredators(world: World, rules: Rules): void {
+export function movePredators(world: World, rules: Rules, rough: readonly WorldNode[] | null = null): void {
   const { predator, bot: botTuning } = rules.tuning
   const cone = rules.tuning.perception.cone
   let shelters: WorldNode[] | null = null
@@ -272,7 +273,9 @@ export function movePredators(world: World, rules: Rules): void {
     if (shelters === null) shelters = world.nodes.filter((other) => other.kind === 'shelter')
 
     const senseMult = predatorTrait(hunt, 'sense')
-    const speed = predator.speed * predatorTrait(hunt, 'speed')
+    let speed = predator.speed * predatorTrait(hunt, 'speed')
+    // Rough ground (R1): a step that starts inside a rough disc is shorter.
+    if (rough !== null && onRough(rough, node.x, node.y)) speed *= rules.tuning.terrain.predatorSpeedMult
     const range = predator.senseRadius * senseMult
     let prey: Bot | null = null
     if (isHungry(hunt, rules.tuning)) {

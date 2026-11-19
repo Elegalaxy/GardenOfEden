@@ -13,6 +13,7 @@ import { checkMateChoice } from './kin.ts'
 import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
+import { checkTerrain } from './terrain.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
 
@@ -167,6 +168,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   checkPredatorHarm(rules.tuning.events.predatorHarm)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
   checkPoison(rules.tuning.poison)
+  checkTerrain(rules.tuning.terrain)
   checkMateChoice(rules.tuning.mateChoice)
 
   const world: World = {
@@ -238,6 +240,15 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     world.bots.push(bot)
     addRecord(world, bot.id, null, null, bot.sex, bot.generation, bot.traits, bot.hue)
     world.nextId += 1
+  }
+
+  // Rough ground (R1): made last of all nodes, so every other id and draw is the same with terrain on or off. No draws.
+  if (rules.tuning.terrain.enabled) {
+    for (const spec of preset.terrain ?? []) {
+      assertInside(preset, spec.x, spec.y, 'preset terrain')
+      world.nodes.push(makeNode(world.nextId, 'rough', spec.x, spec.y, { ...rules.nodeDefs.rough, radius: spec.radius }))
+      world.nextId += 1
+    }
   }
 
   // Predator ecology (E1): every preset predator gets a life and marks a den. No draws.

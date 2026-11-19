@@ -314,5 +314,9 @@ export const tuning: Tuning = {
   // still gives full energy but costs `damagePerUnit` health per unit eaten (divided by hardiness), so a bot that learns which nodes
   // are toxic can avoid them (and tell its family) unless it is desperate. See src/sim/poison.ts.
   poison: { enabled: false, toxicCount: 6, damagePerUnit: 5 },
+  // Rough ground (R1, mechanics only, OFF): with it on, a world made from a preset that lists `terrain` gets permanent rough discs, and a mover
+  // that starts its step inside one walks only this fraction of its normal step (bots and predators have their own number, equal for now).
+  // No energy cost and bots do not see it. maxCount caps the rough nodes in a world (the player tool comes later). See src/sim/terrain.ts.
+  terrain: { enabled: false, botSpeedMult: 0.5, predatorSpeedMult: 0.5, maxCount: 24 },
   logCap: 500,
 }

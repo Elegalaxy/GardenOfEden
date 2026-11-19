@@ -44,7 +44,15 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
       if (cmd.kind === 'ruin') return 'Ruins are left by dead bots. They cannot be placed.'
       if (cmd.kind === 'danger') return 'Danger zones were replaced by predators.'
-      if (cmd.kind === 'predator') {
+      if (cmd.kind === 'rough') {
+        if (!tuning.terrain.enabled) return 'Rough ground is switched off.'
+        let rough = 0
+        for (const node of world.nodes) {
+          if (node.kind === 'rough') rough += 1
+        }
+        if (rough >= tuning.terrain.maxCount) return `Too much rough ground (${tuning.terrain.maxCount}).`
+        if (placedNodeCount(world) >= tuning.player.maxNodes) return `The map is full (${tuning.player.maxNodes} nodes).`
+      } else if (cmd.kind === 'predator') {
         let predators = 0
         for (const node of world.nodes) {
           if (node.kind === 'predator') predators += 1

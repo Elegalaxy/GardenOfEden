@@ -71,6 +71,7 @@ export function perceive(world: World, bot: Bot, tuning?: Pick<Tuning, 'percepti
   const cone = tuning?.perception.cone
   if (cone === undefined || !cone.enabled) {
     for (const node of world.nodes) {
+      if (node.kind === 'rough') continue // rough ground (R1) is felt, never seen
       const d = distance(bot.x, bot.y, node.x, node.y)
       if ((node.kind === 'predator' ? d : d - node.radius) <= bot.traits.senseRadius) sensed.push(node)
     }
@@ -86,6 +87,7 @@ export function perceive(world: World, bot: Bot, tuning?: Pick<Tuning, 'percepti
   const bx = bot.x
   const by = bot.y
   for (const node of world.nodes) {
+    if (node.kind === 'rough') continue
     const dx = node.x - bx
     const dy = node.y - by
     const d = hypot(dx, dy)

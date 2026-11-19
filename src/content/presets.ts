@@ -34,6 +34,15 @@ export const edenPreset: Preset = {
   ],
   bots: [],
   scatterBots: 40,
+  // Rough ground (R1, made only while tuning.terrain.enabled). Layout A, a marsh belt on the east side, radius 6; each disc is more than
+  // 6 cells from every grove centre and fixed spring (nearest: (60,44) is 12.6 from the south-east grove).
+  // Layout B (patches, to compare in R2, not active): (12,10,r5), (40,8,r6), (26,32,r5), (86,32,r5), (58,58,r5).
+  terrain: [
+    { x: 60, y: 4, radius: 6 },
+    { x: 61, y: 14, radius: 6 },
+    { x: 59, y: 34, radius: 6 },
+    { x: 60, y: 44, radius: 6 },
+  ],
 }
 
 // A plain world: the same 96x64 map with nothing on it. The player places every

@@ -17,4 +17,6 @@ export const nodeDefs: NodeDefs = {
   ruin: { radius: 1, capacity: 60, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0.05 },
   // A predator (M21a): radius is the threat radius bots remember and avoid; damage is the bite per tick.
   predator: { radius: 4, capacity: 0, regen: 0, damage: 35, heal: 0, drainMult: 1, decay: 0 },
+  // Rough ground (R1): a permanent disc that slows walkers (tuning.terrain); radius only, like water. A preset may give its own radius.
+  rough: { radius: 6, capacity: 0, regen: 0, damage: 0, heal: 0, drainMult: 1, decay: 0 },
 }

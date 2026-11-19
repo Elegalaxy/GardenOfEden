@@ -44,7 +44,8 @@ export type Weighted<T> = {
   weight: number
 }
 
-export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water' | 'predator'
+/** `rough` (R1) is permanent rough ground: a disc where movers walk slower (terrain.ts). */
+export type NodeKind = 'resource' | 'danger' | 'shelter' | 'ruin' | 'water' | 'predator' | 'rough'
 
 /**
  * One purposeful spot on the map. Only the fields a kind uses matter; the
@@ -787,6 +788,20 @@ export type Tuning = {
     /** Health damage per unit of toxic food eaten (finite, 0 or more), before the bot's hardiness divides it. */
     damagePerUnit: number
   }
+  /**
+   * Rough ground (R1). Off: no rough node is made and nothing is slowed. On, a mover whose step starts inside a rough disc walks its
+   * step length times the multiplier below (overlapping discs do not compound). Slow only: no extra energy cost, bots do not perceive
+   * it. No random draws. See terrain.ts.
+   */
+  terrain: {
+    enabled: boolean
+    /** Step length multiplier for a bot on rough ground (finite, above 0, at most 1). */
+    botSpeedMult: number
+    /** Step length multiplier for a predator on rough ground (finite, above 0, at most 1). */
+    predatorSpeedMult: number
+    /** Most rough nodes the player may have in the world (a whole number from 0; checked on placing, preset ones count). */
+    maxCount: number
+  }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number
 }
@@ -813,4 +828,6 @@ export type Preset = {
   bots: { x: number; y: number }[]
   /** Bots at random positions. */
   scatterBots: number
+  /** Rough ground discs (R1), made only when `terrain.enabled`; they come last in the node list so no other id changes. */
+  terrain?: { x: number; y: number; radius: number }[]
 }

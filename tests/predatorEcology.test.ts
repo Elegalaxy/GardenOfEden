@@ -422,10 +422,10 @@ describe('harness', () => {
     expect(row.predBorn + row.predArrived + row.predStarved + row.predAged).toBe(0)
     const [head, line] = formatSurvey([row]).split('\n') as [string, string]
     const headings = head.trim().split(/\s+/)
-    expect(headings.slice(-24, -9)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft'])
+    expect(headings.slice(-26, -11)).toEqual(['preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft'])
     expect(headings.slice(0, 27).at(-1)).toBe('inb')
-    expect(headings.slice(-9, -5)).toEqual(['pSense', 'pSpeed', 'pStam', 'pGen'])
-    expect(headings.slice(-5)).toEqual(['pois', 'tox', 'toxK', 'inb%', 'pEvt'])
+    expect(headings.slice(-11, -7)).toEqual(['pSense', 'pSpeed', 'pStam', 'pGen'])
+    expect(headings.slice(-7)).toEqual(['pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%'])
     expect(line.trim().split(/\s+/)).toHaveLength(headings.length)
   })
 })

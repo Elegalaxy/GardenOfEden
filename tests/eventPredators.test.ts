@@ -245,11 +245,11 @@ describe('Eden as shipped (EP2)', () => {
 })
 
 describe('survey column', () => {
-  it('ends with pEvt: a dash with the rule off, a count with it on', () => {
+  it('has pEvt (before the two R1 terrain columns): a dash with the rule off, a count with it on', () => {
     const off = formatSurvey([surveySeed('a', edenPreset, noPredatorHarm(rules), 300, 100)]).split('\n') as [string, string]
-    expect(off[0].trim().split(/\s+/).at(-1)).toBe('pEvt')
-    expect(off[1].trim().split(/\s+/).at(-1)).toBe('-')
+    expect(off[0].trim().split(/\s+/).at(-3)).toBe('pEvt')
+    expect(off[1].trim().split(/\s+/).at(-3)).toBe('-')
     const on = formatSurvey([surveySeed('a', edenPreset, rules, 300, 100)]).split('\n') as [string, string]
-    expect(on[1].trim().split(/\s+/).at(-1)).toBe('0')
+    expect(on[1].trim().split(/\s+/).at(-3)).toBe('0')
   })
 })

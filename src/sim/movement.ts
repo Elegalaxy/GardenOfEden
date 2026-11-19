@@ -17,7 +17,9 @@
 // depends on where danger is. A bot that reaches the map edge turns around.
 //
 // Steps are `speedOf(bot)` cells long: the base speed scaled by the metabolism
-// trait (metabolism.ts).
+// trait (metabolism.ts). `act` works that out once per tick; with rough ground on (R1, terrain.ts) and the
+// bot's position at the start of its step inside a rough disc, it is also times `terrain.botSpeedMult`
+// (a flee step then is speed x mult x sprint). With terrain off `rough` is null and nothing is multiplied.
 //
 // `act` returns whether the bot moved (moving costs extra energy). Its optional last argument `intake` receives the poison dose of
 // the bite it took this tick (toxic food, T1); the caller resets it before each bot.
@@ -29,6 +31,7 @@ import { speedOf } from './metabolism.ts'
 import { drink, eat } from './nodes.ts'
 import { distance, knownDangers } from './perception.ts'
 import { nextFloat } from './rng.ts'
+import { onRough } from './terrain.ts'
 import type { Bot, MemoryEntry, Rules, World, WorldNode } from './types.ts'
 
 /** Where a step along `heading` lands, kept on the map. `clamped` is true if the map edge stopped it. */
@@ -72,10 +75,9 @@ function steer(world: World, bot: Bot, heading: number, length: number, dangers:
   return false
 }
 
-function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: MemoryEntry[], rules: Rules): boolean {
+function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: MemoryEntry[], rules: Rules, speed: number): boolean {
   const d = distance(bot.x, bot.y, tx, ty)
   const heading = atan2(ty - bot.y, tx - bot.x)
-  const speed = speedOf(bot, rules.tuning)
   const length = Math.min(speed, d)
   // Aim exactly at the target while the straight step is safe, so a bot can arrive on it.
   const straight = stepAlong(world, bot, heading, length)
@@ -89,7 +91,7 @@ function walkToward(world: World, bot: Bot, tx: number, ty: number, dangers: Mem
 }
 
 /** Walk straight away from every remembered danger the bot is at or near. */
-function flee(world: World, bot: Bot, rules: Rules): boolean {
+function flee(world: World, bot: Bot, rules: Rules, speed: number): boolean {
   const { fleeMargin } = rules.tuning.brain
   let awayX = 0
   let awayY = 0
@@ -109,7 +111,7 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
   if (awayX === 0 && awayY === 0) return false
   const heading = atan2(awayY, awayX)
   // M22: a fleeing bot runs at `sprint` times its normal speed.
-  const next = stepAlong(world, bot, heading, speedOf(bot, rules.tuning) * bot.traits.sprint)
+  const next = stepAlong(world, bot, heading, speed * bot.traits.sprint)
   if (next.x === bot.x && next.y === bot.y) return false
   bot.x = next.x
   bot.y = next.y
@@ -117,17 +119,19 @@ function flee(world: World, bot: Bot, rules: Rules): boolean {
   return true
 }
 
-function wander(world: World, bot: Bot, dangers: MemoryEntry[], rules: Rules): boolean {
+function wander(world: World, bot: Bot, dangers: MemoryEntry[], rules: Rules, speed: number): boolean {
   const t = rules.tuning.bot
   const heading = bot.heading + (nextFloat(world.rng.ai) * 2 - 1) * t.turnRate
-  if (steer(world, bot, heading, speedOf(bot, rules.tuning), dangers, rules)) return true
+  if (steer(world, bot, heading, speed, dangers, rules)) return true
   bot.heading = heading + Math.PI
   return false
 }
 
 /** Does the bot move this tick? Used by the energy cost. */
-export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number, WorldNode>, intake: { poison: number } | null = null): boolean {
+export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number, WorldNode>, intake: { poison: number } | null = null, rough: readonly WorldNode[] | null = null): boolean {
   const { tuning } = rules
+  let speed = speedOf(bot, tuning)
+  if (rough !== null && onRough(rough, bot.x, bot.y)) speed *= tuning.terrain.botSpeedMult
   bot.px = bot.x
   bot.py = bot.y
   const dangers = isDesperate(bot, tuning) ? [] : knownDangers(bot)
@@ -135,7 +139,7 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
 
   switch (bot.intent.kind) {
     case 'flee':
-      if (flee(world, bot, rules)) return true
+      if (flee(world, bot, rules, speed)) return true
       break
     case 'seekFood':
       if (target) {
@@ -144,7 +148,7 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
           if (intake !== null) intake.poison = dose
           return false
         }
-        return walkToward(world, bot, target.x, target.y, dangers, rules)
+        return walkToward(world, bot, target.x, target.y, dangers, rules, speed)
       }
       break
     case 'seekWater':
@@ -153,14 +157,14 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
           drink(bot, tuning)
           return false
         }
-        return walkToward(world, bot, target.x, target.y, dangers, rules)
+        return walkToward(world, bot, target.x, target.y, dangers, rules, speed)
       }
       break
     case 'rest':
     case 'reproduce':
       if (target) {
         if (distance(bot.x, bot.y, target.x, target.y) <= target.radius * tuning.brain.settleFraction) return false
-        return walkToward(world, bot, target.x, target.y, dangers, rules)
+        return walkToward(world, bot, target.x, target.y, dangers, rules, speed)
       }
       break
     case 'seekMate': {
@@ -168,12 +172,12 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
       if (mate !== undefined) {
         // Stop within half the mating range: close enough to pair, not stacked on her.
         if (distance(bot.x, bot.y, mate.x, mate.y) <= tuning.sex.mateRange / 2) return false
-        return walkToward(world, bot, mate.x, mate.y, dangers, rules)
+        return walkToward(world, bot, mate.x, mate.y, dangers, rules, speed)
       }
       break
     }
     case 'wander':
       break
   }
-  return wander(world, bot, dangers, rules)
+  return wander(world, bot, dangers, rules, speed)
 }

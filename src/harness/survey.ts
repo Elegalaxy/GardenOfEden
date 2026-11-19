@@ -28,6 +28,8 @@
 // T1 adds `pois tox toxK` last (toxic food, `--set poison.enabled=true`; a dash for each with poison off): bots dead of poison, the food units eaten from toxic
 // nodes, and the share (percent) of the bots alive at the end that remember at least one toxic node. `withoutPoison` and `--no-poison` switch it off.
 // EP1 appends `pEvt` after `inb%` (predators killed by a meteor or drained to death by a plague; a dash with the harm rule or ecology off); `withoutPredatorHarm` and `--no-predator-harm` switch it off.
+// R1 appends `rgh%` and `pRgh%` last (rough ground, `--set terrain.enabled=true`; a dash with terrain off): the share of bot-ticks, and of predator-ticks, after the warmup
+// that began on rough ground. `withoutTerrain` and `--no-terrain` switch it off.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
@@ -35,6 +37,7 @@ import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { harmOn } from '../sim/predators.ts'
 import { predatorTraitStats } from '../sim/predatorTraits.ts'
+import { onRough, roughNodes } from '../sim/terrain.ts'
 import { meanTraits } from '../sim/traits.ts'
 import { findRecord } from '../sim/lineage.ts'
 import type { DeathsByCause, Eaten, Preset, Rules, Traits, World } from '../sim/types.ts'
@@ -94,6 +97,8 @@ export type SeedSurvey = {
   poison: { deaths: number; eaten: number; knowing: number } | null
   /** Predators killed by world events (EP1: meteor strikes and plague drain); null with the rule off. */
   predEventDeaths: number | null
+  /** Rough ground (R1): percentage of bot-ticks and of predator-ticks after the warmup spent on rough ground; null with terrain off. */
+  roughShare: { bots: number; predators: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -159,6 +164,11 @@ export function withoutPrey(rules: Rules): Rules {
 /** The same rules with toxic food off: `--no-poison`. */
 export function withoutPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
+}
+
+/** The same rules with rough ground off: `--no-terrain` (R1). */
+export function withoutTerrain(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, terrain: { ...rules.tuning.terrain, enabled: false } } }
 }
 
 /** The same rules with predators safe from world events: `--no-predator-harm` (EP1). */
@@ -278,6 +288,11 @@ export function surveySeed(
   let predCapTicks = 0
   let predMaxGen = 0
   const traitsTracked = rules.tuning.predator.traits.enabled
+  const terrainTracked = rules.tuning.terrain.enabled
+  let botTicks = 0
+  let botTicksRough = 0
+  let predTicks = 0
+  let predTicksRough = 0
   const gapTracker = createGapTracker()
   const gaps: number[] = []
   const botSeries: number[] = []
@@ -294,6 +309,19 @@ export function surveySeed(
       }
     }
     if (world.tick > warmup) {
+      if (terrainTracked) {
+        // Positions after the step; close enough to "where the step began" for a share over thousands of ticks.
+        const rough = roughNodes(world)
+        for (const bot of world.bots) {
+          botTicks += 1
+          if (onRough(rough, bot.x, bot.y)) botTicksRough += 1
+        }
+        for (const node of world.nodes) {
+          if (node.kind !== 'predator') continue
+          predTicks += 1
+          if (onRough(rough, node.x, node.y)) predTicksRough += 1
+        }
+      }
       min = Math.min(min, world.bots.length)
       max = Math.max(max, world.bots.length)
       const predators = predatorCount()
@@ -364,13 +392,14 @@ export function surveySeed(
             knowing: world.bots.length === 0 ? 0 : (100 * world.bots.filter((bot) => bot.memory.some((entry) => entry.toxic === true)).length) / world.bots.length,
           },
     predEventDeaths: harmOn(world, rules.tuning) ? (world.ecology?.stats.eventDeaths ?? 0) : null,
+    roughShare: terrainTracked ? { bots: botTicks === 0 ? 0 : (100 * botTicksRough) / botTicks, predators: predTicks === 0 ? 0 : (100 * predTicksRough) / predTicks } : null,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -426,6 +455,8 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.poison === null ? '-' : r.poison.knowing.toFixed(0),
       r.births === 0 ? '-' : ((100 * r.inbred) / r.births).toFixed(1),
       r.predEventDeaths === null ? '-' : r.predEventDeaths,
+      r.roughShare === null ? '-' : r.roughShare.bots.toFixed(1),
+      r.roughShare === null ? '-' : r.roughShare.predators.toFixed(1),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

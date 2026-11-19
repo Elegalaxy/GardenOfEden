@@ -61,7 +61,7 @@ export type Overlay = {
 /** A heat layer to draw, and the cell under the pointer (outlined while a layer is on). */
 export type HeatOverlay = { snapshot: HeatSnapshot; cell: Cell | null }
 
-export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W', predator: 'V' }
+export const NODE_LETTER: Record<NodeKind, string> = { resource: 'R', danger: 'D', shelter: 'S', ruin: 'U', water: 'W', predator: 'V', rough: 'G' }
 
 export const COLORS = {
   background: '#0e1118',
@@ -93,6 +93,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
   ruin: COLORS.ruin,
   water: COLORS.water,
   predator: COLORS.predator,
+  rough: COLORS.gridMajor, // R1: compile-only entry, drawing comes later
 }
 
 /** The predator chevron's fill: a light grey, so it reads against the dark map and apart from every orange and yellow thing. */

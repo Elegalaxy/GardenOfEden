@@ -25,6 +25,8 @@
 // reproduction.ts, ruins.ts, nodes.ts, worldEvents.ts, family.ts and lineage.ts. `step` changes the world it is
 // given. Random draws: the `ai` stream (one per wandering bot per tick), the `predator` stream (one per predator per tick, plus two per territory try when predator ecology is on and a cub is attempted) and
 // the `birth` stream (nineteen per asexual child, twenty-eight per sexual one). Ruins, family sharing and lineage records draw nothing.
+// Rough ground (R1, terrain.ts): with it on, one list of rough nodes is built per tick and passed to `movePredators` and `act`, which shorten
+// a step that starts inside one; no draws, and nothing changes with terrain off.
 // Toxic food (T1, poison.ts): `act` reports the poison dose of the bite a bot took (`intake`, reset before each bot), which `metabolise` and
 // `deathCause` then count with the other health damage; a poison death adds to `deathsByCause.poison`. Nothing changes with poison off.
 
@@ -40,6 +42,7 @@ import { creditKill, movePredators, predatorLife } from './predators.ts'
 import { conceive, meetsReproductionNeeds, pairMates, spawnChildren } from './reproduction.ts'
 import type { Conception } from './reproduction.ts'
 import { decayRuins, leaveRuin } from './ruins.ts'
+import { roughNodes } from './terrain.ts'
 import type { Bot, Rules, World, WorldNode } from './types.ts'
 import { pushEvent, takeSample } from './world.ts'
 import { expireEvents } from './worldEvents.ts'
@@ -47,7 +50,9 @@ import { expireEvents } from './worldEvents.ts'
 export function step(world: World, rules: Rules): void {
   const { tuning } = rules
   world.tick += 1
-  movePredators(world, rules)
+  // Rough ground (R1): one list per tick for every mover; null with terrain off, so no step is ever multiplied.
+  const rough = tuning.terrain.enabled ? roughNodes(world) : null
+  movePredators(world, rules, rough)
 
   const live = new Set<number>()
   const nodesById = new Map<number, WorldNode>()
@@ -69,7 +74,7 @@ export function step(world: World, rules: Rules): void {
     remember(world, bot, sensed, tuning, live)
     decide(world, bot, tuning, mates)
     intake.poison = 0
-    const moved = act(world, bot, rules, nodesById, intake)
+    const moved = act(world, bot, rules, nodesById, intake, rough)
     const exposure = exposureAt(world, bot.x, bot.y, tuning)
     metabolise(bot, moved, exposure, tuning, intake.poison)
     const cause = deathCause(bot, exposure, intake.poison)

@@ -58,6 +58,16 @@ export function withPoison(rules: Rules, over: Partial<Rules['tuning']['poison']
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: true, ...over } } }
 }
 
+/** Rough ground (R1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withTerrain(rules: Rules, over: Partial<Rules['tuning']['terrain']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, terrain: { ...rules.tuning.terrain, enabled: true, ...over } } }
+}
+
+/** Rough ground forced off (the shipped state). */
+export function noTerrain(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, terrain: { ...rules.tuning.terrain, enabled: false } } }
+}
+
 /** Mate choice (G1) switched on, with optional number overrides (it is off in the shipped numbers). */
 export function withMateChoice(rules: Rules, over: Partial<Rules['tuning']['mateChoice']> = {}): Rules {
   return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: true, ...over } } }
