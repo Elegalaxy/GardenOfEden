@@ -12,7 +12,7 @@ import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
 import { takeSample, totalRuinFood } from '../sim/world.ts'
 import { predatorTraitStats } from '../sim/predatorTraits.ts'
-import { multiplierText, predatorChange, predatorCounts, preyPressure } from './predatorInfo.ts'
+import { multiplierText, predatorChange, predatorEventDeaths, predatorCounts, preyPressure } from './predatorInfo.ts'
 import { seasonSummary } from './seasonInfo.ts'
 import { useWorldStore } from './store.ts'
 
@@ -68,6 +68,8 @@ export function StatsStrip() {
     traitStats === null
       ? ''
       : ` Mean traits (vs founders): sense ${multiplierText(traitStats.stats.sense.mean)}, speed ${multiplierText(traitStats.stats.speed.mean)}, stamina ${multiplierText(traitStats.stats.stamina.mean)}; newest generation ${traitStats.maxGeneration}.`
+  const eventKills = predatorEventDeaths(world.ecology)
+  const eventHint = tuning.events.predatorHarm.enabled ? ` Killed by a meteor or plague: ${eventKills}.` : ''
   const rate = (value: number | null): string => (value === null ? '—' : rateFormat.format(value))
   return (
     <section className="panel stats-panel" aria-label="Society">
@@ -95,7 +97,7 @@ export function StatsStrip() {
           label="Predators"
           value={numberFormat.format(predators.total)}
           detail={predatorDelta === null ? cap : `${changeText(predatorDelta.delta)} · ${cap}`}
-          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}${traitHint}`}
+          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}${traitHint}${eventHint}`}
         />
       </dl>
     </section>

@@ -16,6 +16,7 @@ import { tuning } from '../content/index.ts'
 import type { SimEvent, SimEventType } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
 import { EVENT_LABEL, KIND_LABEL, causeSentence, commandName, formatPoint } from './labels.ts'
+import { predatorEventPhrase } from './predatorInfo.ts'
 import { mergeLog } from './logMerge.ts'
 import type { LogEntry } from './logMerge.ts'
 import { select, useWorldStore } from './store.ts'
@@ -58,7 +59,7 @@ function describe({ event, located }: LogEntry): string {
       return kind === 'meteor' ? `Meteor crater faded at ${where}` : `${EVENT_LABEL[kind]} ended`
     }
     case 'predator': {
-      const what = { born: 'born', arrived: 'arrived', starved: 'starved', aged: 'died of age', left: 'left the map (too few bots)', struck: 'killed by a meteor', plagued: 'died of plague' }[event.predatorEvent ?? 'born']
+      const what = predatorEventPhrase(event.predatorEvent)
       return `Predator #${event.nodeId} ${what} at ${where}`
     }
     case 'command': {

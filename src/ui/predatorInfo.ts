@@ -5,7 +5,7 @@
 import { isHungry, predatorLimit } from '../sim/predators.ts'
 import { predatorDrain, PREDATOR_TRAIT_NAMES } from '../sim/predatorTraits.ts'
 import { sampleAtOrBefore } from '../sim/stats.ts'
-import type { Den, PredatorEcology, PredatorOrigin, PredatorState, PredatorTraitName, Sample, Tuning, WorldNode } from '../sim/types.ts'
+import type { Den, PredatorEcology, PredatorEventKind, PredatorOrigin, PredatorState, PredatorTraitName, Sample, Tuning, WorldNode } from '../sim/types.ts'
 
 type EcologyTuning = Pick<Tuning, 'predator'>
 
@@ -217,4 +217,40 @@ export function predatorTraitRows(hunt: Pick<PredatorState, 'traits' | 'generati
   }))
   rows.push({ key: 'generation', label: 'Generation', value: String(hunt.generation ?? 0), multiplier: null, trend: null, note: 'Founders, placed and arriving predators are generation 0; a cub is its parent plus 1.' })
   return rows
+}
+
+/** What happened to a predator, as a short lower-case phrase (the log: "Predator #5 killed by a meteor at ..."). */
+export function predatorEventPhrase(kind: PredatorEventKind | undefined): string {
+  switch (kind ?? 'born') {
+    case 'born':
+      return 'born'
+    case 'arrived':
+      return 'arrived'
+    case 'starved':
+      return 'starved'
+    case 'aged':
+      return 'died of age'
+    case 'left':
+      return 'left the map (too few bots)'
+    case 'struck':
+      return 'killed by a meteor'
+    case 'plagued':
+      return 'died of plague'
+  }
+}
+
+/** The same, capitalised, for the Inspector's dead-predator notice. */
+export function predatorEventSentence(kind: PredatorEventKind | undefined): string {
+  const phrase = predatorEventPhrase(kind)
+  return phrase.charAt(0).toUpperCase() + phrase.slice(1)
+}
+
+/** True for the ways a predator's record ends that the Inspector explains (not born or arrived). */
+export function isPredatorEnd(kind: PredatorEventKind | undefined): boolean {
+  return kind !== undefined && kind !== 'born' && kind !== 'arrived'
+}
+
+/** Predators killed by a meteor or plague so far; the counter is created on the first such death, so absent reads as 0. */
+export function predatorEventDeaths(ecology: Pick<PredatorEcology, 'stats'> | undefined): number {
+  return ecology?.stats.eventDeaths ?? 0
 }

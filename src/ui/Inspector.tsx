@@ -11,7 +11,7 @@ import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
 import type { TraitName, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { MULTIPLIER_GLYPH, denFor, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
+import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
 import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
@@ -407,8 +407,8 @@ function GoneNotice({ selection, world }: { selection: Selection; world: ViewWor
       detail = `Removed at tick ${event.tick}.`
       break
     }
-    if (selection.kind === 'node' && event.type === 'predator' && event.nodeId === selection.id && (event.predatorEvent === 'starved' || event.predatorEvent === 'aged' || event.predatorEvent === 'left' || event.predatorEvent === 'struck' || event.predatorEvent === 'plagued')) {
-      const verb = { starved: 'Starved', aged: 'Died of age', left: 'Left the map (too few bots)', struck: 'Killed by a meteor', plagued: 'Died of plague' }[event.predatorEvent]
+    if (selection.kind === 'node' && event.type === 'predator' && event.nodeId === selection.id && isPredatorEnd(event.predatorEvent)) {
+      const verb = predatorEventSentence(event.predatorEvent)
       detail = `${verb} at tick ${event.tick}, at ${formatPoint(event.x, event.y)}.`
       break
     }

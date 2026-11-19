@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { tuning } from '../content/index.ts'
 import type { Den, PredatorLife, PredatorState, Sample, WorldNode } from '../sim/types.ts'
-import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorLifeInfo, predatorSeries, predatorTraitRows, preyPressure, multiplierText, multiplierTrend } from './predatorInfo.ts'
+import { denFor, originText, predatorCapNotice, predatorChange, predatorCounts, predatorEventDeaths, predatorEventPhrase, predatorEventSentence, isPredatorEnd, predatorLifeInfo, predatorSeries, predatorTraitRows, preyPressure, multiplierText, multiplierTrend } from './predatorInfo.ts'
 
 const eco = tuning.predator.ecology
 
@@ -177,5 +177,29 @@ describe('multiplier text', () => {
     expect(multiplierTrend(1.004)).toBe('flat')
     expect(multiplierTrend(1.02)).toBe('up')
     expect(multiplierTrend(0.98)).toBe('down')
+  })
+})
+
+describe('predator event wording (EP3)', () => {
+  it('words every predator event', () => {
+    expect(predatorEventPhrase('struck')).toBe('killed by a meteor')
+    expect(predatorEventPhrase('plagued')).toBe('died of plague')
+    expect(predatorEventPhrase('starved')).toBe('starved')
+    expect(predatorEventPhrase('aged')).toBe('died of age')
+    expect(predatorEventPhrase(undefined)).toBe('born')
+  })
+  it('capitalises for the Inspector and knows which events end a life', () => {
+    expect(predatorEventSentence('struck')).toBe('Killed by a meteor')
+    expect(predatorEventSentence('plagued')).toBe('Died of plague')
+    expect(isPredatorEnd('struck')).toBe(true)
+    expect(isPredatorEnd('plagued')).toBe(true)
+    expect(isPredatorEnd('born')).toBe(false)
+    expect(isPredatorEnd('arrived')).toBe(false)
+    expect(isPredatorEnd(undefined)).toBe(false)
+  })
+  it('reads the lazily created event death counter as 0 when absent', () => {
+    expect(predatorEventDeaths(undefined)).toBe(0)
+    expect(predatorEventDeaths({ stats: {} } as never)).toBe(0)
+    expect(predatorEventDeaths({ stats: { eventDeaths: 3 } } as never)).toBe(3)
   })
 })
