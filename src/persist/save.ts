@@ -40,7 +40,7 @@ const MAX_ID = 1_000_000_000
 /** Kinds a `placeNode` command may carry (ruins are made by the sim, danger zones were retired in M21b). Kept in step with content by tests/save.test.ts. */
 export const PLACEABLE_KINDS = ['resource', 'predator', 'shelter', 'water'] as const satisfies readonly NodeKind[]
 export const SEXES = ['female', 'male'] as const satisfies readonly Sex[]
-export const EVENT_KINDS = ['drought', 'bounty', 'plague', 'meteor'] as const satisfies readonly EventKind[]
+export const EVENT_KINDS = ['drought', 'bounty', 'plague', 'meteor', 'blight'] as const satisfies readonly EventKind[]
 
 export type SavedCommand = { tick: number; cmd: Command }
 

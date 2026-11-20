@@ -139,7 +139,7 @@ describe('xAxisTicks', () => {
 })
 
 describe('eventBands', () => {
-  const durations = { drought: 1500, bounty: 1000, plague: 800 }
+  const durations = { drought: 1500, bounty: 1000, plague: 800, blight: 1200 }
   const at = (tick: number, cmd: Command): { tick: number; cmd: Command } => ({ tick, cmd })
 
   it('makes one band per timed event and none for meteors or other commands', () => {

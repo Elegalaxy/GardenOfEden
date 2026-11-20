@@ -227,11 +227,11 @@ export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged' | 'left'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
 
-/** World events the player can trigger (M8). Drought, bounty and plague last a while; a meteor is instant. */
-export type EventKind = 'drought' | 'bounty' | 'plague' | 'meteor'
+/** World events the player can trigger (M8). Drought, bounty, plague and blight last a while; a meteor is instant. */
+export type EventKind = 'drought' | 'bounty' | 'plague' | 'meteor' | 'blight'
 
 /** The ones that last a while and sit in `World.events`. */
-export type TimedEventKind = 'drought' | 'bounty' | 'plague'
+export type TimedEventKind = 'drought' | 'bounty' | 'plague' | 'blight'
 
 export type SimEvent = {
   tick: number
@@ -283,11 +283,11 @@ export type DeathsByCause = Record<Exclude<DeathCause, 'poison'>, number> & { po
 export type Eaten = { resource: number; ruin: number; toxic?: number }
 
 /**
- * A timed world event in progress (drought, bounty or plague). It is in effect for the ticks
+ * A timed world event in progress (drought, bounty, plague or blight). It is in effect for the ticks
  * `startTick + 1` to `endTick` inclusive, then removed at the end of tick `endTick`.
  * `magnitude` is what it does, copied from tuning when it starts so a running event never changes:
- * the regrowth multiplier for drought and bounty, health damage per tick for plague.
- * Drought and bounty are global (`x`, `y` and `radius` are 0); plague covers `radius` cells around (x, y).
+ * the regrowth multiplier for drought and bounty, health damage per tick for plague, food lost per tick for blight.
+ * Drought and bounty are global (`x`, `y` and `radius` are 0); plague and blight cover `radius` cells around (x, y).
  */
 export type ActiveEvent = {
   kind: TimedEventKind
@@ -625,6 +625,13 @@ export type Tuning = {
       radius: number
       /** Health lost per tick by every bot inside, on top of any danger. Shelter healing still applies. */
       damage: number
+    }
+    blight: {
+      duration: number
+      /** Cells around the clicked point; a resource node whose centre is inside neither regrows nor holds its food. */
+      radius: number
+      /** Food units a resource node inside loses per tick (floored at 0). */
+      drain: number
     }
     meteor: {
       /** Cells around the impact that take damage at once. */

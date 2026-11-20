@@ -53,13 +53,13 @@ export function causeSentence(cause: DeathCause | undefined): string {
   return CAUSE_SENTENCE[cause ?? 'starve']
 }
 
-export const EVENT_LABEL: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor' }
+export const EVENT_LABEL: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight' }
 
 /**
  * One letter per world event for chart markers, banners and badges. They differ from the node and
- * command letters (R D S U W B X): H for the dry spell (Heat), F for the feast (Fruitful), P, M.
+ * command letters (R D S U W B X): H for the dry spell (Heat), F for the feast (Fruitful), P, M, L for the blight.
  */
-export const EVENT_LETTER: Record<EventKind, string> = { drought: 'H', bounty: 'F', plague: 'P', meteor: 'M' }
+export const EVENT_LETTER: Record<EventKind, string> = { drought: 'H', bounty: 'F', plague: 'P', meteor: 'M', blight: 'L' }
 
 export const INTENT_LABEL: Record<IntentKind, string> = {
   wander: 'Wandering',

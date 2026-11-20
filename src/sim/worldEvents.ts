@@ -13,6 +13,11 @@
 //            rest, like after any injury). That is deliberate: avoidance would need a new kind of
 //            memory entry and would make the plague harmless to any bot that has already left it,
 //            which is not the point of a plague.
+//   blight   area, timed. A resource node whose centre is within `blight.radius` of the clicked point does not
+//            regrow and loses `blight.drain` food a tick (floored at 0), so food runs short locally. Bots are
+//            not hurt and do not perceive it (they learn a node is empty the ordinary way). Springs, ruins,
+//            shelters, craters, rough ground and predators are untouched. Blights stack (drains add) and a
+//            drought or bounty gives no regrowth back inside one.
 //   meteor   area, instant. Bots within `meteor.radius` of the impact lose health at once, `meteor.damage`
 //            at the centre falling in a straight line to 0 at the edge, so a hit near the centre is
 //            lethal. Bots it kills die of cause 'meteor' at this moment (event logged, ruin left,
@@ -32,7 +37,7 @@ import { hypot } from './exactMath.ts'
 import { recordDeath } from './lineage.ts'
 import { harmOn, logStruck, releaseDen } from './predators.ts'
 import { leaveRuin } from './ruins.ts'
-import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, Tuning, World } from './types.ts'
+import type { ActiveEvent, Bot, EventKind, Rules, SimEvent, TimedEventKind, Tuning, World } from './types.ts'
 import { makeNode, pushEvent } from './world.ts'
 
 /** The part of a World that `checkCommand` and `checkEvent` read (bots only by count), so the main thread can check against its copy. */
@@ -40,10 +45,10 @@ export type CheckableWorld = Pick<World, 'width' | 'height' | 'nodes' | 'events'
 
 export type TriggerCommand = { type: 'triggerEvent'; event: EventKind; x?: number; y?: number }
 
-export const EVENT_KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor']
+export const EVENT_KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight']
 
 /** Ticks a timed event lasts. */
-export function eventDuration(tuning: Tuning, kind: 'drought' | 'bounty' | 'plague'): number {
+export function eventDuration(tuning: Tuning, kind: TimedEventKind): number {
   return tuning.events[kind].duration
 }
 
@@ -69,7 +74,7 @@ function insideMap(world: Pick<World, 'width' | 'height'>, x: number | undefined
   )
 }
 
-const NAME: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor' }
+const NAME: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight' }
 
 /** null when the event could start now, otherwise a short reason a player can read. */
 export function checkEvent(world: CheckableWorld, rules: Rules, cmd: TriggerCommand): string | null {
@@ -82,7 +87,7 @@ export function checkEvent(world: CheckableWorld, rules: Rules, cmd: TriggerComm
     }
     return null
   }
-  if (cmd.event !== 'plague') {
+  if (cmd.event !== 'plague' && cmd.event !== 'blight') {
     const running = world.events.find((event) => event.kind === cmd.event)
     if (running !== undefined) {
       return `${NAME[cmd.event]} is already active (${running.endTick - world.tick} ticks left).`
@@ -103,15 +108,15 @@ export function startEvent(world: World, rules: Rules, cmd: TriggerCommand): num
   const y = cmd.y ?? 0
   if (cmd.event === 'meteor') return strike(world, rules, x, y)
   const spec = tuning.events[cmd.event]
-  const area = cmd.event === 'plague'
+  const area = cmd.event === 'plague' || cmd.event === 'blight'
   const event: ActiveEvent = {
     kind: cmd.event,
     startTick: world.tick,
     endTick: world.tick + spec.duration,
     x: area ? x : 0,
     y: area ? y : 0,
-    radius: area ? tuning.events.plague.radius : 0,
-    magnitude: cmd.event === 'plague' ? tuning.events.plague.damage : tuning.events[cmd.event].regrowMult,
+    radius: cmd.event === 'plague' ? tuning.events.plague.radius : cmd.event === 'blight' ? tuning.events.blight.radius : 0,
+    magnitude: cmd.event === 'plague' ? tuning.events.plague.damage : cmd.event === 'blight' ? tuning.events.blight.drain : tuning.events[cmd.event].regrowMult,
   }
   world.events.push(event)
   pushEvent(world, tuning, {

@@ -112,7 +112,20 @@ export function regrowthMultiplier(world: World): number {
 /** Resources regrow by `regen` x the events multiplier x the season multiplier (exactly 1 while seasons are off). */
 export function regrow(world: World, tuning: Pick<Tuning, 'seasons'>): void {
   const mult = regrowthMultiplier(world) * seasonAt(world.tick, tuning).multiplier
+  // Blight (B1): resource nodes inside a blight disc do not regrow and lose its drain. The list exists only while an event runs,
+  // and a node outside every blight runs the same expression as before, so event-free runs are bit-identical.
+  const blights = world.events.length > 0 ? world.events.filter((event) => event.kind === 'blight') : []
   for (const node of world.nodes) {
-    if (node.kind === 'resource') node.amount = Math.min(node.capacity, node.amount + node.regen * mult)
+    if (node.kind !== 'resource') continue
+    let drain = 0
+    let blighted = false
+    for (const event of blights) {
+      if (hypot(node.x - event.x, node.y - event.y) <= event.radius) {
+        blighted = true
+        drain += event.magnitude
+      }
+    }
+    if (blighted) node.amount = Math.max(0, node.amount - drain)
+    else node.amount = Math.min(node.capacity, node.amount + node.regen * mult)
   }
 }

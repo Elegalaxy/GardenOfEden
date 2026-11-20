@@ -38,7 +38,7 @@ npm run sim -- --seeds a,b,c --ticks 20000 --no-terrain                  # R1 ro
 npm run sim -- --seeds a,b,c --ticks 20000 --set poison.enabled=true      # toxic food on (T1, off in Eden; `--no-poison` forces it off); the last survey columns are pois tox toxK (poison deaths, food units eaten from toxic nodes, % of living bots that remember a toxic node; a dash with poison off)
 npm run sim -- --seeds a,b,c --ticks 20000 --no-prey                     # P1 prey rule off (it is on in Eden since P2; the pre-P2 world also had killsPerCub 6, so add --set predator.ecology.killsPerCub=6); the last survey columns are pCorr pCorrL pLag pLeft (correlation of predator count with bot count at lag 0 and at the best lag of 0/500/1000/1500/2000/3000 ticks, that lag, and predators that left the map)
 npm run sim -- --seeds a,b,c --ticks 20000 --predator-traits             # H1 heritable predator traits on (they are on in Eden since H2, so this is the default; --set predator.traits.enabled=false gives the pre-H2 world); the last survey columns are pSense pSpeed pStam pGen (mean sense, speed and stamina of the predators alive at the end, and the highest generation seen; a dash with the rule off)
-npm run sim -- --seed a --ticks 9000 --event drought@3000 --event plague@6000:48,32   # scripted world events, repeatable, also with --seeds (bounty@4000, meteor@5000:30,20)
+npm run sim -- --seed a --ticks 9000 --event drought@3000 --event plague@6000:48,32   # scripted world events, repeatable, also with --seeds (bounty@4000, meteor@5000:30,20, blight@4000:48,32)
 ```
 
 ## Architecture

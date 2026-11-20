@@ -8,7 +8,7 @@ import { exposureAt } from '../src/sim/nodes.ts'
 import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Command, Preset, Rules, World } from '../src/sim/types.ts'
-import { createWorld, placedNodeCount } from '../src/sim/world.ts'
+import { createWorld, makeNode, placedNodeCount } from '../src/sim/world.ts'
 import { activeEntries } from '../src/sim/worldEvents.ts'
 import { surveySeed } from '../src/harness/survey.ts'
 import { noSeasons } from './variants.ts'
@@ -28,8 +28,8 @@ function advanceTo(world: World, tick: number, active: Rules = rules): void {
 }
 
 function trigger(world: World, event: 'drought' | 'bounty'): void
-function trigger(world: World, event: 'plague' | 'meteor', x: number, y: number): void
-function trigger(world: World, event: 'drought' | 'bounty' | 'plague' | 'meteor', x?: number, y?: number): void {
+function trigger(world: World, event: 'plague' | 'meteor' | 'blight', x: number, y: number): void
+function trigger(world: World, event: 'drought' | 'bounty' | 'plague' | 'meteor' | 'blight', x?: number, y?: number): void {
   const result = applyCommand(world, rules, { type: 'triggerEvent', event, x, y })
   expect(result.ok, JSON.stringify(result)).toBe(true)
 }
@@ -306,6 +306,145 @@ describe('refusals', () => {
   })
 })
 
+describe('blight', () => {
+  /** Two resource nodes on a roomy map: one at (10,10) inside the disc, one at (50,50) far outside. Both start at 50 (capacity 1,000,000, regen 1). */
+  function blightWorld(): World {
+    const world = createWorld(
+      'a',
+      scene({ width: 60, height: 60, nodes: [{ kind: 'resource', x: 10, y: 10 }, { kind: 'resource', x: 50, y: 50 }] }),
+      slowRules,
+    )
+    for (const node of world.nodes) node.amount = 50
+    return world
+  }
+
+  it('stops regrowth and drains the nodes inside the disc, down to 0, while the outside regrows', () => {
+    const world = blightWorld()
+    trigger(world, 'blight', 10, 10)
+    const [inside, outside] = world.nodes
+    expect(world.events).toHaveLength(1)
+    expect(world.events[0]).toMatchObject({ kind: 'blight', radius: ev.blight.radius, magnitude: ev.blight.drain, endTick: ev.blight.duration })
+    for (let i = 0; i < 40; i += 1) step(world, slowRules)
+    expect(inside.amount).toBeCloseTo(50 - 40 * ev.blight.drain, 9)
+    expect(outside.amount).toBeCloseTo(50 + 40, 9)
+    // Long enough to empty it: floored at 0, never negative.
+    for (let i = 0; i < 400; i += 1) step(world, slowRules)
+    expect(inside.amount).toBe(0)
+  })
+
+  it('counts a node on the edge as inside and one just beyond it as outside', () => {
+    const world = createWorld(
+      'a',
+      scene({ width: 60, height: 60, nodes: [{ kind: 'resource', x: 10 + ev.blight.radius, y: 10 }, { kind: 'resource', x: 10 + ev.blight.radius + 0.5, y: 10 }] }),
+      slowRules,
+    )
+    for (const node of world.nodes) node.amount = 50
+    trigger(world, 'blight', 10, 10)
+    step(world, slowRules)
+    expect(world.nodes[0].amount).toBeCloseTo(50 - ev.blight.drain, 9)
+    expect(world.nodes[1].amount).toBeCloseTo(51, 9)
+  })
+
+  it('leaves springs, ruins, shelters and craters exactly as in a run without the blight', () => {
+    function make(): World {
+      const world = createWorld('a', scene({ width: 60, height: 60, nodes: [{ kind: 'water', x: 10, y: 11 }, { kind: 'shelter', x: 11, y: 10 }] }), slowRules)
+      const ruin = makeNode(world.nextId, 'ruin', 9, 9, slowRules.nodeDefs.ruin)
+      ruin.amount = 40
+      world.nodes.push(ruin)
+      world.nextId += 1
+      return world
+    }
+    const blighted = make()
+    const control = make()
+    trigger(blighted, 'blight', 10, 10)
+    // A crater inside the disc, in both worlds.
+    for (const world of [blighted, control]) applyCommand(world, slowRules, { type: 'triggerEvent', event: 'meteor', x: 12, y: 12 })
+    for (let i = 0; i < 100; i += 1) {
+      step(blighted, slowRules)
+      step(control, slowRules)
+    }
+    expect(JSON.stringify(blighted.nodes)).toBe(JSON.stringify(control.nodes))
+  })
+
+  it('does not hurt bots', () => {
+    const world = createWorld('a', scene({ width: 60, height: 60, bots: [{ x: 10, y: 10 }] }), rules)
+    const bot = world.bots[0]
+    trigger(world, 'blight', 10, 10)
+    for (let i = 0; i < 20; i += 1) {
+      bot.energy = 100
+      bot.thirst = 100
+      step(world, rules)
+    }
+    expect(exposureAt(world, 10, 10).plague).toBe(0)
+    expect(bot.health).toBe(tuning.bot.maxHealth)
+  })
+
+  it('gives no regrowth back from a bounty inside the disc', () => {
+    const world = blightWorld()
+    trigger(world, 'blight', 10, 10)
+    trigger(world, 'bounty')
+    for (let i = 0; i < 10; i += 1) step(world, slowRules)
+    expect(world.nodes[0].amount).toBeCloseTo(50 - 10 * ev.blight.drain, 9)
+    expect(world.nodes[1].amount).toBeCloseTo(50 + 10 * ev.bounty.regrowMult, 9)
+  })
+
+  it('still gives a node inside no regrowth under a drought', () => {
+    const world = blightWorld()
+    trigger(world, 'blight', 10, 10)
+    trigger(world, 'drought')
+    for (let i = 0; i < 10; i += 1) step(world, slowRules)
+    expect(world.nodes[0].amount).toBeCloseTo(50 - 10 * ev.blight.drain, 9)
+    expect(world.nodes[1].amount).toBeCloseTo(50 + 10 * ev.drought.regrowMult, 9)
+  })
+
+  it('adds the drains of overlapping blights', () => {
+    const world = blightWorld()
+    trigger(world, 'blight', 10, 10)
+    trigger(world, 'blight', 12, 10)
+    for (let i = 0; i < 10; i += 1) step(world, slowRules)
+    expect(world.nodes[0].amount).toBeCloseTo(50 - 10 * 2 * ev.blight.drain, 9)
+  })
+
+  it('ends after its duration, is logged, and the node regrows again', () => {
+    const world = blightWorld()
+    trigger(world, 'blight', 10, 10)
+    const node = world.nodes[0]
+    advanceTo(world, ev.blight.duration, slowRules)
+    expect(world.events).toHaveLength(0)
+    expect(world.log.filter((e) => e.type === 'event')).toMatchObject([{ eventKind: 'blight', tick: ev.blight.duration, x: 10, y: 10 }])
+    expect(node.amount).toBe(0)
+    for (let i = 0; i < 25; i += 1) step(world, slowRules)
+    expect(node.amount).toBeCloseTo(25, 9)
+  })
+
+  it('is refused outside the map and at the cap, changing nothing, and may run twice at once', () => {
+    const world = createWorld('a', scene({}), rules)
+    for (const [x, y] of [[-1, 5], [5, 41], [Number.NaN, 5]] as const) {
+      expect(applyCommand(world, rules, { type: 'triggerEvent', event: 'blight', x, y }).ok).toBe(false)
+    }
+    expect(applyCommand(world, rules, { type: 'triggerEvent', event: 'blight' }).ok).toBe(false)
+    expect(world.commands).toHaveLength(0)
+    trigger(world, 'blight', 5, 5)
+    trigger(world, 'blight', 5, 5)
+    trigger(world, 'blight', 30, 30)
+    expect(world.events).toHaveLength(ev.maxActive)
+    const result = applyCommand(world, rules, { type: 'triggerEvent', event: 'blight', x: 20, y: 20 })
+    expect(!result.ok && result.reason).toContain('Too many world events')
+  })
+
+  it('replays to the same hash and takes no random draws', () => {
+    const world = createWorld('a', edenPreset, rules)
+    advanceTo(world, 500)
+    const rng = JSON.stringify(world.rng)
+    trigger(world, 'blight', 24, 16)
+    expect(JSON.stringify(world.rng)).toBe(rng)
+    advanceTo(world, 2000)
+    trigger(world, 'blight', 72, 48)
+    advanceTo(world, 3000)
+    expect(stateHash(replayWorld('a', edenPreset, rules, world.commands, world.tick))).toBe(stateHash(world))
+  })
+})
+
 describe('determinism and replay', () => {
   const script: { tick: number; cmd: Command }[] = [
     { tick: 300, cmd: { type: 'triggerEvent', event: 'drought' } },
@@ -389,6 +528,17 @@ describe('eden survives scripted events', () => {
     expect(result.min).toBeGreaterThanOrEqual(MIN_ALIVE)
     expect(result.final).toBeGreaterThanOrEqual(MIN_ALIVE)
     expect(result.deaths.plague).toBeGreaterThanOrEqual(0)
+  })
+
+  it.concurrent.each(SEEDS)('a blight on two groves at 3000 and 6000, seed %s', { timeout: 180_000 }, (seed) => {
+    const blights: { tick: number; cmd: Command }[] = [
+      { tick: 3000, cmd: { type: 'triggerEvent', event: 'blight', x: 24, y: 16 } },
+      { tick: 6000, cmd: { type: 'triggerEvent', event: 'blight', x: 48, y: 34 } },
+    ]
+    const result = surveySeed(seed, edenPreset, rules, TICKS, WARMUP, blights)
+    expect(result.refused).toEqual([])
+    expect(result.min).toBeGreaterThanOrEqual(MIN_ALIVE)
+    expect(result.final).toBeGreaterThanOrEqual(MIN_ALIVE)
   })
 
   it.concurrent.each(SEEDS)('all four events in a row, seed %s', { timeout: 180_000 }, (seed) => {

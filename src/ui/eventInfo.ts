@@ -61,6 +61,8 @@ export function effectSummary(kind: EventKind, tuning: Tuning): string {
       return `food regrowth ${formatMult(e.bounty.regrowMult)}`
     case 'plague':
       return `−${fixed1(e.plague.damage)} health / tick within ${fixed1(e.plague.radius)} cells`
+    case 'blight':
+      return `food nodes lose ${fixed1(e.blight.drain)} / tick and stop regrowing within ${fixed1(e.blight.radius)} cells`
     case 'meteor':
       return `up to −${numberFormat.format(e.meteor.damage)} health within ${fixed1(e.meteor.radius)} cells`
   }
@@ -79,6 +81,11 @@ export function eventRows(kind: EventKind, tuning: Tuning): { label: string; val
     case 'plague':
       return [
         { label: 'Lasts', value: formatTicks(e.plague.duration) },
+        { label: 'Effect', value: effectSummary(kind, tuning) },
+      ]
+    case 'blight':
+      return [
+        { label: 'Lasts', value: formatTicks(e.blight.duration) },
         { label: 'Effect', value: effectSummary(kind, tuning) },
       ]
     case 'meteor':
@@ -103,6 +110,8 @@ export function startedMessage(cmd: Extract<Command, { type: 'triggerEvent' }>, 
       return `${EVENT_LABEL[cmd.event]} started: ${effectSummary(cmd.event, tuning)} for ${formatTicks(tuning.events[cmd.event].duration)}.`
     case 'plague':
       return `Plague started at ${where}: ${effectSummary('plague', tuning)} for ${formatTicks(tuning.events.plague.duration)}.`
+    case 'blight':
+      return `Blight started at ${where}: ${effectSummary('blight', tuning)} for ${formatTicks(tuning.events.blight.duration)}.`
     case 'meteor':
       return `Meteor struck at ${where}: ${killed} bot${killed === 1 ? '' : 's'} killed. A crater burns for ${formatTicks(tuning.events.meteor.craterTicks)}.`
   }

@@ -83,6 +83,7 @@ const BAND_DURATIONS: Record<TimedEventKind, number> = {
   drought: tuning.events.drought.duration,
   bounty: tuning.events.bounty.duration,
   plague: tuning.events.plague.duration,
+  blight: tuning.events.blight.duration,
 }
 const BAND_LABEL_PX = 60
 const BAND_LANE_PX = 12
@@ -335,6 +336,9 @@ export function PopulationChart() {
               </pattern>
               <pattern id="band-plague" width="8" height="8" patternUnits="userSpaceOnUse">
                 <path d="M0 0 L8 8 M8 0 L0 8" className="band-stroke" />
+              </pattern>
+              <pattern id="band-blight" width="8" height="8" patternUnits="userSpaceOnUse">
+                <path d="M0 4 L8 4" className="band-stroke" />
               </pattern>
             </defs>
             {Array.from({ length: DIVISIONS + 1 }, (_, i) => {

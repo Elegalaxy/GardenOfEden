@@ -228,6 +228,8 @@ export const tuning: Tuning = {
     drought: { duration: 1500, regrowMult: 0.35 },
     bounty: { duration: 1000, regrowMult: 3 },
     plague: { duration: 800, radius: 14, damage: 0.8 },
+    // Blight (B1): resource nodes inside the disc stop regrowing and lose `drain` a tick (a full node of 100 empties in 400 ticks).
+    blight: { duration: 1200, radius: 12, drain: 0.25 },
     meteor: { radius: 6, damage: 200, craterRadius: 3, craterDamage: 2, craterTicks: 600 },
     // Events hurt predators (EP2, on). With predator ecology on, a meteor kills the predators within half its radius and a plague
     // drains 0.4 energy a tick from those inside it (a predator that stays in the disc dies, one that leaves it feeds and lives).
