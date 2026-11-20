@@ -7,26 +7,34 @@
 // placement tool would add. For keyboard users the canvas takes focus: arrow
 // keys move a cursor cell (Shift moves 4), Enter or Space acts like a click.
 //
+// Camera (F1, camera.ts): Ctrl/Cmd + wheel (or a trackpad pinch) zooms at the pointer, dragging pans while zoomed in, and
+// the arrow-key cursor scrolls the view to stay on screen. While following, every frame centres on the selected bot or
+// predator. The buttons and keys (+ - 0 F) are in ViewControls.
+//
 // Global world events in progress (drought, bounty) are small chips along the top
 // edge of the map: a letter badge, the name, the ticks left and, on a wide map, what
 // they do, in text. Area events are drawn on the map itself (render.ts).
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { rules, tuning } from '../content/index.ts'
 import { checkCommand } from '../sim/commands.ts'
 import type { Command } from '../sim/types.ts'
 import { effectSummary, eventInfo, formatTicks } from './eventInfo.ts'
+import { effectiveCamera, ensureVisible, followPosition, panBy, zoomAt } from './camera.ts'
 import { cellAtPixel, cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
 import { toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
-import { clickMap, setHoverCell, useWorldStore } from './store.ts'
+import { checkFollow, clickMap, setCamera, setHoverCell, useCamera, useWorldStore } from './store.ts'
+import { ViewControls } from './ViewControls.tsx'
 
 const BOT_REACH_CELLS = 1
 const BOT_REACH_PIXELS = 14
+/** A drag shorter than this many pixels is still a click. */
+const DRAG_THRESHOLD = 4
 
 /** The command a placement tool would issue at a cell, or null for inspect/remove. */
 function placementAt(tool: Tool, cell: Cell): Command | null {
@@ -72,10 +80,15 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
   }, [])
 
   const { world, alpha, tool, selection, heat, botColour } = snapshot
-  const layout = useMemo(
-    () => (size.width < 1 || size.height < 1 ? null : computeLayout(size, world)),
-    [size, world],
-  )
+  const storedCamera = useCamera()
+  const target = storedCamera.follow ? followPosition(world, selection, alpha) : null
+  const camera = effectiveCamera(storedCamera, world, target)
+  const layout = size.width < 1 || size.height < 1 ? null : computeLayout(size, world, camera)
+  // What the wheel and drag handlers (registered once) need to read.
+  const live = useRef({ size, world, camera })
+  const lastCentre = useRef<{ x: number; y: number } | undefined>(undefined)
+  const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
+  const swallowClick = useRef(false)
   const reachCells = layout === null ? BOT_REACH_CELLS : Math.max(BOT_REACH_CELLS, BOT_REACH_PIXELS / layout.scale)
 
   // What is under the hover/cursor cell, and what a placement there would do.
@@ -114,8 +127,29 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     const ctx = canvas.getContext('2d')
     if (ctx === null) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell }, botColour)
+    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell }, botColour, camera)
+    live.current = { size, world, camera }
+    if (target !== null) lastCentre.current = { x: camera.cx, y: camera.cy }
+    // Following stops (with a notice) when what it follows is gone.
+    checkFollow(lastCentre.current)
   })
+
+  // Ctrl/Cmd + wheel zooms at the pointer. Registered by hand: React's onWheel is passive, so it could not stop the page zooming.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (canvas === null) return
+    const onWheel = (event: WheelEvent): void => {
+      if (!event.ctrlKey && !event.metaKey) return
+      event.preventDefault()
+      const { size: s, world: w, camera: c } = live.current
+      const rect = canvas.getBoundingClientRect()
+      const delta = Math.max(-100, Math.min(100, event.deltaY))
+      const next = zoomAt(c, w, s, event.clientX - rect.left, event.clientY - rect.top, c.zoom * Math.pow(1.0025, -delta))
+      setCamera(next)
+    }
+    canvas.addEventListener('wheel', onWheel, { passive: false })
+    return () => canvas.removeEventListener('wheel', onWheel)
+  }, [])
 
   // The heatmap legend reads the cell under the pointer (or the keyboard cursor) from the store.
   useEffect(() => {
@@ -131,14 +165,18 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
   }
 
   const moveCursor = (dx: number, dy: number): void => {
-    setCell((old) => {
-      const from = old ?? { cx: Math.floor(world.width / 2), cy: Math.floor(world.height / 2) }
-      if (old === null) return from
-      return {
-        cx: Math.min(world.width - 1, Math.max(0, from.cx + dx)),
-        cy: Math.min(world.height - 1, Math.max(0, from.cy + dy)),
-      }
-    })
+    // The first press only shows the cursor, at the middle of what the view shows.
+    const from = cell ?? { cx: Math.min(world.width - 1, Math.floor(camera.cx)), cy: Math.min(world.height - 1, Math.floor(camera.cy)) }
+    const next =
+      cell === null
+        ? from
+        : {
+            cx: Math.min(world.width - 1, Math.max(0, from.cx + dx)),
+            cy: Math.min(world.height - 1, Math.max(0, from.cy + dy)),
+          }
+    setCell(next)
+    const scrolled = ensureVisible(camera, world, next)
+    if (scrolled !== camera) setCamera({ ...scrolled, follow: false })
   }
 
   const info = toolInfo(tool)
@@ -147,14 +185,46 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     <div className="map-frame" ref={wrapRef} style={{ aspectRatio: `${world.width} / ${world.height}` }}>
       <canvas
         ref={canvasRef}
-        className={`map-canvas tool-${tool}`}
+        className={`map-canvas tool-${tool}${camera.zoom > 1 ? ' zoomed' : ''}`}
         tabIndex={0}
         role="application"
         aria-label={`Garden map at tick ${snapshot.tick} with ${snapshot.population} bots. ${info.label} tool: ${info.hint} Use arrow keys to move the cursor and Enter to act.`}
-        onPointerMove={(event) => setCell(cellFromEvent(event.clientX, event.clientY))}
+        onPointerDown={(event) => {
+          swallowClick.current = false
+          if (camera.zoom <= 1 || (event.pointerType === 'mouse' && event.button !== 0)) return
+          drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
+          event.currentTarget.setPointerCapture(event.pointerId)
+        }}
+        onPointerMove={(event) => {
+          setCell(cellFromEvent(event.clientX, event.clientY))
+          const d = drag.current
+          if (d === null || d.id !== event.pointerId) return
+          const dx = event.clientX - d.x
+          const dy = event.clientY - d.y
+          if (!d.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+          d.moved = true
+          d.x = event.clientX
+          d.y = event.clientY
+          const { size: s, world: w, camera: c } = live.current
+          setCamera(panBy(c, w, s, dx, dy))
+        }}
+        onPointerUp={(event) => {
+          const d = drag.current
+          if (d === null || d.id !== event.pointerId) return
+          drag.current = null
+          // The click that ends a drag must not place or select anything.
+          if (d.moved) swallowClick.current = true
+        }}
+        onPointerCancel={() => {
+          drag.current = null
+        }}
         onPointerLeave={() => setCell(null)}
         onBlur={() => setCell(null)}
         onClick={(event) => {
+          if (swallowClick.current) {
+            swallowClick.current = false
+            return
+          }
           const canvas = canvasRef.current
           if (canvas === null || layout === null) return
           const rect = canvas.getBoundingClientRect()
@@ -209,6 +279,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
           ))}
         </ul>
       )}
+      <ViewControls />
       {children}
     </div>
   )

@@ -29,6 +29,7 @@ import { coneFactor } from '../sim/perception.ts'
 import { isHungry } from '../sim/predators.ts'
 import { predatorTrait } from '../sim/predatorTraits.ts'
 import type { ActiveEvent, Den, NodeKind, Tuning, World, WorldNode } from '../sim/types.ts'
+import type { Camera } from './camera.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
 import { PREDATOR_BODY_CELLS, botPosition, findBot, findNode, predatorPosition } from './geometry.ts'
@@ -102,6 +103,9 @@ const PREDATOR_FILL = '#e6e6ee'
 
 const GHOST_LETTER = { plague: 'P', meteor: 'M', blight: 'L' } as const
 
+/** Letters and labels never grow past this many pixels, so text at zoom 4 stays sane (F1). */
+const MAX_TEXT_PX = 32
+
 /** A meteor crater is a temporary danger node (it has an end tick). */
 function isCrater(node: WorldNode): boolean {
   return node.kind === 'danger' && node.expires > 0
@@ -110,9 +114,17 @@ function isCrater(node: WorldNode): boolean {
 /** How long (ticks) the impact ring takes to grow to the full impact radius and fade out. */
 const FLASH_TICKS = 24
 
-/** Largest scale that fits the whole map, centred. */
-export function computeLayout(size: Size, world: Pick<World, 'width' | 'height'>): Layout {
-  const scale = Math.max(0.0001, Math.min(size.width / world.width, size.height / world.height))
+/**
+ * Largest scale that fits the whole map, centred. With a zoomed camera (F1) the scale is that times the zoom and the view is
+ * centred on the camera's point; no camera, or zoom 1, gives the fitted layout exactly.
+ */
+export function computeLayout(size: Size, world: Pick<World, 'width' | 'height'>, camera?: Camera): Layout {
+  const fit = Math.max(0.0001, Math.min(size.width / world.width, size.height / world.height))
+  if (camera !== undefined && camera.zoom > 1) {
+    const scale = fit * camera.zoom
+    return { scale, offsetX: size.width / 2 - camera.cx * scale, offsetY: size.height / 2 - camera.cy * scale }
+  }
+  const scale = fit
   return {
     scale,
     offsetX: (size.width - world.width * scale) / 2,
@@ -167,7 +179,7 @@ function drawZone(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
 
 function drawLetter(ctx: CanvasRenderingContext2D, letter: string, cx: number, cy: number, px: number): void {
   ctx.fillStyle = COLORS.label
-  ctx.font = `700 ${Math.max(9, Math.round(px))}px "Segoe UI", system-ui, sans-serif`
+  ctx.font = `700 ${Math.min(MAX_TEXT_PX, Math.max(9, Math.round(px)))}px "Segoe UI", system-ui, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(letter, cx, cy + 0.5)
@@ -184,7 +196,7 @@ function drawResource(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.fillStyle = COLORS.resource
   ctx.fill()
   ctx.globalAlpha = 1
-  const ringWidth = Math.max(2, layout.scale * 0.35)
+  const ringWidth = Math.min(10, Math.max(2, layout.scale * 0.35))
   ctx.lineWidth = ringWidth
   ctx.strokeStyle = COLORS.ringTrack
   ctx.beginPath()
@@ -315,13 +327,13 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
 
   ctx.save()
   ctx.fillStyle = COLORS.botEdge
-  ctx.font = `800 ${Math.max(8, Math.round(layout.scale * 0.85))}px "Segoe UI", system-ui, sans-serif`
+  ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(8, Math.round(layout.scale * 0.85)))}px "Segoe UI", system-ui, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
   if (resting) {
     ctx.globalAlpha = 1
-    ctx.font = `800 ${Math.max(13, Math.round(layout.scale * 1.7))}px "Segoe UI", system-ui, sans-serif`
+    ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(13, Math.round(layout.scale * 1.7)))}px "Segoe UI", system-ui, sans-serif`
     ctx.lineWidth = 3
     ctx.strokeStyle = COLORS.botEdge
     ctx.strokeText('z', cx + r * 1.1, cy - r * 1.1)
@@ -374,7 +386,7 @@ function drawWater(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layou
 
 /** Text with a dark outline so it stays readable over hatching and nodes. */
 function drawOutlinedLabel(ctx: CanvasRenderingContext2D, text: string, cx: number, cy: number, px: number): void {
-  ctx.font = `700 ${Math.max(10, Math.round(px))}px "Segoe UI", system-ui, sans-serif`
+  ctx.font = `700 ${Math.min(MAX_TEXT_PX, Math.max(10, Math.round(px)))}px "Segoe UI", system-ui, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   ctx.lineJoin = 'round'
@@ -419,7 +431,7 @@ function drawPlague(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: num
   // disc at that height, and is left out when even the letter would spill over a tiny zone.
   const left = Math.max(0, event.endTick - tick)
   const labelY = cy - r + Math.max(12, layout.scale * 1.2)
-  const labelPx = Math.max(10, Math.round(layout.scale * 1.15))
+  const labelPx = Math.min(MAX_TEXT_PX, Math.max(10, Math.round(layout.scale * 1.15)))
   ctx.font = `700 ${labelPx}px "Segoe UI", system-ui, sans-serif`
   const text = fitLabel([`P PLAGUE ${left}`, `P ${left}`, 'P'], chordWidth(r, labelY - cy) - 8, (t) => ctx.measureText(t).width)
   if (text !== null) drawOutlinedLabel(ctx, text, cx, labelY, labelPx)
@@ -460,7 +472,7 @@ function drawBlight(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: num
   ctx.restore()
   const left = Math.max(0, event.endTick - tick)
   const labelY = cy - r + Math.max(12, layout.scale * 1.2)
-  const labelPx = Math.max(10, Math.round(layout.scale * 1.15))
+  const labelPx = Math.min(MAX_TEXT_PX, Math.max(10, Math.round(layout.scale * 1.15)))
   ctx.font = `700 ${labelPx}px "Segoe UI", system-ui, sans-serif`
   const text = fitLabel([`L BLIGHT ${left}`, `L ${left}`, 'L'], chordWidth(r, labelY - cy) - 8, (t) => ctx.measureText(t).width)
   if (text !== null) drawOutlinedLabel(ctx, text, cx, labelY, labelPx)
@@ -655,8 +667,9 @@ export function drawWorld(
   overlay?: Overlay,
   heat?: HeatOverlay | null,
   botColour: BotColour = DEFAULT_BOT_COLOUR,
+  camera?: Camera,
 ): void {
-  const layout = computeLayout(size, world)
+  const layout = computeLayout(size, world, camera)
   const { scale, offsetX, offsetY } = layout
 
   ctx.clearRect(0, 0, size.width, size.height)

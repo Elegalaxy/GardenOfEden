@@ -29,6 +29,9 @@
 // `heatSnapshot` only while one is; the latest matching one is `snapshot.heat`. The cell under the pointer is kept in a
 // small store of its own (`setHoverCell`, `useHoverCell`) so moving the mouse does not wake every panel.
 //
+// Camera (F1): zoom, pan and follow (camera.ts) sit in a store of their own too (`setCamera`, `useCamera`, `toggleFollow`). A page
+// setting only: not saved, and back to the whole map on a new world, a finished load and a swapped client.
+//
 // Bot colour (M20): `setBotColour` / `cycleBotColour` (key C) say how the map colours bots (plain, bloodline, sex or one trait,
 // see botColour.ts). It is a view setting of the page only: not sent to the worker, not saved, kept across a new world.
 //
@@ -44,6 +47,8 @@ import type { Command, DeathsByCause, NodeKind, Sex } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { DEFAULT_PLACE_COUNT, batchNotice, botCommand, bulkCommands } from './bulk.ts'
 import type { BatchResult, PlaceCount } from './bulk.ts'
+import { DEFAULT_CAMERA, clampCamera, followPosition, stepZoom } from './camera.ts'
+import type { Camera } from './camera.ts'
 import { startedMessage } from './eventInfo.ts'
 import { cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
@@ -297,6 +302,7 @@ function onLoadDone(outcome: Extract<FromWorker, { type: 'loadDone' }>['outcome'
       // The new run's frame arrived just before this message. It starts paused at the saved tick.
       paused = true
       selection = null
+      resetCamera()
       alpha = 1
       due = 0
       const commands = `${outcome.commandCount} command${outcome.commandCount === 1 ? '' : 's'}`
@@ -487,6 +493,86 @@ export function useHoverCell(): Cell | null {
   )
 }
 
+const cameraListeners = new Set<Listener>()
+let camera: Camera = DEFAULT_CAMERA
+
+/** The map camera (F1: zoom, pan, follow). A page setting only, kept outside the snapshot like the hover cell, so panning does not wake every panel. */
+export function getCamera(): Camera {
+  return camera
+}
+
+export function setCamera(next: Camera): void {
+  if (next.zoom === camera.zoom && next.cx === camera.cx && next.cy === camera.cy && next.follow === camera.follow) return
+  camera = next
+  for (const listener of cameraListeners) listener()
+}
+
+export function useCamera(): Camera {
+  return useSyncExternalStore(
+    (listener) => {
+      cameraListeners.add(listener)
+      return () => {
+        cameraListeners.delete(listener)
+      }
+    },
+    () => camera,
+    () => camera,
+  )
+}
+
+/** The + and - keys and buttons: one zoom step in or out about the middle of the view (a followed target stays in the middle). */
+export function zoomStep(dir: 1 | -1): void {
+  const next = stepZoom(camera, dir)
+  if (next === camera.zoom) return
+  setCamera(clampCamera({ ...camera, zoom: next }, view))
+}
+
+/** The 0 key and the Fit button: the whole map in view, not following. */
+export function fitCamera(): void {
+  resetCamera()
+}
+
+/** Back to the whole map, not following (a new world, a finished load, a swapped client). */
+export function resetCamera(): void {
+  setCamera(DEFAULT_CAMERA)
+}
+
+/** True when the current selection is a bot or a predator that exists, so the camera can follow it. */
+export function canFollow(): boolean {
+  return followPosition(view, selection, alpha) !== null
+}
+
+/** The F key and the Follow button: follow the selected bot or predator (from zoom 1 the view first zooms to 2), or stop following. */
+export function toggleFollow(): void {
+  if (camera.follow) {
+    // Stay where the view is now rather than jumping back to where following began.
+    const here = followPosition(view, selection, alpha)
+    setCamera(clampCamera({ ...camera, cx: here?.x ?? camera.cx, cy: here?.y ?? camera.cy, follow: false }, view))
+    return
+  }
+  const target = followPosition(view, selection, alpha)
+  if (target === null) {
+    say(false, 'Select a bot or predator to follow.')
+    publish()
+    return
+  }
+  const zoom = camera.zoom <= 1 ? 2 : camera.zoom
+  setCamera(clampCamera({ ...camera, zoom, cx: target.x, cy: target.y, follow: true }, view))
+}
+
+/**
+ * Called as the map draws: while following, stops when the selection is gone (a bot that died, a predator that left, nothing selected)
+ * and says so in a notice. Returns true when it stopped.
+ */
+export function checkFollow(lastCentre?: { x: number; y: number }): boolean {
+  if (!camera.follow || followPosition(view, selection, alpha) !== null) return false
+  const what = selection === null ? null : selection.kind === 'bot' ? `Bot ${selection.id}` : `Predator ${selection.id}`
+  setCamera(clampCamera({ ...camera, cx: lastCentre?.x ?? camera.cx, cy: lastCentre?.y ?? camera.cy, follow: false }, view))
+  say(what === null, what === null ? 'Stopped following.' : `${what} is gone; stopped following.`)
+  publish()
+  return true
+}
+
 /** Chooses how the map colours the bots (a page setting only). A change of mode or trait publishes; the same value does nothing. */
 export function setBotColour(next: Partial<BotColour>): void {
   const merged: BotColour = { ...botColour, ...next }
@@ -661,6 +747,7 @@ export function resetWorld(seed: string, presetId?: string): boolean {
   due = 0
   saveNotice = null
   selection = null
+  resetCamera()
   alpha = 1
   say(true, `Started a new world with seed "${seed}".`)
   client.post({ type: 'reset', seed, presetId })
@@ -744,6 +831,7 @@ export function setSimClient(next: SimClient): void {
   paused = false
   alpha = 1
   selection = null
+  resetCamera()
   notice = null
   saveNotice = null
   heatLayer = null

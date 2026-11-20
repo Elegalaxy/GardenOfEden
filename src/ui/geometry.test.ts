@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Bot, WorldNode } from '../sim/types.ts'
+import { clampCamera } from './camera.ts'
 import { PREDATOR_BODY_CELLS, botAt, cellAtPixel, cellCenter, findBot, nodeAt, pickAt, predatorPosition } from './geometry.ts'
+import { computeLayout } from './render.ts'
 
 const world = { width: 10, height: 8 }
 const layout = { scale: 20, offsetX: 10, offsetY: 5 }
@@ -113,5 +115,26 @@ describe('predators', () => {
     expect(predatorPosition(w.nodes[0]!, 0.5)).toEqual({ x: 4, y: 5 })
     expect(nodeAt(w, 2, 5, 0)?.id).toBe(1)
     expect(nodeAt(w, 6, 5, 0)).toBeUndefined()
+  })
+})
+
+describe('picking under a zoomed camera (F1)', () => {
+  // A 4x zoom of a 48x32 map in a 960x640 view, centred on (10, 8) (inside the map, so unchanged): 80 px per cell.
+  const big = { width: 48, height: 32 }
+  const zoomed = computeLayout({ width: 960, height: 640 }, big, clampCamera({ zoom: 4, cx: 10, cy: 8, follow: false }, big))
+
+  it('finds the cell under a pixel', () => {
+    expect(zoomed.scale).toBe(80)
+    expect(cellAtPixel(zoomed, big, 480, 320)).toEqual({ cx: 10, cy: 8 })
+    expect(cellAtPixel(zoomed, big, 479, 319)).toEqual({ cx: 9, cy: 7 })
+    expect(cellAtPixel(zoomed, big, 0, 0)).toEqual({ cx: 4, cy: 4 })
+  })
+
+  it('a click reach in pixels is fewer cells when zoomed, so only a near bot is hit', () => {
+    const reach = 14 / zoomed.scale
+    const w = { bots: [bot(1, 10, 8), bot(2, 10.6, 8)], nodes: [] as WorldNode[] }
+    expect(reach).toBeLessThan(0.2)
+    expect(botAt(w, 10.05, 8, 1, reach)?.id).toBe(1)
+    expect(botAt(w, 10.2, 8, 1, reach)).toBeUndefined()
   })
 })
