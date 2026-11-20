@@ -10,6 +10,7 @@ import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
 import { addDen, checkEcology, checkPredatorHarm, checkPrey, startLife } from './predators.ts'
 import { checkMateChoice } from './kin.ts'
+import { checkCulture } from './culture.ts'
 import { checkDisease } from './disease.ts'
 import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
@@ -170,6 +171,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
   checkPoison(rules.tuning.poison)
   checkDisease(rules.tuning.disease)
+  checkCulture(rules.tuning.culture)
   checkTerrain(rules.tuning.terrain)
   checkMateChoice(rules.tuning.mateChoice)
 
@@ -201,6 +203,8 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
     world.eaten.toxic = 0
     world.deathsByCause.poison = 0
   }
+  // Culture (C1): the counter exists only with culture on, added after the literal so the key stays last.
+  if (rules.tuning.culture.enabled) world.culture = { taught: 0 }
   const scatteredFood: WorldNode[] = []
 
   for (const spec of preset.nodes) {

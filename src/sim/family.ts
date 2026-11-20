@@ -20,6 +20,7 @@
 // Toxic food (T1): the `toxic` flag travels with an entry and is never lost to a newer clean sighting: a copy that replaces the receiver's
 // entry is toxic if either side knew, and when the receiver's entry is newer but the sender knows the node is toxic the receiver's entry gets
 // the flag (a new object, not counted as learned). With poison off no entry has the flag and nothing changes.
+// Culture (C1, culture.ts) reuses `mergeMemory` with options for an elder's lesson; family copies never carry the `taught` flag.
 //
 // Determinism: no random draws. Bots are visited in id order and each checks only its own parent,
 // so the work is linear in the population. Both sides of a pair merge from copies taken before
@@ -27,13 +28,18 @@
 // in turn, so C can already hear what B just learned from A in the same tick. That is deterministic.
 
 import { distance, trimMemory } from './perception.ts'
-import type { Bot, MemoryEntry, Tuning, World } from './types.ts'
+import type { Bot, MemoryEntry, NodeKind, Tuning, World } from './types.ts'
 
 /** The entries a newborn starts with: copies of the shareable ones, marked as learned from the parent. */
 export function inheritMemory(parentMemory: MemoryEntry[], parentId: number, tuning: Tuning): MemoryEntry[] {
   const inherited: MemoryEntry[] = []
   for (const entry of parentMemory) {
-    if (tuning.family.shareKinds.includes(entry.kind)) inherited.push({ ...entry, learnedFrom: parentId })
+    if (tuning.family.shareKinds.includes(entry.kind)) {
+      const copy: MemoryEntry = { ...entry, learnedFrom: parentId }
+      // Culture (C1): a family copy is not "taught" (the flag is only ever set by an elder's lesson, culture.ts).
+      if (copy.taught !== undefined) delete copy.taught
+      inherited.push(copy)
+    }
   }
   return inherited
 }
@@ -61,25 +67,55 @@ export function inheritFromParents(
  * a new node is added, a node the bot already knows is replaced only by a strictly newer sighting.
  * Entries of removed nodes (not in `live`) are skipped. Trims to the memory caps afterwards, and
  * returns how many of the copies are still in the memory after the trim.
+ *
+ * `options` (culture, C1) is absent for family sharing, which then behaves exactly as before: `kinds` replaces `family.shareKinds`; `limit` keeps
+ * only that many of the entries that would be copied, freshest sighting first (ties to the lower node id); `mark` sets `taught: true` on each
+ * copy (as its last key). Without `mark` a copy never carries a `taught` flag.
  */
-export function mergeMemory(bot: Pick<Bot, 'memory'>, from: MemoryEntry[], fromId: number, tuning: Tuning, live: Set<number>): number {
+export function mergeMemory(
+  bot: Pick<Bot, 'memory'>,
+  from: MemoryEntry[],
+  fromId: number,
+  tuning: Tuning,
+  live: Set<number>,
+  options?: { kinds?: readonly NodeKind[]; limit?: number; mark?: boolean },
+): number {
   const touched = new Set<number>()
-  for (const theirs of from) {
-    if (!tuning.family.shareKinds.includes(theirs.kind) || !live.has(theirs.nodeId)) continue
+  const kinds = options?.kinds ?? tuning.family.shareKinds
+  const mark = options?.mark === true
+  let source = from
+  if (options?.limit !== undefined) {
+    source = from.filter((theirs) => {
+      if (!kinds.includes(theirs.kind) || !live.has(theirs.nodeId)) return false
+      const mine = bot.memory.find((entry) => entry.nodeId === theirs.nodeId)
+      return mine === undefined || theirs.seenTick > mine.seenTick
+    })
+    source.sort((a, b) => b.seenTick - a.seenTick || a.nodeId - b.nodeId)
+    source = source.slice(0, options.limit)
+  }
+  for (const theirs of source) {
+    if (!kinds.includes(theirs.kind) || !live.has(theirs.nodeId)) continue
     const index = bot.memory.findIndex((entry) => entry.nodeId === theirs.nodeId)
     if (index < 0) {
-      bot.memory.push({ ...theirs, learnedFrom: fromId })
+      bot.memory.push(copyEntry(theirs, fromId, mark))
       touched.add(theirs.nodeId)
     } else {
       const mine = bot.memory[index]!
       if (theirs.seenTick > mine.seenTick) {
         // Replace the object rather than edit it, so snapshots of this memory stay unchanged.
-        const copy: MemoryEntry = { ...theirs, learnedFrom: fromId }
+        const copy = copyEntry(theirs, fromId, false)
         if (mine.toxic === true && copy.toxic === undefined) copy.toxic = true
+        if (mark) copy.taught = true
         bot.memory[index] = copy
         touched.add(theirs.nodeId)
       } else if (theirs.toxic === true && mine.toxic !== true) {
-        bot.memory[index] = { ...mine, toxic: true }
+        const flagged: MemoryEntry = { ...mine, toxic: true }
+        // Keep `taught` the last key.
+        if (flagged.taught !== undefined) {
+          delete flagged.taught
+          flagged.taught = true
+        }
+        bot.memory[index] = flagged
       }
     }
   }
@@ -90,6 +126,14 @@ export function mergeMemory(bot: Pick<Bot, 'memory'>, from: MemoryEntry[], fromI
     if (touched.has(entry.nodeId)) learned += 1
   }
   return learned
+}
+
+/** A copy of `theirs` learned from `fromId`: never carries their `taught` flag, gets its own when `mark` (last key). */
+function copyEntry(theirs: MemoryEntry, fromId: number, mark: boolean): MemoryEntry {
+  const copy: MemoryEntry = { ...theirs, learnedFrom: fromId }
+  if (copy.taught !== undefined) delete copy.taught
+  if (mark) copy.taught = true
+  return copy
 }
 
 /** The exchange phase: each living child swaps memory with its living mother, then its living father, when they are close. Adds to `world.familyLearned`. */

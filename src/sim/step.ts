@@ -31,10 +31,12 @@
 // `deathCause` then count with the other health damage; a poison death adds to `deathsByCause.poison`. Nothing changes with poison off.
 // Disease (D1, disease.ts): a sick bot's `sickDrain` is counted the same way (cause 'disease'); `spreadDisease` runs last, after the family
 // sharing, and returns at once until the player has started an outbreak. No draws.
+// Culture (C1, culture.ts): `teachElders` runs right after the family sharing (before `spreadDisease`) and returns at once with culture off. No draws.
 
 import { decide } from './brain.ts'
 import { sickDamage, spreadDisease } from './disease.ts'
 import { buildMateIndex } from './mating.ts'
+import { teachElders } from './culture.ts'
 import { shareFamilyKnowledge } from './family.ts'
 import { pruneLineage, recordDeath } from './lineage.ts'
 import { deathCause, metabolise } from './metabolism.ts'
@@ -113,6 +115,7 @@ export function step(world: World, rules: Rules): void {
   expireEvents(world, tuning)
   predatorLife(world, rules)
   shareFamilyKnowledge(world, tuning)
+  teachElders(world, tuning)
   spreadDisease(world, tuning)
 
   if (world.tick % tuning.stats.sampleEvery === 0) {

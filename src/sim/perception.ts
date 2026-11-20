@@ -144,6 +144,7 @@ export function remember(world: World, bot: Bot, sensed: WorldNode[], tuning: Tu
       found.seenTick = world.tick
       found.amount = node.amount
       found.learnedFrom = null
+      if (found.taught !== undefined) delete found.taught // C1: seen with its own eyes, no longer just taught
     } else {
       memory.push({
         nodeId: node.id,

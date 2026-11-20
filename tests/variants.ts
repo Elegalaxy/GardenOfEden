@@ -185,6 +185,16 @@ export function withDisease(rules: Rules, over: Partial<Rules['tuning']['disease
   return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: true, ...over } } }
 }
 
+/** Culture (C1, elders teach) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withCulture(rules: Rules, over: Partial<Rules['tuning']['culture']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, culture: { ...rules.tuning.culture, enabled: true, ...over } } }
+}
+
+/** The same rules with culture forced off (the shipped state). */
+export function noCulture(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, culture: { ...rules.tuning.culture, enabled: false } } }
+}
+
 /** The same rules with disease forced off (the shipped state). */
 export function noDisease(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: false } } }

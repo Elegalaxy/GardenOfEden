@@ -327,5 +327,10 @@ export const tuning: Tuning = {
   // D2 numbers (D1 had contactRadius 2, catchAfter 20, sickTicks 300, sickDrain 0.15): an outbreak at a busy spot costs about 16% of the
   // population over the next 1,500 ticks, spreads to several times the first victims and burns out by 6,000 ticks; see the GAME_DESIGN changelog.
   disease: { enabled: true, outbreakRadius: 6, contactRadius: 3, catchAfter: 5, sickTicks: 200, sickDrain: 0.7, immuneTicks: 1500 },
+  // Culture (C1 mechanics, OFF): elders teach. Every `teachEvery` ticks each young bot (age under `youngAge` x its longevity) takes one lesson from
+  // the nearest elder (age from `elderAge` x longevity) within `teachRadius` cells that is not its own mother or father (family sharing covers
+  // those): up to `perLesson` memory entries of the `teachKinds` (places only), freshest sighting first, copied only where the pupil lacks the node
+  // or knows an older sighting. Elders learn nothing here. A user-approved exception to the "no sharing with strangers" rule. No draws. See src/sim/culture.ts.
+  culture: { enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'] },
   logCap: 500,
 }

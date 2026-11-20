@@ -180,6 +180,8 @@ export type MemoryEntry = {
   learnedFrom: number | null
   /** Toxic food (T1): the bot knows (from eating it, or from family) that this node poisons. Only ever set to true; absent otherwise; last key. */
   toxic?: true
+  /** Culture (C1): an elder taught the bot this place (culture.ts). Cleared when the bot sees the node itself and absent from family copies; last key. */
+  taught?: true
 }
 
 export type Bot = {
@@ -365,6 +367,8 @@ export type World = {
   ecology?: PredatorEcology
   /** Disease (D1): counters, created at the first outbreak (never before, so a run with no outbreak hashes as before). Last key. */
   disease?: { infected: number; recovered: number }
+  /** Culture (C1): counters, created in createWorld only when `tuning.culture.enabled` (absent with culture off). */
+  culture?: { taught: number }
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -833,6 +837,21 @@ export type Tuning = {
     sickTicks: number
     sickDrain: number
     immuneTicks: number
+  }
+  /**
+   * Culture (C1, off): every `teachEvery` ticks each young bot (age under `youngAge` x longevity) takes one lesson from the nearest elder
+   * (age from `elderAge` x longevity) within `teachRadius` that is not its mother or father: up to `perLesson` memory entries of the
+   * `teachKinds`, freshest first, only where the pupil lacks the node or knows an older sighting. A user-approved exception to
+   * GAME_DESIGN section 5 item 1. No random draws. See culture.ts.
+   */
+  culture: {
+    enabled: boolean
+    elderAge: number
+    youngAge: number
+    teachRadius: number
+    teachEvery: number
+    perLesson: number
+    teachKinds: NodeKind[]
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

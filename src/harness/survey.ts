@@ -33,6 +33,7 @@
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
+import { isElder } from '../sim/culture.ts'
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { harmOn } from '../sim/predators.ts'
@@ -101,6 +102,8 @@ export type SeedSurvey = {
   roughShare: { bots: number; predators: number } | null
   /** Disease (D1): bots sick at the end, bots infected over the run, bots recovered and disease deaths; null with disease off. */
   disease: { sick: number; infected: number; recovered: number; deaths: number } | null
+  /** Culture (C1): memory entries taught by elders over the run, and the percentage of bot-ticks after the warmup spent as an elder; null with culture off. */
+  culture: { taught: number; elderShare: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -166,6 +169,11 @@ export function withoutPrey(rules: Rules): Rules {
 /** The same rules with toxic food off: `--no-poison`. */
 export function withoutPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
+}
+
+/** The same rules with culture off: `--no-culture` (C1). */
+export function withoutCulture(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, culture: { ...rules.tuning.culture, enabled: false } } }
 }
 
 /** The same rules with disease off: `--no-disease` (D1). */
@@ -300,6 +308,9 @@ export function surveySeed(
   let botTicksRough = 0
   let predTicks = 0
   let predTicksRough = 0
+  const cultureTracked = rules.tuning.culture.enabled
+  let elderBotTicks = 0
+  let allBotTicks = 0
   const gapTracker = createGapTracker()
   const gaps: number[] = []
   const botSeries: number[] = []
@@ -316,6 +327,12 @@ export function surveySeed(
       }
     }
     if (world.tick > warmup) {
+      if (cultureTracked) {
+        for (const bot of world.bots) {
+          allBotTicks += 1
+          if (isElder(bot, rules.tuning)) elderBotTicks += 1
+        }
+      }
       if (terrainTracked) {
         // Positions after the step; close enough to "where the step began" for a share over thousands of ticks.
         const rough = roughNodes(world)
@@ -408,13 +425,14 @@ export function surveySeed(
           deaths: world.deathsByCause.disease ?? 0,
         }
       : null,
+    culture: cultureTracked ? { taught: world.culture?.taught ?? 0, elderShare: allBotTicks === 0 ? 0 : (100 * elderBotTicks) / allBotTicks } : null,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis', 'taught', 'eld%']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -476,6 +494,8 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.disease === null ? '-' : r.disease.infected,
       r.disease === null ? '-' : r.disease.recovered,
       r.disease === null ? '-' : r.disease.deaths,
+      r.culture === null ? '-' : r.culture.taught,
+      r.culture === null ? '-' : r.culture.elderShare.toFixed(1),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),
