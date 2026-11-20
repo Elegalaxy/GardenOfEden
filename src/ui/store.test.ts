@@ -134,6 +134,14 @@ describe('world events', () => {
     expect(getSnapshot().notice?.text).toContain('Plague started')
   })
 
+  it('starts a blight at the clicked cell with the blight tool', async () => {
+    setTool('blight')
+    clickMap(20.4, 30.7, 1)
+    await settled()
+    expect(getSnapshot().world.events[0]).toMatchObject({ kind: 'blight', x: 20.5, y: 30.5 })
+    expect(getSnapshot().notice?.text).toContain('Blight started')
+  })
+
   it('drops a meteor with the meteor tool and reports the bots it killed', async () => {
     setTool('meteor')
     const bot = getSnapshot().world.bots[0]!

@@ -63,14 +63,14 @@ describe('labels', () => {
   })
 
   it('gives each world event a marker letter that clashes with no other marker (R V S W B X)', () => {
-    const kinds: EventKind[] = ['drought', 'bounty', 'plague', 'meteor']
+    const kinds: EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight']
     const markerLetters = [
       ...(['resource', 'predator', 'shelter', 'water'] as NodeKind[]).map((kind) => commandLetter('placeNode', kind)),
       commandLetter('placeBot'),
       commandLetter('removeNode'),
       ...kinds.map((kind) => commandLetter('triggerEvent', undefined, kind)),
     ]
-    expect(markerLetters).toEqual(['R', 'V', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M'])
+    expect(markerLetters).toEqual(['R', 'V', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M', 'L'])
     expect(new Set(markerLetters).size).toBe(markerLetters.length)
     for (const kind of kinds) expect(EVENT_LETTER[kind]).toBe(commandLetter('triggerEvent', undefined, kind))
   })

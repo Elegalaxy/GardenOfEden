@@ -1,7 +1,7 @@
 // What the Events panel, the notices and the banners say about each world
 // event. Pure text and data, built from tuning so the numbers shown are the
 // numbers the sim uses. Drought (key D) and bounty (key B) are global and fire
-// at once; plague (P) and meteor (M) are area events, armed as tools and then
+// at once; plague (P), meteor (M) and blight (L) are area events, armed as tools and then
 // clicked onto the map (tools.ts).
 
 import { checkCommand } from '../sim/commands.ts'
@@ -26,6 +26,7 @@ export const EVENT_INFOS: readonly EventInfo[] = [
   { kind: 'bounty', label: EVENT_LABEL.bounty, letter: EVENT_LETTER.bounty, key: 'b', global: true, blurb: 'Food grows back much faster everywhere.' },
   { kind: 'plague', label: EVENT_LABEL.plague, letter: EVENT_LETTER.plague, key: 'p', global: false, blurb: 'A zone where bots lose health and predators lose energy for a while. Pick it, then click the map.' },
   { kind: 'meteor', label: EVENT_LABEL.meteor, letter: EVENT_LETTER.meteor, key: 'm', global: false, blurb: 'Kills bots, and predators near the centre (aim at one), and leaves a crater. Pick it, then click the map.' },
+  { kind: 'blight', label: EVENT_LABEL.blight, letter: EVENT_LETTER.blight, key: 'l', global: false, blurb: 'Food in the zone stops regrowing and withers. Pick it, then click the map.' },
 ]
 
 export function eventInfo(kind: EventKind): EventInfo {
@@ -62,7 +63,7 @@ export function effectSummary(kind: EventKind, tuning: Tuning): string {
     case 'plague':
       return `−${fixed1(e.plague.damage)} health / tick within ${fixed1(e.plague.radius)} cells`
     case 'blight':
-      return `food nodes lose ${fixed1(e.blight.drain)} / tick and stop regrowing within ${fixed1(e.blight.radius)} cells`
+      return `food nodes lose ${Math.round(e.blight.drain * 100) / 100} / tick and stop regrowing within ${fixed1(e.blight.radius)} cells`
     case 'meteor':
       return `up to −${numberFormat.format(e.meteor.damage)} health within ${fixed1(e.meteor.radius)} cells`
   }

@@ -155,6 +155,11 @@ describe('eventBands', () => {
     expect(bands).toEqual([{ kind: 'drought', start: 300, end: 1800, ongoing: false, lane: 0 }])
   })
 
+  it('makes a band for a blight with its own duration', () => {
+    const bands = eventBands([at(300, { type: 'triggerEvent', event: 'blight', x: 5, y: 5 })], durations, 5000)
+    expect(bands).toEqual([{ kind: 'blight', start: 300, end: 1500, ongoing: false, lane: 0 }])
+  })
+
   it('cuts a running event off at the current tick', () => {
     const bands = eventBands([at(300, { type: 'triggerEvent', event: 'plague', x: 5, y: 5 })], durations, 500)
     expect(bands).toEqual([{ kind: 'plague', start: 300, end: 500, ongoing: true, lane: 0 }])

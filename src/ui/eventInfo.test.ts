@@ -17,9 +17,9 @@ import {
 const { tuning } = rules
 
 describe('event info', () => {
-  it('lists the four events with distinct keys, and only drought and bounty are global', () => {
-    expect(EVENT_INFOS.map((info) => info.kind)).toEqual(['drought', 'bounty', 'plague', 'meteor'])
-    expect(new Set(EVENT_INFOS.map((info) => info.key)).size).toBe(4)
+  it('lists the five events with distinct keys, and only drought and bounty are global', () => {
+    expect(EVENT_INFOS.map((info) => info.kind)).toEqual(['drought', 'bounty', 'plague', 'meteor', 'blight'])
+    expect(new Set(EVENT_INFOS.map((info) => info.key)).size).toBe(5)
     expect(EVENT_INFOS.filter((info) => info.global).map((info) => info.kind)).toEqual(['drought', 'bounty'])
     expect(globalEventForKey('d')).toBe('drought')
     expect(globalEventForKey('b')).toBe('bounty')
@@ -39,6 +39,10 @@ describe('event info', () => {
     expect(eventRows('plague', tuning)).toEqual([
       { label: 'Lasts', value: `${tuning.events.plague.duration} ticks` },
       { label: 'Effect', value: `−${tuning.events.plague.damage} health / tick within ${tuning.events.plague.radius} cells` },
+    ])
+    expect(eventRows('blight', tuning)).toEqual([
+      { label: 'Lasts', value: '1,200 ticks' },
+      { label: 'Effect', value: `food nodes lose ${tuning.events.blight.drain} / tick and stop regrowing within ${tuning.events.blight.radius} cells` },
     ])
     expect(eventRows('meteor', tuning)[0]!.value).toContain('instant')
     expect(eventRows('bounty', tuning)[0]).toEqual({ label: 'Lasts', value: '1,000 ticks' })
@@ -62,6 +66,7 @@ describe('event info', () => {
       'Bounty started: food regrowth ×3 for 1,000 ticks.',
     )
     expect(startedMessage({ type: 'triggerEvent', event: 'plague', x: 12.5, y: 7.5 }, tuning, 0)).toContain('Plague started at 12.5, 7.5')
+    expect(startedMessage({ type: 'triggerEvent', event: 'blight', x: 12.5, y: 7.5 }, tuning, 0)).toContain('Blight started at 12.5, 7.5')
     expect(startedMessage({ type: 'triggerEvent', event: 'meteor', x: 1.5, y: 2.5 }, tuning, 1)).toContain('1 bot killed')
     expect(startedMessage({ type: 'triggerEvent', event: 'meteor', x: 1.5, y: 2.5 }, tuning, 3)).toContain('3 bots killed')
   })

@@ -3,7 +3,7 @@
 // inspect; the keys are ignored while typing in a field. `ToolStatus` (under the map, not
 // above it) says what the active tool does and what the last click did; it reserves the
 // room of its longest text, so switching tools or placing things never moves the page.
-// The world-event keys live here too: P and M arm the plague and meteor tools (like a
+// The world-event keys live here too: P, M and L arm the plague, meteor and blight tools (like a
 // tool key), D and B fire a drought or a bounty at once (a refused one just says why).
 
 import { useEffect } from 'react'

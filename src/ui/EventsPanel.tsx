@@ -1,6 +1,6 @@
-// World events (M8): shake the society and watch what changes. Four cards, one per
+// World events (M8): shake the society and watch what changes. Five cards, one per
 // event, each with its shortcut key, how long it lasts and what it does. Drought (D)
-// and bounty (B) are global and fire at once. Plague (P) and meteor (M) arm a map
+// and bounty (B) are global and fire at once. Plague (P), meteor (M) and blight (L) arm a map
 // tool: pick one, then click the map (the hover ghost shows the radius). A card is
 // disabled, with the reason written under it, when the sim would refuse the event
 // (the same one already running, or too many at once). Below the cards, the events
@@ -20,7 +20,7 @@ function EventCard({ info }: { info: EventInfo }) {
   const armed = !info.global && tool === info.kind
   const onClick = (): void => {
     if (info.global) void dispatch({ type: 'triggerEvent', event: info.kind })
-    else setTool(armed ? 'inspect' : (info.kind as 'plague' | 'meteor'))
+    else setTool(armed ? 'inspect' : (info.kind as 'plague' | 'meteor' | 'blight'))
   }
   return (
     <li className="event-card">

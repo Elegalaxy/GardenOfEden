@@ -43,7 +43,7 @@ export type Size = { width: number; height: number }
 
 /** A placement preview: a node (with its radius) or a bot, centred at map position (x, y). */
 export type Ghost = {
-  kind: NodeKind | 'bot' | 'plague' | 'meteor'
+  kind: NodeKind | 'bot' | 'plague' | 'meteor' | 'blight'
   x: number
   y: number
   radius: number
@@ -75,6 +75,7 @@ export const COLORS = {
   water: '#4dd0e1',
   predator: '#ff9d5c',
   plague: '#ff7ab6',
+  blight: '#a8b83c',
   meteor: '#ff9f43',
   bot: '#f2cc60',
   family: '#f2cc60',
@@ -99,7 +100,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
 /** The predator chevron's fill: a light grey, so it reads against the dark map and apart from every orange and yellow thing. */
 const PREDATOR_FILL = '#e6e6ee'
 
-const GHOST_LETTER = { plague: 'P', meteor: 'M' } as const
+const GHOST_LETTER = { plague: 'P', meteor: 'M', blight: 'L' } as const
 
 /** A meteor crater is a temporary danger node (it has an end tick). */
 function isCrater(node: WorldNode): boolean {
@@ -424,6 +425,47 @@ function drawPlague(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: num
   if (text !== null) drawOutlinedLabel(ctx, text, cx, labelY, labelPx)
 }
 
+/** A blight zone: a stippled (dotted) disc inside a long-dashed ring, labelled with its name and the ticks left. Plague is hatched; this is dots. */
+function drawBlight(ctx: CanvasRenderingContext2D, event: ActiveEvent, tick: number, layout: Layout): void {
+  const cx = layout.offsetX + event.x * layout.scale
+  const cy = layout.offsetY + event.y * layout.scale
+  const r = event.radius * layout.scale
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.globalAlpha = 0.1
+  ctx.fillStyle = COLORS.blight
+  ctx.fill()
+  ctx.clip()
+  ctx.globalAlpha = 0.55
+  ctx.fillStyle = COLORS.blight
+  const step = 9
+  let row = 0
+  for (let y = cy - r; y <= cy + r; y += step * 0.5, row += 1) {
+    const shift = row % 2 === 0 ? 0 : step * 0.5
+    for (let x = cx - r + shift; x <= cx + r; x += step) {
+      ctx.beginPath()
+      ctx.arc(x, y, 1.6, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.blight
+  ctx.setLineDash([10, 4, 2, 4])
+  ctx.stroke()
+  ctx.restore()
+  const left = Math.max(0, event.endTick - tick)
+  const labelY = cy - r + Math.max(12, layout.scale * 1.2)
+  const labelPx = Math.max(10, Math.round(layout.scale * 1.15))
+  ctx.font = `700 ${labelPx}px "Segoe UI", system-ui, sans-serif`
+  const text = fitLabel([`L BLIGHT ${left}`, `L ${left}`, 'L'], chordWidth(r, labelY - cy) - 8, (t) => ctx.measureText(t).width)
+  if (text !== null) drawOutlinedLabel(ctx, text, cx, labelY, labelPx)
+}
+
 /** The impact of a fresh meteor: a ring that grows to the impact radius and fades. `age` is the crater's age in ticks. */
 function drawImpact(ctx: CanvasRenderingContext2D, node: WorldNode, age: number, impactRadius: number, layout: Layout): void {
   if (age < 0 || age >= FLASH_TICKS) return
@@ -567,7 +609,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
     const cx = px(ghost.x)
     const cy = py(ghost.y)
     const r = ghost.kind === 'bot' ? Math.max(3, scale * 0.55) : ghost.radius * scale
-    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : ghost.kind === 'plague' || ghost.kind === 'meteor' ? COLORS[ghost.kind] : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
+    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight' ? COLORS[ghost.kind] : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
     ctx.save()
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -587,7 +629,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
         ctx.setLineDash([])
         ctx.stroke()
       }
-      if (ghost.kind === 'plague' || ghost.kind === 'meteor') drawLetter(ctx, GHOST_LETTER[ghost.kind], cx, cy, scale * 1.4)
+      if (ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight') drawLetter(ctx, GHOST_LETTER[ghost.kind], cx, cy, scale * 1.4)
       else if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
     } else {
       // An X through the ghost: "refused", not just a different colour.
@@ -628,6 +670,7 @@ export function drawWorld(
   // Big zones first so smaller things sit on top of them.
   for (const event of world.events) {
     if (event.kind === 'plague') drawPlague(ctx, event, world.tick, layout)
+    else if (event.kind === 'blight') drawBlight(ctx, event, world.tick, layout)
   }
   for (const node of world.nodes) {
     if (node.kind !== 'danger' && node.kind !== 'shelter') continue

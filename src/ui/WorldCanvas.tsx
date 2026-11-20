@@ -41,6 +41,7 @@ function placementAt(tool: Tool, cell: Cell): Command | null {
       return { type: 'placeBot', x, y }
     case 'plague':
     case 'meteor':
+    case 'blight':
       return { type: 'triggerEvent', event: tool, x, y }
     default:
       return null
@@ -95,6 +96,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
         let radius = 0
         if (cmd.type === 'placeNode') radius = rules.nodeDefs[cmd.kind].radius
         else if (cmd.type === 'triggerEvent' && cmd.event === 'plague') radius = rules.tuning.events.plague.radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'blight') radius = rules.tuning.events.blight.radius
         else if (cmd.type === 'triggerEvent' && cmd.event === 'meteor') radius = rules.tuning.events.meteor.radius
         ghost = { kind: kind as Ghost['kind'], x, y, radius, valid }
       }

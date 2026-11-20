@@ -64,6 +64,10 @@ function Legend() {
         <span className="legend-note">hatched disc, bots inside lose health</span>
       </li>
       <li>
+        <span className="key key-event key-blight" aria-hidden="true">L</span> Blight
+        <span className="legend-note">stippled disc, food stops regrowing and withers</span>
+      </li>
+      <li>
         <span className="key key-event key-meteor" aria-hidden="true">M</span> Meteor crater
         <span className="legend-note">dashed edge, hurts bots, fades</span>
       </li>

@@ -15,7 +15,7 @@
 // Player actions go through `dispatch`, which asks the worker to apply a Command between two
 // ticks and resolves with its result (and leaves a notice for the toolbar to show). The hover
 // ghost's `checkCommand` runs on the mirror, here on the page. `clickMap` is what a click on
-// the map means for the active tool (the plague and meteor tools trigger a world event where
+// the map means for the active tool (the plague, meteor and blight tools trigger a world event where
 // you click).
 //
 // Saving and loading (M9): `exportSave` asks the worker for the run as a Save (the state hash
@@ -636,6 +636,7 @@ export function clickMap(x: number, y: number, reach: number): void {
       return
     case 'plague':
     case 'meteor':
+    case 'blight':
       void dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y })
       return
     case 'remove': {
