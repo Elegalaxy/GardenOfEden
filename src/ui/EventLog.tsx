@@ -19,7 +19,7 @@ import { EVENT_LABEL, KIND_LABEL, causeSentence, commandName, formatPoint } from
 import { predatorEventPhrase } from './predatorInfo.ts'
 import { mergeLog } from './logMerge.ts'
 import type { LogEntry } from './logMerge.ts'
-import { select, useWorldStore } from './store.ts'
+import { centreOn, select, useWorldStore } from './store.ts'
 import type { Selection } from './tools.ts'
 import type { ViewWorld } from './viewWorld.ts'
 
@@ -123,7 +123,11 @@ function buildRows(
             className="log-button"
             aria-pressed={isSelected}
             title={`Select ${target.kind} #${target.id} in the inspector`}
-            onClick={() => select(target)}
+            onClick={() => {
+              select(target)
+              // Zoomed in, the view also moves to the entry (F2); an entry with no known position does not move it.
+              if (entry.located) centreOn(event.x, event.y)
+            }}
           >
             {content}
           </button>

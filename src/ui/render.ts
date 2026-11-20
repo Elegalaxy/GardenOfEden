@@ -36,6 +36,8 @@ import { PREDATOR_BODY_CELLS, botPosition, findBot, findNode, predatorPosition }
 import type { Cell, Layout } from './geometry.ts'
 import { drawHeat, drawHeatCursor } from './heatRender.ts'
 import type { HeatSnapshot } from './heat.ts'
+import { PULSE_MS } from './highlights.ts'
+import type { Pulse } from './highlights.ts'
 import { chordWidth, fitLabel } from './labels.ts'
 import type { Selection } from './tools.ts'
 import type { ViewWorld } from './viewWorld.ts'
@@ -57,6 +59,8 @@ export type Overlay = {
   /** The thing the inspect or remove tool would act on under the pointer. */
   hover: Selection | null
   ghost: Ghost | null
+  /** The ring at the spot of the last highlight jump (F2), drawn for PULSE_MS of page time, then ignored. */
+  pulse?: Pulse | null
 }
 
 /** A heat layer to draw, and the cell under the pointer (outlined while a layer is on). */
@@ -658,6 +662,27 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
   }
 }
 
+/** Two expanding rings that fade out at a highlight (F2), over PULSE_MS of page time. Needs only the spot, so no simulation data. */
+function drawPulse(ctx: CanvasRenderingContext2D, pulse: Pulse, layout: Layout, now: number): void {
+  const t = (now - pulse.start) / PULSE_MS
+  if (t < 0 || t >= 1) return
+  const cx = layout.offsetX + pulse.x * layout.scale
+  const cy = layout.offsetY + pulse.y * layout.scale
+  ctx.save()
+  ctx.strokeStyle = COLORS.select
+  ctx.setLineDash([])
+  for (const lag of [0, 0.25]) {
+    const u = (t - lag) / (1 - lag)
+    if (u <= 0) continue
+    ctx.globalAlpha = 1 - u
+    ctx.lineWidth = 3
+    ctx.beginPath()
+    ctx.arc(cx, cy, layout.scale * (0.8 + 4 * u), 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
 export function drawWorld(
   ctx: CanvasRenderingContext2D,
   world: ViewWorld,
@@ -752,5 +777,6 @@ export function drawWorld(
   }
 
   if (overlay !== undefined) drawOverlay(ctx, world, alpha, layout, overlay, tuning)
+  if (overlay?.pulse) drawPulse(ctx, overlay.pulse, layout, performance.now())
   if (heat?.cell) drawHeatCursor(ctx, heat.cell, layout)
 }

@@ -108,9 +108,9 @@ export function effectiveCamera(camera: Camera, world: CameraWorld, target: { x:
   return clampCamera({ ...camera, cx: target.x, cy: target.y }, world)
 }
 
-export type ViewKey = 'in' | 'out' | 'fit' | 'follow'
+export type ViewKey = 'in' | 'out' | 'fit' | 'follow' | 'highlight'
 
-/** The camera key a press is: + or = zoom in, - zoom out, 0 the whole map, F follow (on their own; Shift only for the + itself). The caller ignores presses while typing. */
+/** The camera key a press is: + or = zoom in, - zoom out, 0 the whole map, F follow, N the next highlight (on their own; Shift only for the + itself). The caller ignores presses while typing. */
 export function viewKeyAction(event: { key: string; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): ViewKey | null {
   if (event.altKey || event.ctrlKey || event.metaKey) return null
   if (event.key === '+') return 'in'
@@ -125,6 +125,9 @@ export function viewKeyAction(event: { key: string; altKey: boolean; ctrlKey: bo
     case 'f':
     case 'F':
       return 'follow'
+    case 'n':
+    case 'N':
+      return 'highlight'
     default:
       return null
   }

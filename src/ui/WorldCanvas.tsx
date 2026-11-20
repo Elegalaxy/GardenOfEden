@@ -28,7 +28,8 @@ import { toolInfo } from './tools.ts'
 import type { Tool } from './tools.ts'
 import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
-import { checkFollow, clickMap, setCamera, setHoverCell, useCamera, useWorldStore } from './store.ts'
+import { PULSE_MS } from './highlights.ts'
+import { checkFollow, clickMap, setCamera, setHoverCell, useCamera, usePulse, useWorldStore } from './store.ts'
 import { ViewControls } from './ViewControls.tsx'
 
 const BOT_REACH_CELLS = 1
@@ -81,6 +82,8 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
 
   const { world, alpha, tool, selection, heat, botColour } = snapshot
   const storedCamera = useCamera()
+  const pulse = usePulse()
+  const [, setPulseFrame] = useState(0)
   const target = storedCamera.follow ? followPosition(world, selection, alpha) : null
   const camera = effectiveCamera(storedCamera, world, target)
   const layout = size.width < 1 || size.height < 1 ? null : computeLayout(size, world, camera)
@@ -127,12 +130,24 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     const ctx = canvas.getContext('2d')
     if (ctx === null) return
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost }, heat === null ? null : { snapshot: heat, cell }, botColour, camera)
+    drawWorld(ctx, world, alpha, size, tuning, { selection, hover, ghost, pulse }, heat === null ? null : { snapshot: heat, cell }, botColour, camera)
     live.current = { size, world, camera }
     if (target !== null) lastCentre.current = { x: camera.cx, y: camera.cy }
     // Following stops (with a notice) when what it follows is gone.
     checkFollow(lastCentre.current)
   })
+
+  // A highlight's ring (F2) needs redraws while it lasts, even with the sim paused: one cheap frame loop that stops when it ends.
+  useEffect(() => {
+    if (pulse === null) return
+    let raf = 0
+    const step = (): void => {
+      setPulseFrame((n) => n + 1)
+      if (performance.now() - pulse.start < PULSE_MS) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [pulse])
 
   // Ctrl/Cmd + wheel zooms at the pointer. Registered by hand: React's onWheel is passive, so it could not stop the page zooming.
   useEffect(() => {

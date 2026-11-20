@@ -1,10 +1,11 @@
-// The camera controls (F1): zoom out, zoom in, Fit (the whole map) and Follow, floating over the top right corner of the map,
-// and the keys that do the same (+ or = in, - out, 0 fit, F follow; ignored while typing in a field). Fit keeps its place
+// The camera controls (F1): zoom out, zoom in, Fit (the whole map), Follow and (F2) Next highlight, floating over the top right corner of the map,
+// and the keys that do the same (+ or = in, - out, 0 fit, F follow, N next highlight; ignored while typing in a field). Fit keeps its place
 // but is hidden while the whole map is in view, so the row never changes size. The camera is a page setting (store.ts).
 
 import { useEffect } from 'react'
 import { MAX_ZOOM, followPosition, viewKeyAction } from './camera.ts'
-import { fitCamera, toggleFollow, useCamera, useWorldStore, zoomStep } from './store.ts'
+import { highlightsOf } from './highlights.ts'
+import { fitCamera, nextHighlight, toggleFollow, useCamera, useWorldStore, zoomStep } from './store.ts'
 import { isTypingTarget } from './typing.ts'
 
 export function ViewControls() {
@@ -12,6 +13,7 @@ export function ViewControls() {
   const { world, selection, alpha } = useWorldStore()
   const followable = followPosition(world, selection, alpha) !== null
   const zoomed = camera.zoom > 1
+  const hasHighlight = highlightsOf(world.log, world.commands).length > 0
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -22,6 +24,7 @@ export function ViewControls() {
       if (action === 'in') zoomStep(1)
       else if (action === 'out') zoomStep(-1)
       else if (action === 'fit') fitCamera()
+      else if (action === 'highlight') nextHighlight()
       else toggleFollow()
     }
     window.addEventListener('keydown', onKeyDown)
@@ -80,6 +83,23 @@ export function ViewControls() {
           <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" strokeWidth="2" />
           <circle cx="12" cy="12" r="2" fill="currentColor" />
           <path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="secondary view-button"
+        aria-label="Next highlight"
+        aria-keyshortcuts="N"
+        title={
+          hasHighlight
+            ? 'Next highlight (N): jump to the next older predator kill, meteor or plague death, predator birth or exit, or plague, meteor or blight of yours (newest first)'
+            : 'Next highlight (N): nothing yet. Deaths by predator, meteor or plague, predator births and exits, and your plague, meteor and blight count.'
+        }
+        disabled={!hasHighlight}
+        onClick={() => nextHighlight()}
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M12 2.5l2.6 6.4 6.9.5-5.3 4.4 1.7 6.7L12 16.7 6.1 20.5l1.7-6.7L2.5 9.4l6.9-.5z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </button>
     </div>

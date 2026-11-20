@@ -50,12 +50,14 @@ import type { BatchResult, PlaceCount } from './bulk.ts'
 import { DEFAULT_CAMERA, clampCamera, followPosition, stepZoom } from './camera.ts'
 import type { Camera } from './camera.ts'
 import { startedMessage } from './eventInfo.ts'
-import { cellCenter, nodeAt, pickAt } from './geometry.ts'
+import { cellCenter, findBot, findNode, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
 import { DEFAULT_BOT_COLOUR, nextBotColourMode } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
 import { nextHeatLayer } from './heat.ts'
 import type { HeatLayer, HeatRange, HeatSnapshot } from './heat.ts'
+import { highlightKey, highlightText, highlightsOf, nextHighlightIndex } from './highlights.ts'
+import type { Pulse } from './highlights.ts'
 import { formatPoint } from './labels.ts'
 import { predatorCapNotice, predatorCounts } from './predatorInfo.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
@@ -571,6 +573,82 @@ export function checkFollow(lastCentre?: { x: number; y: number }): boolean {
   say(what === null, what === null ? 'Stopped following.' : `${what} is gone; stopped following.`)
   publish()
   return true
+}
+
+const pulseListeners = new Set<Listener>()
+let pulse: Pulse | null = null
+
+/** The ring being drawn at the last highlight jump (F2), or null. Page time only; the map draws it while it lasts. */
+export function getPulse(): Pulse | null {
+  return pulse
+}
+
+function setPulse(next: Pulse | null): void {
+  pulse = next
+  for (const listener of pulseListeners) listener()
+}
+
+export function usePulse(): Pulse | null {
+  return useSyncExternalStore(
+    (listener) => {
+      pulseListeners.add(listener)
+      return () => {
+        pulseListeners.delete(listener)
+      }
+    },
+    () => pulse,
+    () => pulse,
+  )
+}
+
+// Highlights (F2): the cycle starts at the newest highlight and goes one older per press; a new highlight (or a new world)
+// starts it over.
+let highlightIndex: number | null = null
+let highlightNewest = ''
+let highlightRun = -1
+
+/** How many highlights the log holds now (for the button's disabled state). */
+export function highlightCount(): number {
+  return highlightsOf(view.log, view.commands).length
+}
+
+/**
+ * The N key and the Next highlight button: jump to the next older highlight (the newest on the first press). The camera goes to at
+ * least zoom 2, centred on the spot, not following; the bot or node is selected when it is still there; a ring pulses at the spot.
+ * Returns false when there is no highlight.
+ */
+export function nextHighlight(now: number = performance.now()): boolean {
+  const list = highlightsOf(view.log, view.commands)
+  if (list.length === 0) {
+    say(false, 'No highlights yet: predator kills, meteors, plague and blight show up here.')
+    publish()
+    return false
+  }
+  const newest = highlightKey(list[0]!)
+  if (highlightRun !== view.runId || highlightNewest !== newest) highlightIndex = null
+  highlightRun = view.runId
+  highlightNewest = newest
+  highlightIndex = nextHighlightIndex(highlightIndex, list.length)
+  const event = list[highlightIndex]!
+  const target: Selection | null =
+    event.botId !== undefined ? { kind: 'bot', id: event.botId } : event.nodeId !== undefined ? { kind: 'node', id: event.nodeId } : null
+  const alive = target !== null && (target.kind === 'bot' ? findBot(view, target.id) !== undefined : findNode(view, target.id) !== undefined)
+  setCamera(clampCamera({ zoom: Math.max(2, camera.zoom), cx: event.x, cy: event.y, follow: false }, view))
+  if (alive) select(target)
+  say(true, `Highlight ${highlightIndex + 1} of ${list.length}: ${highlightText(event)}.`)
+  setPulse({ x: event.x, y: event.y, start: now })
+  publish()
+  return true
+}
+
+/**
+ * A click on a log row while zoomed in: centres the view on the entry's spot (the thing's own place when it is still there).
+ * Following, if on and the new selection can be followed, carries on and does the centring itself.
+ */
+export function centreOn(x: number, y: number): void {
+  if (camera.zoom <= 1) return
+  if (camera.follow && canFollow()) return
+  setCamera(clampCamera({ ...camera, cx: x, cy: y, follow: false }, view))
 }
 
 /** Chooses how the map colours the bots (a page setting only). A change of mode or trait publishes; the same value does nothing. */

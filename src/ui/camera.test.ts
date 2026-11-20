@@ -155,14 +155,18 @@ describe('followPosition and effectiveCamera', () => {
 describe('viewKeyAction', () => {
   const key = (k: string, extra: Partial<{ shiftKey: boolean; ctrlKey: boolean }> = {}) => ({ key: k, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, ...extra })
 
-  it('maps + = - 0 and F, and leaves the tool, event and other keys alone', () => {
+  it('maps + = - 0, F and N, and leaves the tool, event and other keys alone', () => {
     expect(viewKeyAction(key('+', { shiftKey: true }))).toBe('in')
     expect(viewKeyAction(key('='))).toBe('in')
     expect(viewKeyAction(key('-'))).toBe('out')
     expect(viewKeyAction(key('0'))).toBe('fit')
     expect(viewKeyAction(key('f'))).toBe('follow')
     expect(viewKeyAction(key('F'))).toBe('follow')
-    for (const other of ['1', '7', 'Escape', 'd', 'b', 'p', 'm', 'l', 'h', 'c', 'n']) expect(viewKeyAction(key(other))).toBeNull()
+    expect(viewKeyAction(key('n'))).toBe('highlight')
+    expect(viewKeyAction(key('N'))).toBe('highlight')
+    expect(viewKeyAction(key('n', { ctrlKey: true }))).toBeNull()
+    expect(viewKeyAction(key('n', { shiftKey: true }))).toBeNull()
+    for (const other of ['1', '7', 'Escape', 'd', 'b', 'p', 'm', 'l', 'h', 'c']) expect(viewKeyAction(key(other))).toBeNull()
     expect(viewKeyAction(key('-', { ctrlKey: true }))).toBeNull()
     expect(viewKeyAction(key('f', { shiftKey: true }))).toBeNull()
   })

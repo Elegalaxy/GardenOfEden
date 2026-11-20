@@ -1555,7 +1555,7 @@ button.log-button[aria-pressed='true'] {
   position: absolute;
   top: 4px;
   left: 4px;
-  right: 200px; /* clear of the view controls (a 4 x 44 px row) */
+  right: 244px; /* clear of the view controls (a 5 x 44 px row) */
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -1625,7 +1625,7 @@ button.log-button[aria-pressed='true'] {
   top: 4px;
   right: 4px;
   display: grid;
-  grid-template-columns: repeat(4, 44px);
+  grid-template-columns: repeat(5, 44px);
   gap: 4px;
 }
 
@@ -1647,11 +1647,11 @@ button.log-button[aria-pressed='true'] {
 
 @container (max-width: 559px) {
   .view-controls {
-    grid-template-columns: repeat(2, 44px);
+    grid-template-columns: repeat(3, 44px);
   }
 
   .map-banners {
-    right: 100px;
+    right: 148px;
   }
 }
 
