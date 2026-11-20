@@ -213,11 +213,19 @@ export type Bot = {
   intent: Intent
   /** Radians. */
   heading: number
+  /** Disease (D1): present only while the bot is exposed, sick or immune (deleted when it clears). Last key. */
+  illness?: Illness
 }
+
+/**
+ * Disease state of one bot (D1, disease.ts). `exposed`: `dose` counts ticks in contact with a sick bot (`until` unused, 0);
+ * `sick`: takes `sickDrain` health damage a tick until tick `until`; `immune`: cannot be infected until tick `until`.
+ */
+export type Illness = { stage: 'exposed' | 'sick' | 'immune'; dose: number; until: number }
 
 export type Sex = 'female' | 'male'
 
-export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age' | 'poison'
+export type DeathCause = 'starve' | 'thirst' | 'danger' | 'plague' | 'meteor' | 'predator' | 'age' | 'poison' | 'disease'
 
 /** `event` is the sim announcing that a world event ended (its start is the player's `command`). */
 export type SimEventType = 'birth' | 'death' | 'command' | 'event' | 'predator'
@@ -227,8 +235,8 @@ export type PredatorEventKind = 'born' | 'arrived' | 'starved' | 'aged' | 'left'
 
 export type CommandType = 'placeNode' | 'removeNode' | 'placeBot' | 'triggerEvent'
 
-/** World events the player can trigger (M8). Drought, bounty, plague and blight last a while; a meteor is instant. */
-export type EventKind = 'drought' | 'bounty' | 'plague' | 'meteor' | 'blight'
+/** World events the player can trigger (M8). Drought, bounty, plague and blight last a while; a meteor and an outbreak (D1) are instant. */
+export type EventKind = 'drought' | 'bounty' | 'plague' | 'meteor' | 'blight' | 'outbreak'
 
 /** The ones that last a while and sit in `World.events`. */
 export type TimedEventKind = 'drought' | 'bounty' | 'plague' | 'blight'
@@ -276,8 +284,8 @@ export type Sample = {
   predators?: number
 }
 
-/** Deaths by cause. `poison` (T1) exists only in a world made with poison on (last key); read it as `?? 0`. */
-export type DeathsByCause = Record<Exclude<DeathCause, 'poison'>, number> & { poison?: number }
+/** Deaths by cause. `poison` (T1) exists only in a world made with poison on (last key); `disease` (D1) appears at the first disease death. Read both as `?? 0`. */
+export type DeathsByCause = Record<Exclude<DeathCause, 'poison' | 'disease'>, number> & { poison?: number; disease?: number }
 
 /** Food units eaten per source. `toxic` (T1) is the part of `resource` that came from toxic nodes; present only in a world made with poison on (last key). */
 export type Eaten = { resource: number; ruin: number; toxic?: number }
@@ -355,6 +363,8 @@ export type World = {
   lineagePruned: number
   /** Predator ecology (E1): dens and counters. Absent unless `predator.ecology.enabled` was on at creation. */
   ecology?: PredatorEcology
+  /** Disease (D1): counters, created at the first outbreak (never before, so a run with no outbreak hashes as before). Last key. */
+  disease?: { infected: number; recovered: number }
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -808,6 +818,21 @@ export type Tuning = {
     predatorSpeedMult: number
     /** Most rough nodes the player may have in the world (a whole number from 0; checked on placing, preset ones count). */
     maxCount: number
+  }
+  /**
+   * Disease (D1, off). The player starts an `outbreak` event: every bot within `outbreakRadius` falls sick at once. A bot within
+   * `contactRadius` of a sick bot for `catchAfter` ticks in a row (the count falls by 1 a tick without contact) falls sick too. A sick
+   * bot takes `sickDrain` health damage a tick (divided by hardiness) for `sickTicks` ticks, then is immune for `immuneTicks`.
+   * No random draws. See disease.ts.
+   */
+  disease: {
+    enabled: boolean
+    outbreakRadius: number
+    contactRadius: number
+    catchAfter: number
+    sickTicks: number
+    sickDrain: number
+    immuneTicks: number
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

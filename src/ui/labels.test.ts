@@ -56,6 +56,7 @@ describe('labels', () => {
       predator: 'Killed by a predator',
       age: 'Died of old age',
       poison: 'Poisoned by toxic food',
+      disease: 'Died of disease',
     }
     for (const cause of Object.keys(expected) as DeathCause[]) expect(causeSentence(cause)).toBe(expected[cause])
     expect(causeSentence(undefined)).toBe('Died of hunger')

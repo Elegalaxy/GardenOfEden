@@ -25,6 +25,9 @@
 //            node (`craterRadius`, `craterDamage`) that expires `craterTicks` later, so bots
 //            remember it and steer around it through the ordinary danger paths.
 //
+//   outbreak area, instant (D1, needs `tuning.disease.enabled`). Every living bot within `disease.outbreakRadius` of the clicked point falls
+//            sick at once (disease.ts); from then on the disease spreads by contact. It has no duration and no entry in `World.events`.
+//
 // Rules: a drought or bounty cannot start while one of the same kind is in progress; at most
 // `events.maxActive` timed events at once and `events.maxCraters` craters. A refused command changes
 // nothing and is not recorded. There are no random draws and no `rng` use here.
@@ -34,6 +37,7 @@
 // started after tick T with duration D affects ticks T+1 to T+D and is removed at the end of tick T+D.
 
 import { hypot } from './exactMath.ts'
+import { startOutbreak } from './disease.ts'
 import { recordDeath } from './lineage.ts'
 import { harmOn, logStruck, releaseDen } from './predators.ts'
 import { leaveRuin } from './ruins.ts'
@@ -45,7 +49,7 @@ export type CheckableWorld = Pick<World, 'width' | 'height' | 'nodes' | 'events'
 
 export type TriggerCommand = { type: 'triggerEvent'; event: EventKind; x?: number; y?: number }
 
-export const EVENT_KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight']
+export const EVENT_KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight', 'outbreak']
 
 /** Ticks a timed event lasts. */
 export function eventDuration(tuning: Tuning, kind: TimedEventKind): number {
@@ -74,12 +78,17 @@ function insideMap(world: Pick<World, 'width' | 'height'>, x: number | undefined
   )
 }
 
-const NAME: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight' }
+const NAME: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight', outbreak: 'Outbreak' }
 
 /** null when the event could start now, otherwise a short reason a player can read. */
 export function checkEvent(world: CheckableWorld, rules: Rules, cmd: TriggerCommand): string | null {
   const { events } = rules.tuning
   if (!EVENT_KINDS.includes(cmd.event)) return 'That event does not exist.'
+  if (cmd.event === 'outbreak') {
+    if (!rules.tuning.disease.enabled) return 'Disease is switched off.'
+    if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
+    return null
+  }
   if (cmd.event === 'meteor') {
     if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
     if (craterCount(world) >= events.maxCraters) {
@@ -107,6 +116,11 @@ export function startEvent(world: World, rules: Rules, cmd: TriggerCommand): num
   const x = cmd.x ?? 0
   const y = cmd.y ?? 0
   if (cmd.event === 'meteor') return strike(world, rules, x, y)
+  if (cmd.event === 'outbreak') {
+    startOutbreak(world, x, y, tuning)
+    pushEvent(world, tuning, { tick: world.tick, type: 'command', command: 'triggerEvent', eventKind: 'outbreak', x, y })
+    return 0
+  }
   const spec = tuning.events[cmd.event]
   const area = cmd.event === 'plague' || cmd.event === 'blight'
   const event: ActiveEvent = {

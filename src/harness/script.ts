@@ -1,6 +1,6 @@
 // Scripted player commands for headless runs: `--event drought@3000`,
 // `--event plague@6000:48,32`, `--event meteor@5000:30,20` (repeatable).
-// The text is `kind@tick`, plus `:x,y` for the area events (plague, meteor). A
+// The text is `kind@tick`, plus `:x,y` for the area events (plague, meteor, blight, outbreak). A
 // script applies each command when the world reaches its tick (after that
 // tick's step, before the next; tick 0 is before the first step), exactly like
 // a command the player issues in the UI, and a command the sim refuses is
@@ -11,11 +11,11 @@ import type { Command, EventKind, Rules, World } from '../sim/types.ts'
 
 export type ScriptedCommand = { tick: number; cmd: Command }
 
-const KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight']
-const AREA: readonly EventKind[] = ['plague', 'meteor', 'blight']
+const KINDS: readonly EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight', 'outbreak']
+const AREA: readonly EventKind[] = ['plague', 'meteor', 'blight', 'outbreak']
 const TICK_MAX = 1_000_000
 
-export const EVENT_USAGE = '--event <drought|bounty>@<tick> or --event <plague|meteor|blight>@<tick>:<x>,<y> (repeatable)'
+export const EVENT_USAGE = '--event <drought|bounty>@<tick> or --event <plague|meteor|blight|outbreak>@<tick>:<x>,<y> (repeatable)'
 
 /** Parses one `--event` value. Throws an Error with a readable message on bad input. */
 export function parseEventSpec(text: string | undefined): ScriptedCommand {

@@ -133,7 +133,7 @@ export type EventBand = {
 
 /**
  * One band per timed event command, from its tick to `tick + duration` (cut off at `nowTick` while it runs).
- * Meteors are instant and have no band. Bands that overlap in time get different lanes.
+ * Meteors and outbreaks are instant and have no band. Bands that overlap in time get different lanes.
  */
 export function eventBands(
   commands: readonly { tick: number; cmd: Command }[],
@@ -143,7 +143,7 @@ export function eventBands(
   const bands: EventBand[] = []
   const laneEnds: number[] = []
   for (const { tick, cmd } of commands) {
-    if (cmd.type !== 'triggerEvent' || cmd.event === 'meteor') continue
+    if (cmd.type !== 'triggerEvent' || cmd.event === 'meteor' || cmd.event === 'outbreak') continue
     const end = tick + durations[cmd.event]
     let lane = laneEnds.findIndex((laneEnd) => laneEnd <= tick)
     if (lane < 0) lane = laneEnds.length

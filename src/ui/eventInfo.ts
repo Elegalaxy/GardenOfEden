@@ -66,6 +66,8 @@ export function effectSummary(kind: EventKind, tuning: Tuning): string {
       return `food nodes lose ${Math.round(e.blight.drain * 100) / 100} / tick and stop regrowing within ${fixed1(e.blight.radius)} cells`
     case 'meteor':
       return `up to −${numberFormat.format(e.meteor.damage)} health within ${fixed1(e.meteor.radius)} cells`
+    case 'outbreak':
+      return `bots within ${fixed1(tuning.disease.outbreakRadius)} cells fall sick and pass it on by contact`
   }
 }
 
@@ -94,6 +96,11 @@ export function eventRows(kind: EventKind, tuning: Tuning): { label: string; val
         { label: 'Lasts', value: `instant, crater ${formatTicks(e.meteor.craterTicks)}` },
         { label: 'Effect', value: effectSummary(kind, tuning) },
       ]
+    case 'outbreak':
+      return [
+        { label: 'Lasts', value: `instant, sick ${formatTicks(tuning.disease.sickTicks)}` },
+        { label: 'Effect', value: effectSummary(kind, tuning) },
+      ]
   }
 }
 
@@ -115,5 +122,7 @@ export function startedMessage(cmd: Extract<Command, { type: 'triggerEvent' }>, 
       return `Blight started at ${where}: ${effectSummary('blight', tuning)} for ${formatTicks(tuning.events.blight.duration)}.`
     case 'meteor':
       return `Meteor struck at ${where}: ${killed} bot${killed === 1 ? '' : 's'} killed. A crater burns for ${formatTicks(tuning.events.meteor.craterTicks)}.`
+    case 'outbreak':
+      return `Outbreak started at ${where}: ${effectSummary('outbreak', tuning)}.`
   }
 }

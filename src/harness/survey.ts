@@ -99,6 +99,8 @@ export type SeedSurvey = {
   predEventDeaths: number | null
   /** Rough ground (R1): percentage of bot-ticks and of predator-ticks after the warmup spent on rough ground; null with terrain off. */
   roughShare: { bots: number; predators: number } | null
+  /** Disease (D1): bots sick at the end, bots infected over the run, bots recovered and disease deaths; null with disease off. */
+  disease: { sick: number; infected: number; recovered: number; deaths: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -164,6 +166,11 @@ export function withoutPrey(rules: Rules): Rules {
 /** The same rules with toxic food off: `--no-poison`. */
 export function withoutPoison(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, poison: { ...rules.tuning.poison, enabled: false } } }
+}
+
+/** The same rules with disease off: `--no-disease` (D1). */
+export function withoutDisease(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: false } } }
 }
 
 /** The same rules with rough ground off: `--no-terrain` (R1). */
@@ -393,13 +400,21 @@ export function surveySeed(
           },
     predEventDeaths: harmOn(world, rules.tuning) ? (world.ecology?.stats.eventDeaths ?? 0) : null,
     roughShare: terrainTracked ? { bots: botTicks === 0 ? 0 : (100 * botTicksRough) / botTicks, predators: predTicks === 0 ? 0 : (100 * predTicksRough) / predTicks } : null,
+    disease: rules.tuning.disease.enabled
+      ? {
+          sick: world.bots.filter((bot) => bot.illness?.stage === 'sick').length,
+          infected: world.disease?.infected ?? 0,
+          recovered: world.disease?.recovered ?? 0,
+          deaths: world.deathsByCause.disease ?? 0,
+        }
+      : null,
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -457,6 +472,10 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.predEventDeaths === null ? '-' : r.predEventDeaths,
       r.roughShare === null ? '-' : r.roughShare.bots.toFixed(1),
       r.roughShare === null ? '-' : r.roughShare.predators.toFixed(1),
+      r.disease === null ? '-' : r.disease.sick,
+      r.disease === null ? '-' : r.disease.infected,
+      r.disease === null ? '-' : r.disease.recovered,
+      r.disease === null ? '-' : r.disease.deaths,
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

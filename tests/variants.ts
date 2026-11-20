@@ -179,3 +179,13 @@ export function stage1(rules: Rules): Rules {
     },
   }
 }
+
+/** Disease (D1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withDisease(rules: Rules, over: Partial<Rules['tuning']['disease']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: true, ...over } } }
+}
+
+/** The same rules with disease forced off (the shipped state). */
+export function noDisease(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: false } } }
+}

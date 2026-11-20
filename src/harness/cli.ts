@@ -17,6 +17,7 @@
 // `--predator-traits` (H1, either form) is shorthand for `--set predator.traits.enabled=true`; the last survey columns are then pSense pSpeed pStam pGen.
 // `--no-mate-choice` switches mate choice off (G1; it is off in Eden, so it only matters after a `--set mateChoice.enabled=true` in a script; flags apply before `--set`).
 // `--no-poison` (either form) switches toxic food off (T1; it is off in Eden, flags apply before `--set`, so a later `--set poison.enabled=true` wins).
+// `--no-disease` (either form) switches disease off (D1; it is off in Eden, so it only matters after `--set disease.enabled=true`; flags apply before `--set`); the last survey columns are then `sick inf rec dis` (sick at the end, infected, recovered, disease deaths).
 // `--no-terrain` (either form) switches rough ground off (R1; it is off in Eden, flags apply before `--set`, so a later `--set terrain.enabled=true` wins); the last survey columns are then `rgh%` and `pRgh%`.
 // `--no-predator-harm` (either form) stops meteors and plague hurting predators (EP1; off in Eden, so it only matters after `--set events.predatorHarm.enabled=true`); the last survey column is then `pEvt`.
 // `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
@@ -27,13 +28,14 @@
 // `--set seasons.amplitude=0.4` (repeatable, either form) replaces one existing number or boolean of the tuning for this run only
 // (an unknown path is an error), so a sweep needs no edit to tuning.ts; applied after the other switches, in order.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
-// form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`).
+// form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`, `outbreak@4000:48,32`).
 // Same arguments always print the same output.
 
 import { findPreset, presets, rules } from '../content/index.ts'
 import { checkEcology, checkPredatorHarm, checkPrey } from '../sim/predators.ts'
 import { checkPerception } from '../sim/perception.ts'
 import { checkMateChoice } from '../sim/kin.ts'
+import { checkDisease } from '../sim/disease.ts'
 import { checkPoison } from '../sim/poison.ts'
 import { checkTerrain } from '../sim/terrain.ts'
 import { checkSeasons } from '../sim/seasons.ts'
@@ -46,7 +48,7 @@ import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
 import { parseOverride, withOverrides } from './overrides.ts'
 import type { Override } from './overrides.ts'
-import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutEcology, withoutFamily, withoutMateChoice, withoutPoison, withoutPredatorHarm, withoutPrey, withoutSeasons, withoutSex, withoutTerrain } from './survey.ts'
+import { formatSurvey, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutDisease, withoutEcology, withoutFamily, withoutMateChoice, withoutPoison, withoutPredatorHarm, withoutPrey, withoutSeasons, withoutSex, withoutTerrain } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
@@ -55,6 +57,7 @@ const USAGE = [
   '       and --asexual (no two sexes: a bot breeds alone), --no-seasons (no seasonal regrowth), --no-cone (all-round sensing)',
   '       and --static-predators (predator ecology off: fixed predators), --no-prey (P1 prey rule off), --predator-traits (H1 heritable predator traits on)',
   '       and --no-poison (T1 toxic food off; turn it on with --set poison.enabled=true)',
+  '       and --no-disease (D1 disease off; turn it on with --set disease.enabled=true, then start it with --event outbreak@<tick>:<x>,<y>)',
   '       and --no-predator-harm (EP1: events do not hurt predators; turn it on with --set events.predatorHarm.enabled=true)',
   '       and --no-terrain (R1 rough ground off; turn it on with --set terrain.enabled=true)',
   '       and --set path.to.setting=value (repeatable: replace one existing tuning number or boolean for this run)',
@@ -83,6 +86,7 @@ type Options = {
   noTerrain: boolean
   noPredatorHarm: boolean
   noMateChoice: boolean
+  noDisease: boolean
   overrides: Override[]
   script: ScriptedCommand[]
 }
@@ -112,6 +116,7 @@ function parseArgs(argv: string[]): Options {
   let noTerrain = false
   let noPredatorHarm = false
   let noMateChoice = false
+  let noDisease = false
   const overrides: Override[] = []
   const script: ScriptedCommand[] = []
   for (let i = 0; i < argv.length; i += 2) {
@@ -140,6 +145,9 @@ function parseArgs(argv: string[]): Options {
       i -= 1
     } else if (flag === '--no-predator-harm') {
       noPredatorHarm = true
+      i -= 1
+    } else if (flag === '--no-disease') {
+      noDisease = true
       i -= 1
     } else if (flag === '--no-poison') {
       noPoison = true
@@ -183,7 +191,7 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, overrides, script }
+  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, overrides, script }
 }
 
 function row(world: World): string {
@@ -247,9 +255,10 @@ function main(argv: string[]): void {
   const terrainRules = options.noTerrain ? withoutTerrain(poisonRules) : poisonRules
   const harmRules = options.noPredatorHarm ? withoutPredatorHarm(terrainRules) : terrainRules
   const mateRules = options.noMateChoice ? withoutMateChoice(harmRules) : harmRules
+  const diseaseRules = options.noDisease ? withoutDisease(mateRules) : mateRules
   let active: Rules
   try {
-    active = withOverrides(mateRules, options.overrides)
+    active = withOverrides(diseaseRules, options.overrides)
     checkSeasons(active.tuning.seasons)
     if (active.tuning.predator.ecology.enabled) checkEcology(active.tuning.predator.ecology)
     if (active.tuning.predator.ecology.enabled && active.tuning.predator.prey.enabled) checkPrey(active.tuning.predator.prey, active.tuning.predator.maxCount)
@@ -257,13 +266,14 @@ function main(argv: string[]): void {
     if (active.tuning.poison.enabled) checkPoison(active.tuning.poison)
     checkTerrain(active.tuning.terrain)
     checkMateChoice(active.tuning.mateChoice)
+    checkDisease(active.tuning.disease)
     checkPredatorHarm(active.tuning.events.predatorHarm)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
     return
   }
-  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
+  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.noDisease ? ' no-disease' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine(active))

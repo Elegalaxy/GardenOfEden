@@ -29,8 +29,11 @@
 // a step that starts inside one; no draws, and nothing changes with terrain off.
 // Toxic food (T1, poison.ts): `act` reports the poison dose of the bite a bot took (`intake`, reset before each bot), which `metabolise` and
 // `deathCause` then count with the other health damage; a poison death adds to `deathsByCause.poison`. Nothing changes with poison off.
+// Disease (D1, disease.ts): a sick bot's `sickDrain` is counted the same way (cause 'disease'); `spreadDisease` runs last, after the family
+// sharing, and returns at once until the player has started an outbreak. No draws.
 
 import { decide } from './brain.ts'
+import { sickDamage, spreadDisease } from './disease.ts'
 import { buildMateIndex } from './mating.ts'
 import { shareFamilyKnowledge } from './family.ts'
 import { pruneLineage, recordDeath } from './lineage.ts'
@@ -76,8 +79,10 @@ export function step(world: World, rules: Rules): void {
     intake.poison = 0
     const moved = act(world, bot, rules, nodesById, intake, rough)
     const exposure = exposureAt(world, bot.x, bot.y, tuning)
-    metabolise(bot, moved, exposure, tuning, intake.poison)
-    const cause = deathCause(bot, exposure, intake.poison)
+    // Disease (D1): a sick bot's drain is one more health damage, counted like the poison dose (0 for everyone with no illness key).
+    const sickness = bot.illness === undefined ? 0 : sickDamage(bot, tuning)
+    metabolise(bot, moved, exposure, tuning, intake.poison, sickness)
+    const cause = deathCause(bot, exposure, intake.poison, sickness)
     if (cause !== null) {
       dead.add(bot.id)
       fallen.push(bot)
@@ -108,6 +113,7 @@ export function step(world: World, rules: Rules): void {
   expireEvents(world, tuning)
   predatorLife(world, rules)
   shareFamilyKnowledge(world, tuning)
+  spreadDisease(world, tuning)
 
   if (world.tick % tuning.stats.sampleEvery === 0) {
     world.samples.push(takeSample(world))

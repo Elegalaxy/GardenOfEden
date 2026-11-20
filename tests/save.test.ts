@@ -55,7 +55,9 @@ describe('save format and content', () => {
   it('lists the same placeable node kinds and event kinds as the content', () => {
     // Ruins are made by the sim and danger zones were retired in M21b (craters keep the internal kind), so neither is placeable; rough ground (R1) is not placeable by saves until the R3 tool.
     expect([...PLACEABLE_KINDS].sort()).toEqual(Object.keys(nodeDefs).filter((kind) => kind !== 'ruin' && kind !== 'danger' && kind !== 'rough').sort())
-    expect([...EVENT_KINDS].sort()).toEqual(Object.keys(tuning.events).filter((key) => !['maxActive', 'maxCraters', 'predatorHarm'].includes(key)).sort())
+    // The outbreak (D1) is an instant event with its numbers in `tuning.disease`, so it is on the save side only.
+    expect(EVENT_KINDS).toContain('outbreak')
+    expect([...EVENT_KINDS].filter((kind) => kind !== 'outbreak').sort()).toEqual(Object.keys(tuning.events).filter((key) => !['maxActive', 'maxCraters', 'predatorHarm'].includes(key)).sort())
   })
 })
 

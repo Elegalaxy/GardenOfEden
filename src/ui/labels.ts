@@ -34,6 +34,7 @@ export const CAUSE_LABEL: Record<DeathCause, string> = {
   predator: 'Predator',
   age: 'Old age',
   poison: 'Poison',
+  disease: 'Disease',
 }
 
 /** How a death is said in a sentence, capitalised: "Died of hunger", "Killed by a meteor". One scheme everywhere. */
@@ -46,6 +47,7 @@ export const CAUSE_SENTENCE: Record<DeathCause, string> = {
   predator: 'Killed by a predator',
   age: 'Died of old age',
   poison: 'Poisoned by toxic food',
+  disease: 'Died of disease',
 }
 
 /** The inspector's and the event log's wording for a death. A missing cause reads as hunger. */
@@ -53,13 +55,13 @@ export function causeSentence(cause: DeathCause | undefined): string {
   return CAUSE_SENTENCE[cause ?? 'starve']
 }
 
-export const EVENT_LABEL: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight' }
+export const EVENT_LABEL: Record<EventKind, string> = { drought: 'Drought', bounty: 'Bounty', plague: 'Plague', meteor: 'Meteor', blight: 'Blight', outbreak: 'Outbreak' }
 
 /**
  * One letter per world event for chart markers, banners and badges. They differ from the node and
  * command letters (R D S U W B X): H for the dry spell (Heat), F for the feast (Fruitful), P, M, L for the blight.
  */
-export const EVENT_LETTER: Record<EventKind, string> = { drought: 'H', bounty: 'F', plague: 'P', meteor: 'M', blight: 'L' }
+export const EVENT_LETTER: Record<EventKind, string> = { drought: 'H', bounty: 'F', plague: 'P', meteor: 'M', blight: 'L', outbreak: 'I' }
 
 export const INTENT_LABEL: Record<IntentKind, string> = {
   wander: 'Wandering',

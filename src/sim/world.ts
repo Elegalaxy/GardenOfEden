@@ -10,6 +10,7 @@ import { addRecord } from './lineage.ts'
 import { checkPerception } from './perception.ts'
 import { addDen, checkEcology, checkPredatorHarm, checkPrey, startLife } from './predators.ts'
 import { checkMateChoice } from './kin.ts'
+import { checkDisease } from './disease.ts'
 import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
@@ -135,7 +136,7 @@ export function pushEvent(world: World, tuning: Tuning, event: SimEvent): void {
 
 export function totalDeaths(world: Pick<World, 'deathsByCause'>): number {
   const d = world.deathsByCause
-  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age + (d.poison ?? 0)
+  return d.starve + d.thirst + d.danger + d.plague + d.meteor + d.predator + d.age + (d.poison ?? 0) + (d.disease ?? 0)
 }
 
 /** One stats row for the world as it stands now. */
@@ -168,6 +169,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   checkPredatorHarm(rules.tuning.events.predatorHarm)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
   checkPoison(rules.tuning.poison)
+  checkDisease(rules.tuning.disease)
   checkTerrain(rules.tuning.terrain)
   checkMateChoice(rules.tuning.mateChoice)
 
