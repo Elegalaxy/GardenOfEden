@@ -733,6 +733,14 @@ h4 {
   background: var(--predator);
 }
 
+.cause-poison {
+  background: var(--bounty);
+}
+
+.cause-disease {
+  background: var(--disease);
+}
+
 .death-causes .empty {
   margin-top: 6px;
   font-size: 0.85rem;
@@ -1403,7 +1411,7 @@ button.log-button[aria-pressed='true'] {
 /* World events (M8): the Events panel, its active list and the map banners. */
 .event-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr)); /* five across only where the column is wide enough, see below */
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* three across only where the column is wide enough, see below */
   gap: 12px;
   margin: 0;
   padding: 0;
@@ -1484,6 +1492,21 @@ button.log-button[aria-pressed='true'] {
 .key-meteor {
   border-color: var(--meteor);
   border-radius: 4px;
+}
+
+.key-outbreak,
+.key-disease {
+  border-color: var(--disease);
+  border-style: dashed;
+}
+
+.outbreak-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2rem; /* reserved: the readout appearing or going moves nothing */
+  margin: 8px 0 0;
+  font-size: 0.9rem;
 }
 
 .active-wrap {
@@ -1673,7 +1696,7 @@ button.log-button[aria-pressed='true'] {
 
 @media (min-width: 801px) and (max-width: 900px), (min-width: 1200px) {
   .event-cards {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 

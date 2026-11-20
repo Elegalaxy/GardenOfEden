@@ -9,13 +9,13 @@
 //   f64, F64_STRIDE = 18 per bot: x, y, px, py, energy, health, thirst, heading, then the four traits
 //        in `TRAIT_NAMES` order (senseRadius, caution, reproThreshold, metabolism), then the inbreeding score, then the bloodline hue (M20, degrees), then the four M22 traits (sprint, longevity, hardiness, wariness; columns 14-17). Float64 everywhere: positions feed picking and interpolation, and
 //        keeping every float exact means the page computes the same means and samples as the World.
-//   i32, I32_STRIDE = 12 per bot: id, age, cooldown, generation, parentId (the mother; -1 = none), intent kind
+//   i32, I32_STRIDE = 13 per bot: id, age, cooldown, generation, parentId (the mother; -1 = none), intent kind
 //        (index into `INTENT_KINDS`), intent target id (-1 = none), memoryCount, learnedCount,
-//        fatherId (-1 = none), sex (index into `SEX_CODES`), lifespan.
+//        fatherId (-1 = none), sex (index into `SEX_CODES`), lifespan, illness (D3: 0 none, 1 exposed, 2 sick, 3 immune).
 //        These are whole numbers (ids and ticks), so Int32 is exact up to 2,147,483,647.
 
 import type { Bot, IntentKind, Sex } from '../sim/types.ts'
-import type { PackedBots, ViewBot } from './protocol.ts'
+import type { IllnessStage, PackedBots, ViewBot } from './protocol.ts'
 
 /** The code of each intent kind in the packed data is its index here. */
 export const INTENT_KINDS: readonly IntentKind[] = ['wander', 'seekFood', 'seekWater', 'flee', 'rest', 'reproduce', 'seekMate']
@@ -23,8 +23,11 @@ export const INTENT_KINDS: readonly IntentKind[] = ['wander', 'seekFood', 'seekW
 /** The code of each sex in the packed data is its index here. */
 export const SEX_CODES: readonly Sex[] = ['female', 'male']
 
+/** The code of each illness stage in the packed data is its index + 1 (0 is healthy). */
+export const ILLNESS_STAGES: readonly IllnessStage[] = ['exposed', 'sick', 'immune']
+
 export const F64_STRIDE = 18
-export const I32_STRIDE = 12
+export const I32_STRIDE = 13
 
 /** Packs bots (any list of bots with a memory) into typed arrays. */
 export function packBots(bots: readonly Bot[]): PackedBots {
@@ -67,6 +70,7 @@ export function packBots(bots: readonly Bot[]): PackedBots {
     i32[n + 9] = bot.fatherId ?? -1
     i32[n + 10] = SEX_CODES.indexOf(bot.sex)
     i32[n + 11] = bot.lifespan
+    i32[n + 12] = bot.illness === undefined ? 0 : ILLNESS_STAGES.indexOf(bot.illness.stage) + 1
   }
   return { count, f64, i32 }
 }
@@ -81,6 +85,7 @@ export function unpackBots(packed: PackedBots): ViewBot[] {
     const parent = i32[n + 4]!
     const target = i32[n + 6]!
     const father = i32[n + 9]!
+    const illness = i32[n + 12]!
     out[i] = {
       id: i32[n]!,
       x: f64[f]!,
@@ -113,6 +118,7 @@ export function unpackBots(packed: PackedBots): ViewBot[] {
       heading: f64[f + 7]!,
       memoryCount: i32[n + 7]!,
       learnedCount: i32[n + 8]!,
+      ...(illness === 0 ? {} : { illnessStage: ILLNESS_STAGES[illness - 1]! }),
     }
   }
   return out

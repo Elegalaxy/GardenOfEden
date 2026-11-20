@@ -71,6 +71,12 @@ function Legend() {
         <span className="key key-event key-meteor" aria-hidden="true">M</span> Meteor crater
         <span className="legend-note">dashed edge, hurts bots, fades</span>
       </li>
+      {tuning.disease.enabled && (
+        <li>
+          <span className="key key-disease" aria-hidden="true" /> Illness
+          <span className="legend-note">dashed ring = sick, dotted = exposed, small dot = immune</span>
+        </li>
+      )}
       <li>
         <span className="key key-bot" aria-hidden="true" /> Bot
         <span className="legend-note">small = child, ringed = fleeing; colour: see Bot colour</span>

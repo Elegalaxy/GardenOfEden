@@ -53,8 +53,16 @@ import type {
   WorldNode,
 } from '../sim/types.ts'
 
-/** A bot as the page sees it every frame: everything except the memory list, which is bulky and only the inspector wants. */
-export type ViewBot = Omit<Bot, 'memory'> & {
+export type IllnessStage = NonNullable<Bot['illness']>['stage']
+
+/**
+ * A bot as the page sees it every frame: everything except the memory list, which is bulky and only the inspector wants, and
+ * the illness record (D3): the frame carries only its stage (`illnessStage`, absent for a healthy bot); the ticks left and the
+ * dose come with the selected bot (`ViewWorld.selectedBot`).
+ */
+export type ViewBot = Omit<Bot, 'memory' | 'illness'> & {
+  /** Disease stage (D3), absent for a healthy bot. */
+  illnessStage?: IllnessStage
   /** Entries in the bot's memory. */
   memoryCount: number
   /** ...of which were learned from a parent or child. */
@@ -99,6 +107,8 @@ export type FastData = {
   lineageLength: number
   /** Predator ecology (E3): the dens and counters, or null in a world made without it. Small, so it rides every frame. */
   ecology: PredatorEcology | null
+  /** Disease counters (D3), or null until the first outbreak. Small, so it rides every frame. */
+  disease: { infected: number; recovered: number } | null
 }
 
 /** Sent at most about four times a second, when paused, and right after a command, a selection or a new run. */

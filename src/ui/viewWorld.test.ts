@@ -221,3 +221,21 @@ describe('ViewWorld with predator ecology (E3)', () => {
     expect(view.ecology).toEqual(eco.ecology)
   })
 })
+
+describe('ViewWorld with disease (D3)', () => {
+  it('has no disease key before the first outbreak, then mirrors the counters, and the sick bots carry their stage', () => {
+    const world = createWorld('dis', edenPreset, rules)
+    for (let i = 0; i < 100; i += 1) step(world, rules)
+    const view = toViewWorld(world, 'eden')
+    expect(Object.hasOwn(view, 'disease')).toBe(false)
+    expect(view.bots.every((bot) => bot.illnessStage === undefined)).toBe(true)
+    const target = world.bots[0]!
+    applyCommand(world, rules, { type: 'triggerEvent', event: 'outbreak', x: target.x, y: target.y })
+    applyFrame(view, structuredClone(buildFrame(world, run(world, 0), null, false)))
+    expect(view.disease).toEqual(world.disease)
+    expect(view.disease).not.toBe(world.disease)
+    expect(view.bots.some((bot) => bot.illnessStage === 'sick')).toBe(true)
+    const sick = world.bots.filter((bot) => bot.illness?.stage === 'sick').length
+    expect(view.bots.filter((bot) => bot.illnessStage === 'sick')).toHaveLength(sick)
+  })
+})

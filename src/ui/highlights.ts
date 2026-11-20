@@ -1,7 +1,7 @@
 // Highlights (F2): the few log entries worth jumping to, found from the log the page already has. Pure, no DOM, no state.
 //
-// A highlight is a death by predator, meteor, plague or poison; a predator that was born, struck by a meteor, killed by plague
-// or left the map; or your own plague, meteor or blight command. Births, other deaths (starve, thirst, danger, age), predators
+// A highlight is a death by predator, meteor, plague, poison or disease; a predator that was born, struck by a meteor, killed by plague
+// or left the map; or your own plague, meteor, blight or outbreak command. Births, other deaths (starve, thirst, danger, age), predators
 // that arrived, starved or aged, drought and bounty, placing and removing things, and the ends of world events are not.
 // `highlightsOf` lists them newest first, including the player commands that have scrolled out of the sim's log ring
 // (`mergeLog`). The wording reuses the log's own helpers, so the notice reads like the row.
@@ -12,9 +12,9 @@ import { mergeLog } from './logMerge.ts'
 import type { CommandRecord } from './logMerge.ts'
 import { predatorEventPhrase } from './predatorInfo.ts'
 
-const DEATH_CAUSES: ReadonlySet<DeathCause> = new Set<DeathCause>(['predator', 'meteor', 'plague', 'poison'])
+const DEATH_CAUSES: ReadonlySet<DeathCause> = new Set<DeathCause>(['predator', 'meteor', 'plague', 'poison', 'disease'])
 const PREDATOR_EVENTS: ReadonlySet<PredatorEventKind> = new Set<PredatorEventKind>(['born', 'struck', 'plagued', 'left'])
-const COMMAND_EVENTS: ReadonlySet<EventKind> = new Set<EventKind>(['plague', 'meteor', 'blight'])
+const COMMAND_EVENTS: ReadonlySet<EventKind> = new Set<EventKind>(['plague', 'meteor', 'blight', 'outbreak'])
 
 /** True for the entries the N key jumps to. Entries with an unknown position (rebuilt removals) never qualify. */
 export function isHighlight(event: SimEvent): boolean {
@@ -65,7 +65,15 @@ export function nextHighlightIndex(previous: number | null, count: number): numb
 }
 
 /** The ring drawn at a highlight: where, and the page time (`performance.now`) it began. */
-export type Pulse = { x: number; y: number; start: number }
+export type Pulse = {
+  x: number
+  y: number
+  start: number
+  /** Outer radius of the rings in cells (default 4.8). The outbreak pulse uses the outbreak radius. */
+  radius?: number
+  /** `disease` draws the rings in the disease colour (the outbreak pulse); absent is white (highlights). */
+  tone?: 'disease'
+}
 
 /** How long the ring lasts, in ms of page time. */
 export const PULSE_MS = 1500

@@ -18,15 +18,18 @@ describe('tools', () => {
     expect(toolInfo('remove').key).toBe('7')
   })
 
-  it('has plague, meteor and blight tools on P, M and L that do not clash with the numbered tools', () => {
+  it('has plague, meteor, blight and outbreak tools on P, M, L and I that do not clash with the numbered tools', () => {
     expect(EVENT_TOOLS.map((tool) => [tool.id, tool.key, tool.event])).toEqual([
       ['plague', 'p', 'plague'],
       ['meteor', 'm', 'meteor'],
       ['blight', 'l', 'blight'],
+      ['outbreak', 'i', 'outbreak'],
     ])
     expect(toolForKey('p')).toBe('plague')
     expect(toolForKey('m')).toBe('meteor')
     expect(toolForKey('l')).toBe('blight')
+    expect(toolForKey('i')).toBe('outbreak')
+    expect(toolInfo('outbreak').label).toBe('Outbreak')
     expect(toolInfo('blight').label).toBe('Blight')
     expect(toolInfo('meteor').label).toBe('Meteor')
     const keys = [...TOOLS, ...EVENT_TOOLS].map((tool) => tool.key)

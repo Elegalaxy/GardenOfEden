@@ -38,6 +38,7 @@ import { drawHeat, drawHeatCursor } from './heatRender.ts'
 import type { HeatSnapshot } from './heat.ts'
 import { PULSE_MS } from './highlights.ts'
 import type { Pulse } from './highlights.ts'
+import type { IllnessStage } from './protocol.ts'
 import { chordWidth, fitLabel } from './labels.ts'
 import type { Selection } from './tools.ts'
 import type { ViewWorld } from './viewWorld.ts'
@@ -46,7 +47,7 @@ export type Size = { width: number; height: number }
 
 /** A placement preview: a node (with its radius) or a bot, centred at map position (x, y). */
 export type Ghost = {
-  kind: NodeKind | 'bot' | 'plague' | 'meteor' | 'blight'
+  kind: NodeKind | 'bot' | 'plague' | 'meteor' | 'blight' | 'outbreak'
   x: number
   y: number
   radius: number
@@ -81,6 +82,7 @@ export const COLORS = {
   predator: '#ff9d5c',
   plague: '#ff7ab6',
   blight: '#a8b83c',
+  disease: '#e056fd',
   meteor: '#ff9f43',
   bot: '#f2cc60',
   family: '#f2cc60',
@@ -105,7 +107,7 @@ const NODE_COLOR: Record<NodeKind, string> = {
 /** The predator chevron's fill: a light grey, so it reads against the dark map and apart from every orange and yellow thing. */
 const PREDATOR_FILL = '#e6e6ee'
 
-const GHOST_LETTER = { plague: 'P', meteor: 'M', blight: 'L' } as const
+const GHOST_LETTER = { plague: 'P', meteor: 'M', blight: 'L', outbreak: 'I' } as const
 
 /** Letters and labels never grow past this many pixels, so text at zoom 4 stays sane (F1). */
 const MAX_TEXT_PX = 32
@@ -625,7 +627,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
     const cx = px(ghost.x)
     const cy = py(ghost.y)
     const r = ghost.kind === 'bot' ? Math.max(3, scale * 0.55) : ghost.radius * scale
-    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight' ? COLORS[ghost.kind] : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
+    const color = ghost.valid ? (ghost.kind === 'bot' ? COLORS.bot : ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight' || ghost.kind === 'outbreak' ? COLORS[ghost.kind === 'outbreak' ? 'disease' : ghost.kind] : NODE_COLOR[ghost.kind]) : COLORS.ghostInvalid
     ctx.save()
     ctx.beginPath()
     ctx.arc(cx, cy, r, 0, Math.PI * 2)
@@ -645,7 +647,7 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
         ctx.setLineDash([])
         ctx.stroke()
       }
-      if (ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight') drawLetter(ctx, GHOST_LETTER[ghost.kind], cx, cy, scale * 1.4)
+      if (ghost.kind === 'plague' || ghost.kind === 'meteor' || ghost.kind === 'blight' || ghost.kind === 'outbreak') drawLetter(ctx, GHOST_LETTER[ghost.kind], cx, cy, scale * 1.4)
       else if (ghost.kind !== 'bot') drawLetter(ctx, NODE_LETTER[ghost.kind], cx, cy, scale * 1.4)
     } else {
       // An X through the ghost: "refused", not just a different colour.
@@ -662,6 +664,28 @@ function drawOverlay(ctx: CanvasRenderingContext2D, world: ViewWorld, alpha: num
   }
 }
 
+/**
+ * A bot's illness (D3), in the disease colour and told apart by shape, not colour: sick = a dashed ring, exposed = a thin dotted ring,
+ * immune = a small dot at the upper right of the bot. No ring or dot means healthy.
+ */
+function drawIllness(ctx: CanvasRenderingContext2D, stage: IllnessStage, x: number, y: number, radius: number): void {
+  ctx.save()
+  ctx.strokeStyle = COLORS.disease
+  ctx.fillStyle = COLORS.disease
+  if (stage === 'immune') {
+    ctx.beginPath()
+    ctx.arc(x + radius * 0.8, y - radius * 0.8, 2, 0, Math.PI * 2)
+    ctx.fill()
+  } else {
+    ctx.setLineDash(stage === 'sick' ? [4, 3] : [1, 3])
+    ctx.lineWidth = stage === 'sick' ? 2 : 1
+    ctx.beginPath()
+    ctx.arc(x, y, radius + 5, 0, Math.PI * 2)
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
 /** Two expanding rings that fade out at a highlight (F2), over PULSE_MS of page time. Needs only the spot, so no simulation data. */
 function drawPulse(ctx: CanvasRenderingContext2D, pulse: Pulse, layout: Layout, now: number): void {
   const t = (now - pulse.start) / PULSE_MS
@@ -669,15 +693,16 @@ function drawPulse(ctx: CanvasRenderingContext2D, pulse: Pulse, layout: Layout, 
   const cx = layout.offsetX + pulse.x * layout.scale
   const cy = layout.offsetY + pulse.y * layout.scale
   ctx.save()
-  ctx.strokeStyle = COLORS.select
+  ctx.strokeStyle = pulse.tone === 'disease' ? COLORS.disease : COLORS.select
   ctx.setLineDash([])
+  const reach = (pulse.radius ?? 4.8) - 0.8
   for (const lag of [0, 0.25]) {
     const u = (t - lag) / (1 - lag)
     if (u <= 0) continue
     ctx.globalAlpha = 1 - u
     ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.arc(cx, cy, layout.scale * (0.8 + 4 * u), 0, Math.PI * 2)
+    ctx.arc(cx, cy, layout.scale * (0.8 + reach * u), 0, Math.PI * 2)
     ctx.stroke()
   }
   ctx.restore()
@@ -769,6 +794,7 @@ export function drawWorld(
       ctx.strokeStyle = COLORS.flee
       ctx.stroke()
     }
+    if (bot.illnessStage !== undefined) drawIllness(ctx, bot.illnessStage, x, y, radius)
   }
 
   const meteor = tuning.events.meteor

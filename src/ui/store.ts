@@ -620,7 +620,7 @@ export function highlightCount(): number {
 export function nextHighlight(now: number = performance.now()): boolean {
   const list = highlightsOf(view.log, view.commands)
   if (list.length === 0) {
-    say(false, 'No highlights yet: predator kills, meteors, plague and blight show up here.')
+    say(false, 'No highlights yet: predator kills, meteors, plague and blight, outbreaks and disease deaths show up here.')
     publish()
     return false
   }
@@ -802,6 +802,12 @@ export function clickMap(x: number, y: number, reach: number): void {
     case 'meteor':
     case 'blight':
       void dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y })
+      return
+    case 'outbreak':
+      // Instant, so it leaves no disc: a pulse shows where it hit (only if the sim accepted it).
+      void dispatch({ type: 'triggerEvent', event: tool, x: centre.x, y: centre.y }).then((result) => {
+        if (result.ok) setPulse({ x: centre.x, y: centre.y, start: performance.now(), radius: tuning.disease.outbreakRadius, tone: 'disease' })
+      })
       return
     case 'remove': {
       const target = nodeAt(view, x, y)

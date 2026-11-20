@@ -1,7 +1,7 @@
 // What the Events panel, the notices and the banners say about each world
 // event. Pure text and data, built from tuning so the numbers shown are the
 // numbers the sim uses. Drought (key D) and bounty (key B) are global and fire
-// at once; plague (P), meteor (M) and blight (L) are area events, armed as tools and then
+// at once; plague (P), meteor (M), blight (L) and outbreak (I) are area events, armed as tools and then
 // clicked onto the map (tools.ts).
 
 import { checkCommand } from '../sim/commands.ts'
@@ -27,6 +27,7 @@ export const EVENT_INFOS: readonly EventInfo[] = [
   { kind: 'plague', label: EVENT_LABEL.plague, letter: EVENT_LETTER.plague, key: 'p', global: false, blurb: 'A zone where bots lose health and predators lose energy for a while. Pick it, then click the map.' },
   { kind: 'meteor', label: EVENT_LABEL.meteor, letter: EVENT_LETTER.meteor, key: 'm', global: false, blurb: 'Kills bots, and predators near the centre (aim at one), and leaves a crater. Pick it, then click the map.' },
   { kind: 'blight', label: EVENT_LABEL.blight, letter: EVENT_LETTER.blight, key: 'l', global: false, blurb: 'Food in the zone stops regrowing and withers. Pick it, then click the map.' },
+  { kind: 'outbreak', label: EVENT_LABEL.outbreak, letter: EVENT_LETTER.outbreak, key: 'i', global: false, blurb: 'Sickens bots in the zone; it spreads by contact, then they become immune. Pick it, then click the map.' },
 ]
 
 export function eventInfo(kind: EventKind): EventInfo {
@@ -98,8 +99,10 @@ export function eventRows(kind: EventKind, tuning: Tuning): { label: string; val
       ]
     case 'outbreak':
       return [
-        { label: 'Lasts', value: `instant, sick ${formatTicks(tuning.disease.sickTicks)}` },
-        { label: 'Effect', value: effectSummary(kind, tuning) },
+        { label: 'Reach', value: `${fixed1(tuning.disease.outbreakRadius)} cells, instant` },
+        { label: 'Spreads', value: `within ${fixed1(tuning.disease.contactRadius)} cells after ${tuning.disease.catchAfter} ticks` },
+        { label: 'Sick', value: `${formatTicks(tuning.disease.sickTicks)}, −${fixed1(tuning.disease.sickDrain)} health / tick` },
+        { label: 'Immune', value: formatTicks(tuning.disease.immuneTicks) },
       ]
   }
 }
@@ -123,6 +126,18 @@ export function startedMessage(cmd: Extract<Command, { type: 'triggerEvent' }>, 
     case 'meteor':
       return `Meteor struck at ${where}: ${killed} bot${killed === 1 ? '' : 's'} killed. A crater burns for ${formatTicks(tuning.events.meteor.craterTicks)}.`
     case 'outbreak':
-      return `Outbreak started at ${where}: ${effectSummary('outbreak', tuning)}.`
+      return `Outbreak started at ${where}: bots within ${fixed1(tuning.disease.outbreakRadius)} cells fall sick.`
   }
+}
+
+/** The outbreak readout (D3): how many bots are sick and how many immune right now, or null while nobody is (the panel keeps the line's room). */
+export function outbreakSummary(bots: readonly { illnessStage?: string }[]): { sick: number; immune: number; text: string } | null {
+  let sick = 0
+  let immune = 0
+  for (const bot of bots) {
+    if (bot.illnessStage === 'sick') sick += 1
+    else if (bot.illnessStage === 'immune') immune += 1
+  }
+  if (sick === 0 && immune === 0) return null
+  return { sick, immune, text: `Outbreak: ${sick} sick · ${immune} immune` }
 }

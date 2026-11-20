@@ -1,6 +1,6 @@
-// World events (M8): shake the society and watch what changes. Five cards, one per
+// World events (M8): shake the society and watch what changes. Six cards, one per
 // event, each with its shortcut key, how long it lasts and what it does. Drought (D)
-// and bounty (B) are global and fire at once. Plague (P), meteor (M) and blight (L) arm a map
+// and bounty (B) are global and fire at once. Plague (P), meteor (M), blight (L) and outbreak (I) arm a map
 // tool: pick one, then click the map (the hover ghost shows the radius). A card is
 // disabled, with the reason written under it, when the sim would refuse the event
 // (the same one already running, or too many at once). Below the cards, the events
@@ -9,7 +9,7 @@
 import { rules, tuning } from '../content/index.ts'
 import { activeEntries } from '../sim/worldEvents.ts'
 import type { ActiveEntry } from '../sim/worldEvents.ts'
-import { EVENT_INFOS, blockedReason, effectSummary, eventInfo, eventRows, formatTicks } from './eventInfo.ts'
+import { EVENT_INFOS, blockedReason, effectSummary, eventInfo, eventRows, formatTicks, outbreakSummary } from './eventInfo.ts'
 import type { EventInfo } from './eventInfo.ts'
 import { formatPoint } from './labels.ts'
 import { dispatch, select, setTool, useWorldStore } from './store.ts'
@@ -20,7 +20,7 @@ function EventCard({ info }: { info: EventInfo }) {
   const armed = !info.global && tool === info.kind
   const onClick = (): void => {
     if (info.global) void dispatch({ type: 'triggerEvent', event: info.kind })
-    else setTool(armed ? 'inspect' : (info.kind as 'plague' | 'meteor' | 'blight'))
+    else setTool(armed ? 'inspect' : (info.kind as 'plague' | 'meteor' | 'blight' | 'outbreak'))
   }
   return (
     <li className="event-card">
@@ -94,6 +94,7 @@ function ActiveRow({ entry, tick }: { entry: ActiveEntry; tick: number }) {
 export function EventsPanel() {
   const { world, tick } = useWorldStore()
   const entries = activeEntries(world, tuning)
+  const outbreak = outbreakSummary(world.bots)
   return (
     <section className="panel events-panel" aria-label="World events">
       <h2>World events</h2>
@@ -114,6 +115,9 @@ export function EventsPanel() {
           </ul>
         )}
       </div>
+      <p className="outbreak-line figure" role="status" aria-label="Outbreak">
+        {outbreak === null ? ' ' : <><span className="key key-event key-outbreak" aria-hidden="true">{eventInfo('outbreak').letter}</span> {outbreak.text}</>}
+      </p>
     </section>
   )
 }

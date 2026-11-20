@@ -14,6 +14,7 @@ import {
   dispatch,
   dispatchBatch,
   exportSave,
+  getPulse,
   getSnapshot,
   isValidSeed,
   queryFamily,
@@ -140,6 +141,18 @@ describe('world events', () => {
     await settled()
     expect(getSnapshot().world.events[0]).toMatchObject({ kind: 'blight', x: 20.5, y: 30.5 })
     expect(getSnapshot().notice?.text).toContain('Blight started')
+  })
+
+  it('starts an outbreak at the clicked cell with the outbreak tool, makes a pulse and sickens the bots there', async () => {
+    setTool('outbreak')
+    const bot = getSnapshot().world.bots[0]!
+    clickMap(bot.x, bot.y, 1)
+    await settled()
+    const snap = getSnapshot()
+    expect(snap.notice?.text).toContain('Outbreak started')
+    expect(snap.world.bots.some((other) => other.illnessStage === 'sick')).toBe(true)
+    expect(snap.world.disease).toBeDefined()
+    expect(getPulse()).toMatchObject({ tone: 'disease', radius: tuning.disease.outbreakRadius })
   })
 
   it('drops a meteor with the meteor tool and reports the bots it killed', async () => {

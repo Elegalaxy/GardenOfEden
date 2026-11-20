@@ -13,7 +13,7 @@ import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
 import { select, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
@@ -125,6 +125,9 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Meter label="Energy" value={bot.energy} max={tuning.bot.maxEnergy} low={bot.energy < 0.2 * tuning.bot.maxEnergy} />
         <Meter label="Thirst" value={bot.thirst} max={tuning.bot.maxThirst} low={bot.thirst < 0.2 * tuning.bot.maxThirst} />
         <Meter label="Health" value={bot.health} max={tuning.bot.maxHealth} low={bot.health < 0.3 * tuning.bot.maxHealth} />
+        <Row label="Illness" title="Outbreak: a sick bot loses health every tick and passes it on by contact; after it recovers it is immune for a while.">
+          {illnessLabel(bot.illnessStage, world.selectedBot?.id === bot.id ? world.selectedBot.illness : undefined, world.tick, tuning.disease.catchAfter)}
+        </Row>
         <Row label="Age">
           {bot.age} ticks · {stage}
         </Row>

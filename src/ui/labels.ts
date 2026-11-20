@@ -245,6 +245,28 @@ export function sightText(radius: number, front: number, rear: number, enabled: 
 export const SIGHT_HELP = 'Sees less behind. Keeps tracking a predator it has seen while it stays in range. Outline on the map.'
 
 /** The inbreeding score (M18, 0 to 1) as words: "no" at 0, else the percent (1 = parent and child or full siblings). */
+/**
+ * The Inspector's Illness row (D3): "Healthy", "Exposed 3 / 5", "Sick, 120 ticks left", "Immune, 900 left". `illness` is the
+ * selected bot's full record when the page has it (slow data); with only the frame's stage the ticks are left out.
+ */
+export function illnessLabel(
+  stage: 'exposed' | 'sick' | 'immune' | undefined,
+  illness: { dose: number; until: number } | undefined,
+  tick: number,
+  catchAfter: number,
+): string {
+  if (stage === undefined) return 'Healthy'
+  const left = illness === undefined ? null : Math.max(0, Math.round(illness.until - tick))
+  switch (stage) {
+    case 'exposed':
+      return illness === undefined ? 'Exposed' : `Exposed ${Math.round(illness.dose)} / ${catchAfter}`
+    case 'sick':
+      return left === null ? 'Sick' : `Sick, ${left.toLocaleString('en-US')} ${left === 1 ? 'tick' : 'ticks'} left`
+    case 'immune':
+      return left === null ? 'Immune' : `Immune, ${left.toLocaleString('en-US')} left`
+  }
+}
+
 export function inbreedingLabel(score: number): string {
   if (score <= 0) return 'No'
   return `Yes · ${Math.round(100 * score)}%`

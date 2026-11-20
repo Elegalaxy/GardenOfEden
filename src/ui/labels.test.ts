@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -64,14 +64,14 @@ describe('labels', () => {
   })
 
   it('gives each world event a marker letter that clashes with no other marker (R V S W B X)', () => {
-    const kinds: EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight']
+    const kinds: EventKind[] = ['drought', 'bounty', 'plague', 'meteor', 'blight', 'outbreak']
     const markerLetters = [
       ...(['resource', 'predator', 'shelter', 'water'] as NodeKind[]).map((kind) => commandLetter('placeNode', kind)),
       commandLetter('placeBot'),
       commandLetter('removeNode'),
       ...kinds.map((kind) => commandLetter('triggerEvent', undefined, kind)),
     ]
-    expect(markerLetters).toEqual(['R', 'V', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M', 'L'])
+    expect(markerLetters).toEqual(['R', 'V', 'S', 'W', 'B', 'X', 'H', 'F', 'P', 'M', 'L', 'I'])
     expect(new Set(markerLetters).size).toBe(markerLetters.length)
     for (const kind of kinds) expect(EVENT_LETTER[kind]).toBe(commandLetter('triggerEvent', undefined, kind))
   })
@@ -80,6 +80,24 @@ describe('labels', () => {
     expect(commandName('triggerEvent', undefined, 'drought')).toBe('trigger drought')
     expect(EVENT_LABEL.meteor).toBe('Meteor')
     expect(eventSubject({ tick: 5, type: 'event', eventKind: 'plague', x: 0, y: 0 })).toBe('Plague')
+  })
+})
+
+describe('illnessLabel (D3)', () => {
+  it('says healthy for no stage, and the ticks left or the dose when the full record is known', () => {
+    expect(illnessLabel(undefined, undefined, 100, 5)).toBe('Healthy')
+    expect(illnessLabel('sick', { dose: 5, until: 220 }, 100, 5)).toBe('Sick, 120 ticks left')
+    expect(illnessLabel('sick', { dose: 5, until: 101 }, 100, 5)).toBe('Sick, 1 tick left')
+    expect(illnessLabel('immune', { dose: 0, until: 1000 }, 100, 5)).toBe('Immune, 900 left')
+    expect(illnessLabel('immune', { dose: 0, until: 2100 }, 100, 5)).toBe('Immune, 2,000 left')
+    expect(illnessLabel('exposed', { dose: 3, until: 0 }, 100, 5)).toBe('Exposed 3 / 5')
+  })
+
+  it('never shows negative ticks, and falls back to the bare stage without the record', () => {
+    expect(illnessLabel('sick', { dose: 5, until: 90 }, 100, 5)).toBe('Sick, 0 ticks left')
+    expect(illnessLabel('sick', undefined, 100, 5)).toBe('Sick')
+    expect(illnessLabel('immune', undefined, 100, 5)).toBe('Immune')
+    expect(illnessLabel('exposed', undefined, 100, 5)).toBe('Exposed')
   })
 })
 

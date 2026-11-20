@@ -35,6 +35,7 @@ export type ViewWorld = Pick<
   | 'log'
   | 'commands'
   | 'ecology'
+  | 'disease'
 > & {
   runId: number
   presetId: string
@@ -71,6 +72,7 @@ function fresh(frame: Frame): ViewWorld {
     selectedBot: slow?.selectedBot ?? null,
     // The key stays absent without ecology, so takeSample (which checks `!== undefined`) and toEqual treat it like a World's.
     ...(fast.ecology === null ? {} : { ecology: fast.ecology }),
+    ...(fast.disease === null ? {} : { disease: fast.disease }),
   }
 }
 
@@ -91,6 +93,8 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   view.commandCount = fast.commandCount
   if (fast.ecology === null) delete view.ecology
   else view.ecology = fast.ecology
+  if (fast.disease === null) delete view.disease
+  else view.disease = fast.disease
   if (slow !== null) {
     view.samples = slow.samples
     view.log = slow.log

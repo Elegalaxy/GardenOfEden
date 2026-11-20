@@ -92,8 +92,8 @@ export function ViewControls() {
         aria-keyshortcuts="N"
         title={
           hasHighlight
-            ? 'Next highlight (N): jump to the next older predator kill, meteor or plague death, predator birth or exit, or plague, meteor or blight of yours (newest first)'
-            : 'Next highlight (N): nothing yet. Deaths by predator, meteor or plague, predator births and exits, and your plague, meteor and blight count.'
+            ? 'Next highlight (N): jump to the next older predator kill, meteor, plague or disease death, predator birth or exit, or plague, meteor, blight or outbreak of yours (newest first)'
+            : 'Next highlight (N): nothing yet. Deaths by predator, meteor, plague or disease, predator births and exits, and your plague, meteor, blight and outbreak count.'
         }
         disabled={!hasHighlight}
         onClick={() => nextHighlight()}

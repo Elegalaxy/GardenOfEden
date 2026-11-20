@@ -2,13 +2,13 @@
 // toolbar, the store and the canvas. Keys 1-7 pick a tool, in the order of the
 // buttons (inspect, the placement tools for resource, water, predator and shelter,
 // then bot and remove), and Esc returns to inspect. The two area world events
-// (plague, meteor, blight) are also tools: P, M and L arm them, then a click on the map
+// (plague, meteor, blight) and the instant outbreak are also tools: P, M, L and I arm them, then a click on the map
 // triggers the event there. Drought and bounty are global, so they are not tools
 // (eventInfo.ts has their D and B keys).
 
 import type { EventKind, NodeKind } from '../sim/types.ts'
 
-export type Tool = 'inspect' | 'resource' | 'water' | 'predator' | 'shelter' | 'bot' | 'remove' | 'plague' | 'meteor' | 'blight'
+export type Tool = 'inspect' | 'resource' | 'water' | 'predator' | 'shelter' | 'bot' | 'remove' | 'plague' | 'meteor' | 'blight' | 'outbreak'
 
 /** What the player has selected on the map. Ids are never reused, so a stale selection is detectable. */
 export type Selection = { kind: 'bot' | 'node'; id: number }
@@ -42,6 +42,7 @@ export const EVENT_TOOLS: readonly ToolInfo[] = [
   { id: 'plague', label: 'Plague', key: 'p', hint: 'Click the map to start a plague zone there. Bots inside it lose health.', event: 'plague' },
   { id: 'meteor', label: 'Meteor', key: 'm', hint: 'Click the map to drop a meteor there. It kills bots at the centre and leaves a crater.', event: 'meteor' },
   { id: 'blight', label: 'Blight', key: 'l', hint: 'Click the map to start a blight zone there. Food inside it stops regrowing and withers.', event: 'blight' },
+  { id: 'outbreak', label: 'Outbreak', key: 'i', hint: 'Click the map to start an outbreak there. Bots near it fall sick and spread it.', event: 'outbreak' },
 ]
 
 export function toolInfo(id: Tool): ToolInfo {

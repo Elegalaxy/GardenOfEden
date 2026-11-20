@@ -13,8 +13,8 @@ import { applyFrame, cloneFrame, toViewWorld } from './viewWorld.ts'
 
 /** What a bot looked like before frames were packed (the old `viewBot`). */
 function oldViewBot(bot: Bot): ViewBot {
-  const { memory, ...rest } = bot
-  return { ...rest, memoryCount: memory.length, learnedCount: memory.filter((entry) => entry.learnedFrom !== null).length }
+  const { memory, illness, ...rest } = bot
+  return { ...rest, ...(illness === undefined ? {} : { illnessStage: illness.stage }), memoryCount: memory.length, learnedCount: memory.filter((entry) => entry.learnedFrom !== null).length }
 }
 
 function busy(): World {
@@ -54,6 +54,22 @@ describe('packBots / unpackBots', () => {
     const packed = packBots([bot])
     expect([packed.f64[14], packed.f64[15], packed.f64[16], packed.f64[17]]).toEqual([1.2345678, 0.8765432, 1.1111111, 1.9999999])
     expect(unpackBots(packed)[0]!.traits).toEqual(bot.traits)
+  })
+
+  it('carries the illness stage as an int column (D3): 0 none, 1 exposed, 2 sick, 3 immune, and the key is absent when healthy', () => {
+    expect(I32_STRIDE).toBe(13)
+    const bots = crowd(world, 4)
+    const stages = [undefined, 'exposed', 'sick', 'immune'] as const
+    bots.forEach((bot, i) => {
+      delete bot.illness
+      if (stages[i] !== undefined) bot.illness = { stage: stages[i]!, dose: 2, until: 500 }
+    })
+    const packed = packBots(bots)
+    expect([0, 1, 2, 3].map((i) => packed.i32[i * I32_STRIDE + 12])).toEqual([0, 1, 2, 3])
+    const out = unpackBots(packed)
+    expect(out.map((bot) => bot.illnessStage)).toEqual([undefined, 'exposed', 'sick', 'immune'])
+    expect(Object.hasOwn(out[0]!, 'illnessStage')).toBe(false)
+    expect(out).toEqual(bots.map(oldViewBot))
   })
 
   it('carries the bloodline hue as a float', () => {

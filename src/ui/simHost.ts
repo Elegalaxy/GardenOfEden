@@ -105,6 +105,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
       commandCount: world.commands.length,
       lineageLength: world.lineage.length,
       ecology: world.ecology ?? null,
+      disease: world.disease === undefined ? null : { infected: world.disease.infected, recovered: world.disease.recovered },
     },
     slow: slow
       ? {
