@@ -320,10 +320,12 @@ export const tuning: Tuning = {
   // that starts its step inside one walks only this fraction of its normal step (bots and predators have their own number, equal for now).
   // No energy cost and bots do not see it. maxCount caps the rough nodes in a world (the player tool comes later). See src/sim/terrain.ts.
   terrain: { enabled: false, botSpeedMult: 0.5, predatorSpeedMult: 0.5, maxCount: 24 },
-  // Disease with immunity (D1, mechanics only, OFF): with it on, the player's `outbreak` event makes every bot within `outbreakRadius` sick at
-  // once. A bot that stays within `contactRadius` of a sick bot for `catchAfter` ticks falls sick too (the count falls by 1 a tick without
+  // Disease with immunity (D1 mechanics, ON since D2; nothing happens until the player starts an outbreak): the `outbreak` event makes
+  // every bot within `outbreakRadius` sick at once. A bot that stays within `contactRadius` of a sick bot for `catchAfter` ticks falls sick too (the count falls by 1 a tick without
   // contact). A sick bot takes `sickDrain` health damage a tick (divided by hardiness) for `sickTicks` ticks, then is immune for `immuneTicks`
   // (and can be infected again after). A user-approved exception to the "no direct contact" rule. No draws. See src/sim/disease.ts.
-  disease: { enabled: false, outbreakRadius: 6, contactRadius: 2, catchAfter: 20, sickTicks: 300, sickDrain: 0.15, immuneTicks: 1500 },
+  // D2 numbers (D1 had contactRadius 2, catchAfter 20, sickTicks 300, sickDrain 0.15): an outbreak at a busy spot costs about 16% of the
+  // population over the next 1,500 ticks, spreads to several times the first victims and burns out by 6,000 ticks; see the GAME_DESIGN changelog.
+  disease: { enabled: true, outbreakRadius: 6, contactRadius: 3, catchAfter: 5, sickTicks: 200, sickDrain: 0.7, immuneTicks: 1500 },
   logCap: 500,
 }

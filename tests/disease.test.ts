@@ -30,7 +30,9 @@ const PIN_B_RNG = {
   predator: { a: 3978175041, b: 1841855835, c: 2416030862, d: 2899171380 },
 }
 
-const on = withDisease(rules)
+/** The D1 numbers, kept for the mechanics tests below (D2 retuned the shipped ones; those are checked in the first describe). */
+const D1_NUMBERS = { outbreakRadius: 6, contactRadius: 2, catchAfter: 20, sickTicks: 300, sickDrain: 0.15, immuneTicks: 1500 }
+const on = withDisease(rules, D1_NUMBERS)
 const d = on.tuning.disease
 /** The outbreak numbers with a tiny radius, so it only takes the bot standing on the spot. */
 const tiny = { disease: { ...d, outbreakRadius: 0.5 } }
@@ -54,22 +56,22 @@ function tickSpread(w: World): void {
 
 describe('pins with disease on and no outbreak', () => {
   it('leaves Eden seed a at 5,000 ticks bit-identical', () => {
-    const w = createWorld('a', edenPreset, on)
-    while (w.tick < 5000) step(w, on)
+    const w = createWorld('a', edenPreset, rules)
+    while (w.tick < 5000) step(w, rules)
     expect(stateHash(w)).toBe(PIN_A_5000)
     expect(w.rng).toEqual(PIN_A_RNG)
     expect(w.disease).toBeUndefined()
   })
 
   it('leaves Eden seed b at 20,000 ticks bit-identical', { timeout: 600_000 }, () => {
-    const w = createWorld('b', edenPreset, on)
-    while (w.tick < 20000) step(w, on)
+    const w = createWorld('b', edenPreset, rules)
+    while (w.tick < 20000) step(w, rules)
     expect(stateHash(w)).toBe(PIN_B_20000)
     expect(w.rng).toEqual(PIN_B_RNG)
   })
 
-  it('ships off', () => {
-    expect(rules.tuning.disease.enabled).toBe(false)
+  it('ships on with the D2 numbers', () => {
+    expect(rules.tuning.disease).toEqual({ enabled: true, outbreakRadius: 6, contactRadius: 3, catchAfter: 5, sickTicks: 200, sickDrain: 0.7, immuneTicks: 1500 })
   })
 })
 
@@ -263,5 +265,20 @@ describe('who is touched', () => {
     startOutbreak(w, predators[0]!.x, predators[0]!.y, { disease: { ...d, outbreakRadius: 60 } })
     expect(JSON.stringify(w.nodes.filter((n) => n.kind === 'predator'))).toBe(before)
     expect(predators.some((n) => 'illness' in n)).toBe(false)
+  })
+})
+
+// D2 bars on the shipped numbers: an outbreak at the west spring at tick 3000 spreads to at least 3 times the bots it started with and has
+// burned out (no bot sick) 6,000 ticks later. The survival bar is in tests/events.test.ts ('outbreak').
+describe('shipped numbers: it spreads and it burns out', () => {
+  it.concurrent.each(['a', 'b', 'c', 'd', 'e'])('seed %s', { timeout: 300_000 }, (seed) => {
+    const w = createWorld(seed, edenPreset, rules)
+    while (w.tick < 3000) step(w, rules)
+    expect(applyCommand(w, rules, OUTBREAK(14, 44)).ok).toBe(true)
+    const first = w.disease!.infected
+    expect(first).toBeGreaterThan(0)
+    while (w.tick < 9000) step(w, rules)
+    expect(w.disease!.infected).toBeGreaterThanOrEqual(3 * first)
+    expect(w.bots.filter((b) => b.illness !== undefined && b.illness.stage === 'sick')).toHaveLength(0)
   })
 })

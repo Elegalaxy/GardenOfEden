@@ -549,3 +549,14 @@ describe('eden survives scripted events', () => {
     expect(result.max).toBeLessThan(rules.tuning.population.cap)
   })
 })
+
+// D2: the outbreak (disease is on in the shipped numbers) at a spring where bots gather, on the same seeds and length.
+describe('outbreak', () => {
+  it.concurrent.each(SEEDS)('an outbreak at the west spring at 3000, seed %s', { timeout: 180_000 }, (seed) => {
+    const outbreak: { tick: number; cmd: Command }[] = [{ tick: 3000, cmd: { type: 'triggerEvent', event: 'outbreak', x: 14, y: 44 } }]
+    const result = surveySeed(seed, edenPreset, rules, TICKS, WARMUP, outbreak)
+    expect(result.refused).toEqual([])
+    expect(result.min).toBeGreaterThanOrEqual(MIN_ALIVE)
+    expect(result.final).toBeGreaterThanOrEqual(MIN_ALIVE)
+  })
+})
