@@ -5,7 +5,7 @@ import { applyCommand } from '../src/sim/commands.ts'
 import { spreadDisease, startOutbreak } from '../src/sim/disease.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { replayWorld } from '../src/sim/replay.ts'
-import { checkResistance, inheritResist } from '../src/sim/resistance.ts'
+import { catchThreshold, checkResistance, inheritResist } from '../src/sim/resistance.ts'
 import { createRng, deriveStream, nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { Command, Preset, Rules, World } from '../src/sim/types.ts'
@@ -209,6 +209,22 @@ describe('effects', () => {
     const e1 = w.bots[1]!.energy
     step(w, costly)
     expect(e0 - w.bots[0]!.energy - (e1 - w.bots[1]!.energy)).toBeCloseTo(0.05, 9)
+  })
+})
+
+describe('catchThreshold', () => {
+  it('rounds to the nearest whole dose (.5 up), at least 1, and leaves a bot with no resist at the plain number', () => {
+    const half = { ...t, catchWeight: 0.5 }
+    expect(catchThreshold({}, half, 5)).toBe(5)
+    expect(catchThreshold({ resist: 1 }, half, 5)).toBe(5)
+    expect(catchThreshold({ resist: 1.19 }, half, 5)).toBe(5) // 5.475
+    expect(catchThreshold({ resist: 1.2 }, half, 5)).toBe(6) // 5.5 rounds up
+    expect(catchThreshold({ resist: 2 }, half, 5)).toBe(8) // 7.5 rounds up
+    expect(catchThreshold({ resist: 2 }, { ...t, catchWeight: 1 }, 5)).toBe(10)
+    expect(catchThreshold({ resist: 1.5 }, { ...t, catchWeight: 0 }, 5)).toBe(5)
+    expect(catchThreshold({ resist: 1 }, half, 1)).toBe(1)
+    // deterministic: the same inputs give the same answer
+    expect(catchThreshold({ resist: 1.37 }, half, 5)).toBe(catchThreshold({ resist: 1.37 }, half, 5))
   })
 })
 

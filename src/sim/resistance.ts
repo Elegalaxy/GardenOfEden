@@ -6,7 +6,9 @@
 // inheritResist    a newborn's resist (reproduction.ts, only once `World.resistance` exists): a sexual child first takes one pick draw (below 0.5
 //                  the mother's value, else the father's), then always a roll and an amount like `mutateTraits` (changed when roll < rate, by
 //                  1 + (2 * amount - 1) * strength), then is clamped to min..max. So 3 draws per sexual child, 2 per asexual child.
-// catchThreshold   the dose that makes a bot fall sick: catchAfter x (1 + catchWeight x (r - 1)); plain `catchAfter` for a bot with no resist.
+// catchThreshold   the dose that makes a bot fall sick: catchAfter x (1 + catchWeight x (r - 1)) rounded to the nearest whole dose (R2b: the dose is a whole
+//                  number of contact ticks, so an unrounded 5.05 would cost a whole extra tick for a tiny resist; Math.round takes .5 up), at least 1;
+//                  plain `catchAfter` for a bot with no resist.
 // sickLength       ticks sick: round(sickTicks / (1 + sickWeight x (r - 1))), at least 1; plain `sickTicks` for a bot with no resist.
 // A bot with no `resist` key takes the plain disease number through a branch (no multiplication by 1), so a run with the rule off is bit-identical.
 // This file imports only rng and types.
@@ -58,10 +60,10 @@ export function inheritResist(motherResist: number, fatherResist: number | null,
   return Math.min(t.max, Math.max(t.min, value))
 }
 
-/** The dose at which this bot falls sick. */
+/** The dose at which this bot falls sick (whole number; see the header). */
 export function catchThreshold(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], catchAfter: number): number {
   if (bot.resist === undefined) return catchAfter
-  return catchAfter * (1 + t.catchWeight * (bot.resist - 1))
+  return Math.max(1, Math.round(catchAfter * (1 + t.catchWeight * (bot.resist - 1))))
 }
 
 /** How many ticks this bot stays sick. */
