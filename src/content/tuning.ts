@@ -330,7 +330,7 @@ export const tuning: Tuning = {
   // Culture (C1 mechanics, OFF): elders teach. Every `teachEvery` ticks each young bot (age under `youngAge` x its longevity) takes one lesson from
   // the nearest elder (age from `elderAge` x longevity) within `teachRadius` cells that is not its own mother or father (family sharing covers
   // those): up to `perLesson` memory entries of the `teachKinds` (places only), freshest sighting first, copied only where the pupil lacks the node
-  // or knows an older sighting. Elders learn nothing here. A user-approved exception to the "no sharing with strangers" rule. No draws. See src/sim/culture.ts.
-  culture: { enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'] },
+  // or knows an older sighting. Elders learn nothing here. `beyondSense` (C2b) limits lessons to places farther from the pupil than its own sense radius. A user-approved exception to the "no sharing with strangers" rule. No draws. See src/sim/culture.ts.
+  culture: { enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'], beyondSense: false },
   logCap: 500,
 }

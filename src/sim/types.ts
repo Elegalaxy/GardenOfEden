@@ -854,6 +854,8 @@ export type Tuning = {
     teachEvery: number
     perLesson: number
     teachKinds: NodeKind[]
+    /** C2b: teach only places farther from the pupil than its own `traits.senseRadius` (plain distance); false is the C1 lesson. */
+    beyondSense: boolean
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number

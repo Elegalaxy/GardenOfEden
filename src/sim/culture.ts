@@ -10,6 +10,10 @@
 // `taught: true` (last key of the entry; cleared when the pupil sees the node itself, absent from family copies) and counted in
 // `world.culture.taught`. Elders never learn here, so no snapshot is needed and nothing chains.
 //
+// `beyondSense` (C2b, default false): an elder then teaches only places the pupil cannot sense right now, i.e. entries whose node (looked up in
+// `world.nodes`; a node removed since is skipped) is farther from the pupil than the pupil's own `traits.senseRadius` (plain distance, all-round,
+// no cone), so the `perLesson` slots go to eligible entries only. Off, the lesson code path is exactly C1's.
+//
 // The elders are indexed in a coarse grid (the mating.ts pattern) built only on lesson ticks, so the work stays linear in the population.
 // No random draws. State: `World.culture` {taught} exists only when culture was on at creation. This file imports only sim files.
 
@@ -22,6 +26,7 @@ const KNOWN_KINDS: readonly NodeKind[] = ['resource', 'danger', 'shelter', 'ruin
 /** Throws when the culture numbers cannot work: ages and radius finite above 0, elderAge above youngAge, teachEvery a whole number from 1, perLesson a whole number from 1, teachKinds a non-empty list of kinds bots remember. */
 export function checkCulture(culture: Tuning['culture']): void {
   const { elderAge, youngAge, teachRadius, teachEvery, perLesson, teachKinds } = culture
+  if (typeof culture.beyondSense !== 'boolean') throw new RangeError(`culture.beyondSense must be true or false, received ${String(culture.beyondSense)}`)
   if (typeof culture.enabled !== 'boolean') throw new RangeError(`culture.enabled must be true or false, received ${String(culture.enabled)}`)
   if (!(Number.isFinite(elderAge) && elderAge > 0)) throw new RangeError(`culture.elderAge must be a finite number above 0, received ${elderAge}`)
   if (!(Number.isFinite(youngAge) && youngAge > 0)) throw new RangeError(`culture.youngAge must be a finite number above 0, received ${youngAge}`)
@@ -69,6 +74,8 @@ export function teachElders(world: World, tuning: Tuning): void {
   if (elders === 0 || pupils === 0) return
   const live = new Set<number>()
   for (const node of world.nodes) live.add(node.id)
+  const spots = new Map<number, { x: number; y: number }>()
+  if (culture.beyondSense) for (const node of world.nodes) spots.set(node.id, node)
 
   const radius = culture.teachRadius
   for (const pupil of world.bots) {
@@ -94,6 +101,14 @@ export function teachElders(world: World, tuning: Tuning): void {
       }
     }
     if (best === null) continue
-    world.culture.taught += mergeMemory(pupil, best.memory, best.id, tuning, live, { kinds: culture.teachKinds, limit: culture.perLesson, mark: true })
+    let source = best.memory
+    if (culture.beyondSense) {
+      const sense = pupil.traits.senseRadius
+      source = source.filter((entry) => {
+        const spot = spots.get(entry.nodeId)
+        return spot !== undefined && distance(pupil.x, pupil.y, spot.x, spot.y) > sense
+      })
+    }
+    world.culture.taught += mergeMemory(pupil, source, best.id, tuning, live, { kinds: culture.teachKinds, limit: culture.perLesson, mark: true })
   }
 }

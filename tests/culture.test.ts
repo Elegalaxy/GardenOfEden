@@ -97,7 +97,7 @@ describe('pins with culture off', () => {
   })
 
   it('ships off with the C1 numbers', () => {
-    expect(rules.tuning.culture).toEqual({ enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'] })
+    expect(rules.tuning.culture).toEqual({ enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'], beyondSense: false })
   })
 
   it('teachElders does nothing while culture is off, even when elders and pupils stand together', () => {
@@ -355,5 +355,68 @@ describe('a full run with culture on', () => {
     const off = createWorld('a', edenPreset, noCulture(on))
     while (off.tick < 4000) step(off, noCulture(on))
     expect(off.culture).toBeUndefined()
+  })
+})
+
+describe('beyondSense (C2b)', () => {
+  const beyond = withCulture(rules, { beyondSense: true })
+  /** Elder at (48, 50), pupil at (49, 50): node 1 (50, 50) is 1 away, node 4 (50, 54) is about 4.12 away, node 2 (52, 50) is 3 away. */
+  function near(active: Rules, sense: number): World {
+    const w = world(active, [[48, 50, 2000], [49, 50, 100]])
+    w.bots[1]!.traits.senseRadius = sense
+    w.bots[0]!.memory = [entry(1, 5), entry(4, 6), entry(2, 7)]
+    return w
+  }
+
+  it('teaches a place beyond the pupil sense radius and not one inside it', () => {
+    const w = near(beyond, 3.5)
+    teachElders(w, beyond.tuning)
+    // Node 1 (1 away) and node 2 (3 away) are sensed; node 4 (4.12 away) is not.
+    expect(ids(w.bots[1]!.memory)).toEqual([4])
+    expect(w.culture!.taught).toBe(1)
+    const wide = near(beyond, 6)
+    teachElders(wide, beyond.tuning)
+    expect(wide.bots[1]!.memory).toEqual([])
+    expect(wide.culture!.taught).toBe(0)
+  })
+
+  it('keeps the C1 lesson with beyondSense false', () => {
+    const w = near(on, 6)
+    teachElders(w, on.tuning)
+    expect(ids(w.bots[1]!.memory)).toEqual([2, 4])
+  })
+
+  it('counts perLesson slots on eligible entries only', () => {
+    const one = withCulture(rules, { beyondSense: true, perLesson: 1 })
+    const w = world(one, [[48, 50, 2000], [49, 50, 100]])
+    w.bots[1]!.traits.senseRadius = 3.5
+    // Node 2 is the freshest but sensed; the single slot goes to node 4.
+    w.bots[0]!.memory = [entry(2, 9), entry(4, 6)]
+    teachElders(w, one.tuning)
+    expect(ids(w.bots[1]!.memory)).toEqual([4])
+  })
+
+  it('skips an entry whose node has been removed', () => {
+    const w = near(beyond, 3.5)
+    w.nodes = w.nodes.filter((node) => node.id !== 4)
+    teachElders(w, beyond.tuning)
+    expect(w.bots[1]!.memory).toEqual([])
+  })
+
+  it('is checked: a non-boolean is refused', () => {
+    expect(() => checkCulture({ ...beyond.tuning.culture, beyondSense: 1 as never })).toThrow(RangeError)
+    expect(() => checkCulture(beyond.tuning.culture)).not.toThrow()
+  })
+
+  it('is deterministic and replayable', { timeout: 600_000 }, () => {
+    const run = () => {
+      const w = createWorld('a', edenPreset, beyond)
+      while (w.tick < 4000) step(w, beyond)
+      return w
+    }
+    const a = run()
+    expect(stateHash(a)).toBe(stateHash(run()))
+    expect(a.culture!.taught).toBeGreaterThan(0)
+    expect(stateHash(replayWorld('a', edenPreset, beyond, a.commands, 4000))).toBe(stateHash(a))
   })
 })
