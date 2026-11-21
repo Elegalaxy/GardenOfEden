@@ -27,6 +27,7 @@ npm test                    # vitest run (all tests)
 npx vitest run tests/sim.test.ts               # one test file
 npx vitest run -t "some test name"             # one test by name
 npm run sim -- --seed a --ticks 5000 [--preset eden] [--every 500]   # headless run: tick, population, births, deaths by cause, food
+npm run sim -- --preset plague-world --seeds a,b,c --ticks 20000        # scenario presets: quiet, plague-world, drought-bounty, predator-heavy, hard-times (preset layout plus scripted events at fixed ticks; blank and eden are the plain worlds)
 npm run sim -- --seeds a,b,c --ticks 20000 [--warmup 1000]           # per-seed survey: final/min/max population, births, deaths by cause, lineage records kept / pruned
 npm run sim -- --seeds a,b,c --ticks 20000 --no-family               # same, with parent-child knowledge sharing off (A/B); the column `learned` counts shared memory entries
 npm run sim -- --seeds a,b,c --ticks 20000 --asexual                 # same, with the two sexes off (a bot breeds alone); the last survey column `fem` is the females alive at the end

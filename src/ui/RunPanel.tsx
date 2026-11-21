@@ -6,7 +6,35 @@
 
 import { useId, useState } from 'react'
 import { presets } from '../content/index.ts'
+import type { Preset, ScriptEntry } from '../sim/types.ts'
 import { DEFAULT_SEED, isValidSeed, resetWorld, useWorldStore } from './store.ts'
+
+const PLAIN_WORLDS = ['eden', 'blank']
+
+function eventName(entry: ScriptEntry): string {
+  const name = entry.cmd.event.charAt(0).toUpperCase() + entry.cmd.event.slice(1)
+  return entry.cmd.x === undefined || entry.cmd.y === undefined ? name : `${name} at ${Math.round(entry.cmd.x)}, ${Math.round(entry.cmd.y)}`
+}
+
+/** A scenario's description and its scripted events as a key-value grid. Its height is reserved so the menu does not jump. */
+function ScenarioInfo({ preset }: { preset: Preset | undefined }) {
+  const script = preset?.script ?? []
+  return (
+    <div className="scenario-info">
+      {preset?.description !== undefined && <p className="run-hint">{preset.description}</p>}
+      {script.length > 0 && (
+        <dl className="scenario-events" aria-label="Scripted events">
+          {script.map((entry, index) => (
+            <div key={index} className="scenario-event">
+              <dt>{eventName(entry)}</dt>
+              <dd>{`t ${entry.tick.toLocaleString('en-US')}`}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  )
+}
 
 export function RunPanel({ onStarted }: { onStarted?: () => void }) {
   const { seed, presetId, commandCount, load } = useWorldStore()
@@ -69,16 +97,30 @@ export function RunPanel({ onStarted }: { onStarted?: () => void }) {
             setConfirming(false)
           }}
         >
-          {presets.map((preset) => (
-            <option key={preset.id} value={preset.id}>
-              {preset.id === 'blank' ? 'Blank (plain)' : preset.label}
-            </option>
-          ))}
+          <optgroup label="Worlds">
+            {presets
+              .filter((preset) => PLAIN_WORLDS.includes(preset.id))
+              .map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.id === 'blank' ? 'Blank (plain)' : preset.label}
+                </option>
+              ))}
+          </optgroup>
+          <optgroup label="Scenarios">
+            {presets
+              .filter((preset) => !PLAIN_WORLDS.includes(preset.id))
+              .map((preset) => (
+                <option key={preset.id} value={preset.id}>
+                  {preset.label}
+                </option>
+              ))}
+          </optgroup>
         </select>
         <button type="submit" className="secondary" disabled={!valid || load !== null} title={load !== null ? 'A saved run is loading' : valid ? undefined : 'Fix the seed first: 1 to 32 letters, digits or dashes'}>
           {same ? 'Restart this seed' : 'Start new world'}
         </button>
       </form>
+      <ScenarioInfo preset={presets.find((preset) => preset.id === draftPreset)} />
       <p id={hintId} className={valid ? 'run-hint' : 'run-hint run-hint-error'}>
         {valid
           ? `Running ${presetId} seed "${seed}". ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`

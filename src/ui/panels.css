@@ -180,6 +180,37 @@
   font-size: 0.8rem;
 }
 
+.scenario-info {
+  min-height: 8.5rem;
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.scenario-events {
+  margin: 0;
+  display: grid;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+
+.scenario-event {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.scenario-event dt {
+  color: var(--text-muted);
+}
+
+.scenario-event dd {
+  margin: 0;
+  color: var(--text-strong);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .run-hint-error {
   color: #ffb4a8;
 }
