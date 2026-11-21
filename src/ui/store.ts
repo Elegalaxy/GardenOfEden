@@ -43,7 +43,7 @@ import { SIM_VERSION, edenPreset, rules, tuning } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
-import type { Command, DeathsByCause, NodeKind, Sex } from '../sim/types.ts'
+import type { Command, DeathsByCause, NodeKind, Sex, SimEvent } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { DEFAULT_PLACE_COUNT, batchNotice, botCommand, bulkCommands } from './bulk.ts'
 import type { BatchResult, PlaceCount } from './bulk.ts'
@@ -289,6 +289,7 @@ function onFrame(frame: Frame, acksAdvance: boolean): void {
     else if (sent !== undefined && sent !== null) alpha = sent
   }
   publish()
+  tourStep()
   if (acksAdvance) {
     pumpAdvance()
     settleIdle()
@@ -497,6 +498,11 @@ export function useHoverCell(): Cell | null {
 
 const cameraListeners = new Set<Listener>()
 let camera: Camera = DEFAULT_CAMERA
+export const TOUR_GAP_MS = 3000
+let tourOn = false
+let tourSeen = ''
+let tourLastJump = Number.NEGATIVE_INFINITY
+let tourTimer: ReturnType<typeof setTimeout> | undefined
 
 /** The map camera (F1: zoom, pan, follow). A page setting only, kept outside the snapshot like the hover cell, so panning does not wake every panel. */
 export function getCamera(): Camera {
@@ -504,6 +510,12 @@ export function getCamera(): Camera {
 }
 
 export function setCamera(next: Camera): void {
+  // Any manual move of the view (pan, zoom, minimap, follow, a log row) ends the auto-tour (F3).
+  if (tourOn) stopTour('Auto-tour off: you moved the view.')
+  writeCamera(next)
+}
+
+function writeCamera(next: Camera): void {
   if (next.zoom === camera.zoom && next.cx === camera.cx && next.cy === camera.cy && next.follow === camera.follow) return
   camera = next
   for (const listener of cameraListeners) listener()
@@ -531,12 +543,14 @@ export function zoomStep(dir: 1 | -1): void {
 
 /** The 0 key and the Fit button: the whole map in view, not following. */
 export function fitCamera(): void {
+  if (tourOn) stopTour('Auto-tour off: you moved the view.')
   resetCamera()
 }
 
 /** Back to the whole map, not following (a new world, a finished load, a swapped client). */
 export function resetCamera(): void {
-  setCamera(DEFAULT_CAMERA)
+  clearTour()
+  writeCamera(DEFAULT_CAMERA)
 }
 
 /** True when the current selection is a bot or a predator that exists, so the camera can follow it. */
@@ -630,15 +644,100 @@ export function nextHighlight(now: number = performance.now()): boolean {
   highlightNewest = newest
   highlightIndex = nextHighlightIndex(highlightIndex, list.length)
   const event = list[highlightIndex]!
+  if (tourOn) stopTour('Auto-tour off.')
+  goTo(event, `Highlight ${highlightIndex + 1} of ${list.length}: ${highlightText(event)}.`, now)
+  publish()
+  return true
+}
+
+/** Moves the view to a highlight (not through `setCamera`, so it never ends the tour): zoom at least 2, centred, no follow, select what is alive, ring. */
+function goTo(event: SimEvent, text: string, now: number): void {
   const target: Selection | null =
     event.botId !== undefined ? { kind: 'bot', id: event.botId } : event.nodeId !== undefined ? { kind: 'node', id: event.nodeId } : null
   const alive = target !== null && (target.kind === 'bot' ? findBot(view, target.id) !== undefined : findNode(view, target.id) !== undefined)
-  setCamera(clampCamera({ zoom: Math.max(2, camera.zoom), cx: event.x, cy: event.y, follow: false }, view))
+  writeCamera(clampCamera({ zoom: Math.max(2, camera.zoom), cx: event.x, cy: event.y, follow: false }, view))
   if (alive) select(target)
-  say(true, `Highlight ${highlightIndex + 1} of ${list.length}: ${highlightText(event)}.`)
+  say(true, text)
   setPulse({ x: event.x, y: event.y, start: now })
+}
+
+// Auto-tour (F3, key T): while on, each new highlight moves the view there, at most one jump per TOUR_GAP_MS of page time; between
+// jumps it holds. It ends on any manual camera move, on N, on T again and on a new world or load. Page-only.
+
+export function getTour(): boolean {
+  return tourOn
+}
+
+export function useTour(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      cameraListeners.add(listener)
+      return () => {
+        cameraListeners.delete(listener)
+      }
+    },
+    () => tourOn,
+    () => tourOn,
+  )
+}
+
+function clearTour(): void {
+  if (tourTimer !== undefined) clearTimeout(tourTimer)
+  tourTimer = undefined
+  if (!tourOn) return
+  tourOn = false
+  for (const listener of cameraListeners) listener()
+}
+
+function stopTour(text: string): void {
+  clearTour()
+  say(true, text)
   publish()
-  return true
+}
+
+function newestHighlightKey(): string {
+  const list = highlightsOf(view.log, view.commands)
+  return list.length === 0 ? '' : highlightKey(list[0]!)
+}
+
+/** The T key and the Tour button. Turning it on waits for the next new highlight; the ones already in the log are not replayed. */
+export function toggleTour(): void {
+  if (tourOn) {
+    stopTour('Auto-tour off.')
+    return
+  }
+  tourOn = true
+  tourSeen = newestHighlightKey()
+  tourLastJump = Number.NEGATIVE_INFINITY
+  for (const listener of cameraListeners) listener()
+  say(true, 'Auto-tour on: press T or move the view to stop.')
+  publish()
+}
+
+/** Called after every frame: jumps to a new highlight when the tour is on and the gap has passed; otherwise schedules itself for when it has. */
+export function tourStep(now: number = performance.now()): void {
+  if (!tourOn) return
+  const list = highlightsOf(view.log, view.commands)
+  if (list.length === 0) return
+  const key = highlightKey(list[0]!)
+  if (key === tourSeen) return
+  const wait = TOUR_GAP_MS - (now - tourLastJump)
+  if (wait > 0) {
+    if (tourTimer === undefined) {
+      tourTimer = setTimeout(() => {
+        tourTimer = undefined
+        tourStep()
+      }, wait)
+    }
+    return
+  }
+  tourSeen = key
+  tourLastJump = now
+  highlightIndex = 0
+  highlightRun = view.runId
+  highlightNewest = key
+  goTo(list[0]!, `Auto-tour: ${highlightText(list[0]!)}.`, now)
+  publish()
 }
 
 /**

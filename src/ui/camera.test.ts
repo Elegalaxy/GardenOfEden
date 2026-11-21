@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_CAMERA, MAX_ZOOM, ZOOM_STEPS, clampCamera, effectiveCamera, ensureVisible, followPosition, panBy, stepZoom, viewKeyAction, zoomAt } from './camera.ts'
+import { DEFAULT_CAMERA, MAX_ZOOM, ZOOM_STEPS, clampCamera, effectiveCamera, ensureVisible, followPosition, minimapSize, minimapToMap, panBy, pinchZoom, stepZoom, viewKeyAction, viewportRect, zoomAt } from './camera.ts'
 import type { Camera } from './camera.ts'
 import { cellAtPixel } from './geometry.ts'
 import { computeLayout } from './render.ts'
@@ -164,10 +164,80 @@ describe('viewKeyAction', () => {
     expect(viewKeyAction(key('F'))).toBe('follow')
     expect(viewKeyAction(key('n'))).toBe('highlight')
     expect(viewKeyAction(key('N'))).toBe('highlight')
+    expect(viewKeyAction(key('t'))).toBe('tour')
+    expect(viewKeyAction(key('T'))).toBe('tour')
+    expect(viewKeyAction(key('t', { ctrlKey: true }))).toBeNull()
+    expect(viewKeyAction(key('t', { shiftKey: true }))).toBeNull()
     expect(viewKeyAction(key('n', { ctrlKey: true }))).toBeNull()
     expect(viewKeyAction(key('n', { shiftKey: true }))).toBeNull()
     for (const other of ['1', '7', 'Escape', 'd', 'b', 'p', 'm', 'l', 'h', 'c']) expect(viewKeyAction(key(other))).toBeNull()
     expect(viewKeyAction(key('-', { ctrlKey: true }))).toBeNull()
     expect(viewKeyAction(key('f', { shiftKey: true }))).toBeNull()
+  })
+})
+
+describe('pinchZoom (F3)', () => {
+  const pair = (x0: number, y0: number, x1: number, y1: number) => [{ x: x0, y: y0 }, { x: x1, y: y1 }] as const
+
+  it('zooms by the ratio of the finger distances, keeping the midpoint on the same map point', () => {
+    const start = at(2, 24, 16)
+    const prev = pair(400, 300, 560, 300)
+    const next = pair(360, 300, 600, 300)
+    const out = pinchZoom(start, world, size, prev, next)
+    expect(out.zoom).toBeCloseTo(3, 9)
+    const mid = zoomAt(start, world, size, 480, 300, 3)
+    expect(out.cx).toBeCloseTo(mid.cx, 9)
+    expect(out.cy).toBeCloseTo(mid.cy, 9)
+  })
+
+  it('zooms out with fingers closing, never below 1 or above MAX_ZOOM', () => {
+    expect(pinchZoom(at(2, 24, 16), world, size, pair(300, 300, 600, 300), pair(450, 300, 460, 300)).zoom).toBe(1)
+    expect(pinchZoom(at(3, 24, 16), world, size, pair(450, 300, 470, 300), pair(100, 300, 800, 300)).zoom).toBe(MAX_ZOOM)
+  })
+
+  it('pans with the midpoint, and ends following', () => {
+    const start = at(2, 24, 16, true)
+    const out = pinchZoom(start, world, size, pair(400, 300, 560, 300), pair(440, 300, 600, 300))
+    expect(out.zoom).toBeCloseTo(2, 9)
+    expect(out.cx).toBeLessThan(24)
+    expect(out.cy).toBeCloseTo(16, 9)
+    expect(out.follow).toBe(false)
+  })
+
+  it('changes nothing for two fingers on the same spot', () => {
+    const out = pinchZoom(at(2, 20, 12), world, size, pair(500, 300, 500, 300), pair(500, 300, 500, 300))
+    expect(out).toMatchObject({ zoom: 2, cx: 20, cy: 12 })
+  })
+})
+
+describe('minimap helpers (F3)', () => {
+  it('fits the map aspect into 120 x 80', () => {
+    expect(minimapSize(world)).toEqual({ width: 120, height: 80 })
+    expect(minimapSize({ width: 48, height: 48 })).toEqual({ width: 80, height: 80 })
+    expect(minimapSize({ width: 100, height: 10 })).toEqual({ width: 120, height: 12 })
+  })
+
+  it('maps a minimap pixel to a map point, limited to the map', () => {
+    const box = minimapSize(world)
+    expect(minimapToMap(60, 40, box, world)).toEqual({ x: 24, y: 16 })
+    expect(minimapToMap(0, 0, box, world)).toEqual({ x: 0, y: 0 })
+    expect(minimapToMap(-10, 500, box, world)).toEqual({ x: 0, y: 32 })
+    expect(minimapToMap(999, 999, box, world)).toEqual({ x: 48, y: 32 })
+  })
+
+  it('draws the viewport as the part of the map in view', () => {
+    const box = minimapSize(world)
+    expect(viewportRect(clampCamera(DEFAULT_CAMERA, world), world, box)).toEqual({ x: 0, y: 0, w: 120, h: 80 })
+    expect(viewportRect(at(2, 12, 8), world, box)).toEqual({ x: 0, y: 0, w: 60, h: 40 })
+    expect(viewportRect(at(4, 40, 28), world, box)).toEqual({ x: 85, y: 60, w: 30, h: 20 })
+  })
+
+  it('a click on the minimap recentres the camera on that point', () => {
+    const box = minimapSize(world)
+    const p = minimapToMap(90, 20, box, world)
+    const next = clampCamera({ ...at(2, 12, 8), cx: p.x, cy: p.y }, world)
+    const r = viewportRect(next, world, box)
+    expect(r.x + r.w / 2).toBeCloseTo(90, 9)
+    expect(r.y + r.h / 2).toBeCloseTo(20, 9)
   })
 })

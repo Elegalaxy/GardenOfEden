@@ -108,9 +108,9 @@ export function effectiveCamera(camera: Camera, world: CameraWorld, target: { x:
   return clampCamera({ ...camera, cx: target.x, cy: target.y }, world)
 }
 
-export type ViewKey = 'in' | 'out' | 'fit' | 'follow' | 'highlight'
+export type ViewKey = 'in' | 'out' | 'fit' | 'follow' | 'highlight' | 'tour'
 
-/** The camera key a press is: + or = zoom in, - zoom out, 0 the whole map, F follow, N the next highlight (on their own; Shift only for the + itself). The caller ignores presses while typing. */
+/** The camera key a press is: + or = zoom in, - zoom out, 0 the whole map, F follow, N the next highlight, T the auto-tour (on their own; Shift only for the + itself). The caller ignores presses while typing. */
 export function viewKeyAction(event: { key: string; altKey: boolean; ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }): ViewKey | null {
   if (event.altKey || event.ctrlKey || event.metaKey) return null
   if (event.key === '+') return 'in'
@@ -128,7 +128,58 @@ export function viewKeyAction(event: { key: string; altKey: boolean; ctrlKey: bo
     case 'n':
     case 'N':
       return 'highlight'
+    case 't':
+    case 'T':
+      return 'tour'
     default:
       return null
   }
+}
+
+export type Point = { x: number; y: number }
+
+/**
+ * Two-finger gesture (F3): the pixel distance between the two pointers sets the zoom (the ratio of the new distance to the old,
+ * applied at the old midpoint, clamped to 1..MAX_ZOOM) and the midpoint's move pans the view. Points are relative to the view.
+ * Following ends (a manual move). A zero old distance changes nothing.
+ */
+export function pinchZoom(
+  camera: Camera,
+  world: CameraWorld,
+  size: ViewSize,
+  prev: readonly [Point, Point],
+  next: readonly [Point, Point],
+): Camera {
+  const prevDist = Math.hypot(prev[0].x - prev[1].x, prev[0].y - prev[1].y)
+  const nextDist = Math.hypot(next[0].x - next[1].x, next[0].y - next[1].y)
+  const prevMid = { x: (prev[0].x + prev[1].x) / 2, y: (prev[0].y + prev[1].y) / 2 }
+  const nextMid = { x: (next[0].x + next[1].x) / 2, y: (next[0].y + next[1].y) / 2 }
+  const ratio = prevDist < 1e-6 ? 1 : nextDist / prevDist
+  const zoomed = zoomAt(camera, world, size, prevMid.x, prevMid.y, camera.zoom * ratio)
+  const moved = panBy(zoomed, world, size, nextMid.x - prevMid.x, nextMid.y - prevMid.y)
+  return moved.follow ? { ...moved, follow: false } : moved
+}
+
+/** Size of the minimap box (F3): the map's aspect inside 120 x 80 CSS pixels. */
+export const MINIMAP_MAX = { width: 120, height: 80 } as const
+export function minimapSize(world: CameraWorld): ViewSize {
+  const s = Math.min(MINIMAP_MAX.width / world.width, MINIMAP_MAX.height / world.height)
+  return { width: Math.max(1, Math.round(world.width * s)), height: Math.max(1, Math.round(world.height * s)) }
+}
+
+/** The map point (cells) under a pixel of the minimap box, limited to the map. */
+export function minimapToMap(px: number, py: number, box: ViewSize, world: CameraWorld): Point {
+  return {
+    x: Math.min(world.width, Math.max(0, (px / box.width) * world.width)),
+    y: Math.min(world.height, Math.max(0, (py / box.height) * world.height)),
+  }
+}
+
+/** The part of the map the camera shows, as a rectangle in minimap pixels. */
+export function viewportRect(camera: Camera, world: CameraWorld, box: ViewSize): { x: number; y: number; w: number; h: number } {
+  const halfW = world.width / (2 * camera.zoom)
+  const halfH = world.height / (2 * camera.zoom)
+  const kx = box.width / world.width
+  const ky = box.height / world.height
+  return { x: (camera.cx - halfW) * kx, y: (camera.cy - halfH) * ky, w: 2 * halfW * kx, h: 2 * halfH * ky }
 }

@@ -94,7 +94,7 @@ export const COLORS = {
   ghostInvalid: '#c9d1d9',
 } as const
 
-const NODE_COLOR: Record<NodeKind, string> = {
+export const NODE_COLOR: Record<NodeKind, string> = {
   resource: COLORS.resource,
   danger: COLORS.danger,
   shelter: COLORS.shelter,

@@ -9,7 +9,8 @@
 //
 // Camera (F1, camera.ts): Ctrl/Cmd + wheel (or a trackpad pinch) zooms at the pointer, dragging pans while zoomed in, and
 // the arrow-key cursor scrolls the view to stay on screen. While following, every frame centres on the selected bot or
-// predator. The buttons and keys (+ - 0 F) are in ViewControls.
+// predator. The buttons and keys (+ - 0 F N T) are in ViewControls. A two-finger touch gesture (F3) zooms and pans while zoomed in
+// (at zoom 1 a touch must still scroll the page, so a pinch cannot start the zoom; the + button does). The Minimap floats over the map.
 //
 // Global world events in progress (drought, bounty) are small chips along the top
 // edge of the map: a letter badge, the name, the ticks left and, on a wide map, what
@@ -21,7 +22,8 @@ import { rules, tuning } from '../content/index.ts'
 import { checkCommand } from '../sim/commands.ts'
 import type { Command } from '../sim/types.ts'
 import { effectSummary, eventInfo, formatTicks } from './eventInfo.ts'
-import { effectiveCamera, ensureVisible, followPosition, panBy, zoomAt } from './camera.ts'
+import { effectiveCamera, ensureVisible, followPosition, panBy, pinchZoom, zoomAt } from './camera.ts'
+import type { Point } from './camera.ts'
 import { cellAtPixel, cellCenter, nodeAt, pickAt } from './geometry.ts'
 import type { Cell } from './geometry.ts'
 import { toolInfo } from './tools.ts'
@@ -30,6 +32,7 @@ import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
 import { PULSE_MS } from './highlights.ts'
 import { checkFollow, clickMap, setCamera, setHoverCell, useCamera, usePulse, useWorldStore } from './store.ts'
+import { Minimap } from './Minimap.tsx'
 import { ViewControls } from './ViewControls.tsx'
 
 const BOT_REACH_CELLS = 1
@@ -93,6 +96,8 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
   const lastCentre = useRef<{ x: number; y: number } | undefined>(undefined)
   const drag = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null)
   const swallowClick = useRef(false)
+  // Touch pointers down while zoomed in (F3): two of them make a pinch.
+  const touches = useRef(new Map<number, Point>())
   const reachCells = layout === null ? BOT_REACH_CELLS : Math.max(BOT_REACH_CELLS, BOT_REACH_PIXELS / layout.scale)
 
   // What is under the hover/cursor cell, and what a placement there would do.
@@ -209,11 +214,34 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
         onPointerDown={(event) => {
           swallowClick.current = false
           if (camera.zoom <= 1 || (event.pointerType === 'mouse' && event.button !== 0)) return
+          if (event.pointerType !== 'mouse') {
+            const rect = event.currentTarget.getBoundingClientRect()
+            touches.current.set(event.pointerId, { x: event.clientX - rect.left, y: event.clientY - rect.top })
+            if (touches.current.size === 2) {
+              // A second finger turns the drag into a pinch; the lifted finger's click must not place anything.
+              drag.current = null
+              swallowClick.current = true
+              event.currentTarget.setPointerCapture(event.pointerId)
+              return
+            }
+            if (touches.current.size > 2) return
+          }
           drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false }
           event.currentTarget.setPointerCapture(event.pointerId)
         }}
         onPointerMove={(event) => {
           setCell(cellFromEvent(event.clientX, event.clientY))
+          const held = touches.current
+          if (held.has(event.pointerId) && held.size === 2) {
+            const rect = event.currentTarget.getBoundingClientRect()
+            const before = [...held.values()] as [Point, Point]
+            held.set(event.pointerId, { x: event.clientX - rect.left, y: event.clientY - rect.top })
+            const after = [...held.values()] as [Point, Point]
+            const { size: s, world: w, camera: c } = live.current
+            setCamera(pinchZoom(c, w, s, before, after))
+            swallowClick.current = true
+            return
+          }
           const d = drag.current
           if (d === null || d.id !== event.pointerId) return
           const dx = event.clientX - d.x
@@ -226,13 +254,15 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
           setCamera(panBy(c, w, s, dx, dy))
         }}
         onPointerUp={(event) => {
+          touches.current.delete(event.pointerId)
           const d = drag.current
           if (d === null || d.id !== event.pointerId) return
           drag.current = null
           // The click that ends a drag must not place or select anything.
           if (d.moved) swallowClick.current = true
         }}
-        onPointerCancel={() => {
+        onPointerCancel={(event) => {
+          touches.current.delete(event.pointerId)
           drag.current = null
         }}
         onPointerLeave={() => setCell(null)}
@@ -296,6 +326,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
           ))}
         </ul>
       )}
+      <Minimap />
       <ViewControls />
       {children}
     </div>

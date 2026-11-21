@@ -1,15 +1,16 @@
-// The camera controls (F1): zoom out, zoom in, Fit (the whole map), Follow and (F2) Next highlight, floating over the top right corner of the map,
-// and the keys that do the same (+ or = in, - out, 0 fit, F follow, N next highlight; ignored while typing in a field). Fit keeps its place
+// The camera controls (F1): zoom out, zoom in, Fit (the whole map), Follow, (F2) Next highlight and (F3) Tour, floating over the top right corner of the map,
+// and the keys that do the same (+ or = in, - out, 0 fit, F follow, N next highlight, T auto-tour; ignored while typing in a field). Fit keeps its place
 // but is hidden while the whole map is in view, so the row never changes size. The camera is a page setting (store.ts).
 
 import { useEffect } from 'react'
 import { MAX_ZOOM, followPosition, viewKeyAction } from './camera.ts'
 import { highlightsOf } from './highlights.ts'
-import { fitCamera, nextHighlight, toggleFollow, useCamera, useWorldStore, zoomStep } from './store.ts'
+import { fitCamera, nextHighlight, toggleFollow, toggleTour, useCamera, useTour, useWorldStore, zoomStep } from './store.ts'
 import { isTypingTarget } from './typing.ts'
 
 export function ViewControls() {
   const camera = useCamera()
+  const touring = useTour()
   const { world, selection, alpha } = useWorldStore()
   const followable = followPosition(world, selection, alpha) !== null
   const zoomed = camera.zoom > 1
@@ -25,6 +26,7 @@ export function ViewControls() {
       else if (action === 'out') zoomStep(-1)
       else if (action === 'fit') fitCamera()
       else if (action === 'highlight') nextHighlight()
+      else if (action === 'tour') toggleTour()
       else toggleFollow()
     }
     window.addEventListener('keydown', onKeyDown)
@@ -100,6 +102,23 @@ export function ViewControls() {
       >
         <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
           <path d="M12 2.5l2.6 6.4 6.9.5-5.3 4.4 1.7 6.7L12 16.7 6.1 20.5l1.7-6.7L2.5 9.4l6.9-.5z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        className="secondary view-button"
+        aria-label="Auto-tour"
+        aria-keyshortcuts="T"
+        aria-pressed={touring}
+        title={
+          touring
+            ? 'Stop the auto-tour (T)'
+            : 'Auto-tour (T): the view jumps to each new highlight, at most one jump every 3 seconds, until you move the view'
+        }
+        onClick={toggleTour}
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+          <path d="M6 3.5v17l14-8.5z" fill={touring ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
         </svg>
       </button>
     </div>

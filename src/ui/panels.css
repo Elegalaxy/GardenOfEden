@@ -1578,7 +1578,7 @@ button.log-button[aria-pressed='true'] {
   position: absolute;
   top: 4px;
   left: 4px;
-  right: 244px; /* clear of the view controls (a 5 x 44 px row) */
+  right: 292px; /* clear of the view controls (a 6 x 44 px row) */
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -1641,14 +1641,14 @@ button.log-button[aria-pressed='true'] {
   }
 }
 
-/* Map view controls (F1): a floating row of four 44 px buttons in the top right corner, so --map-chrome is unchanged.
-   A small map gets a 2 x 2 block instead, so the row does not cover most of its width. */
+/* Map view controls (F1, F2, F3): a floating row of six 44 px buttons in the top right corner, so --map-chrome is unchanged.
+   A small map gets a 3 x 2 block instead, so the row does not cover most of its width. */
 .view-controls {
   position: absolute;
   top: 4px;
   right: 4px;
   display: grid;
-  grid-template-columns: repeat(5, 44px);
+  grid-template-columns: repeat(6, 44px);
   gap: 4px;
 }
 
@@ -1675,6 +1675,29 @@ button.log-button[aria-pressed='true'] {
 
   .map-banners {
     right: 148px;
+  }
+}
+
+/* Minimap (F3): floats in the bottom left corner, only while zoomed in (visibility, so nothing in flow changes); hidden on a small map.
+   The empty-world note spans the bottom edge, so the minimap sits above it while that note shows. */
+.minimap {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 2;
+  background: rgba(14, 17, 24, 0.88);
+  border: 1px solid #26324a;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.minimap:has(~ .map-note) {
+  bottom: 64px;
+}
+
+@container (max-width: 559px) {
+  .minimap {
+    display: none;
   }
 }
 
