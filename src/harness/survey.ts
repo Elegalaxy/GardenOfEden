@@ -109,6 +109,8 @@ export type SeedSurvey = {
   culture: { taught: number; elderShare: number } | null
   /** Predator sexes (PS1): females and males alive at the end, cubs made by a pair and by a lone parent over the run, and the percentage of ticks after the warmup with only one sex alive; null with the rule off. */
   predSexes: { females: number; males: number; mated: number; alone: number; oneSexShare: number } | null
+  /** Disease resistance (R1): the founders' mean, and the mean and highest resist of the bots alive at the end; null with the rule off, never activated, or nobody alive. */
+  resistance: { founderMean: number; mean: number; max: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -179,6 +181,11 @@ export function withoutPoison(rules: Rules): Rules {
 /** The same rules with culture off: `--no-culture` (C1). */
 export function withoutCulture(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, culture: { ...rules.tuning.culture, enabled: false } } }
+}
+
+/** The same rules with disease resistance off: `--no-resistance` (R1). */
+export function withoutResistance(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, resistance: { ...rules.tuning.resistance, enabled: false } } }
 }
 
 /** The same rules with disease off: `--no-disease` (D1). */
@@ -455,13 +462,30 @@ export function surveySeed(
             alone: world.ecology.sexes.alone,
             oneSexShare: ticks > warmup ? (100 * oneSexTicks) / (ticks - warmup) : 0,
           },
+    resistance: resistanceSummary(world, rules),
     hash: stateHash(world),
     refused,
   }
 }
 
+/** Founder mean, living mean and living max of `resist`; null with the rule off, before the first outbreak, or with no bot alive. */
+function resistanceSummary(world: World, rules: Rules): SeedSurvey['resistance'] {
+  if (!rules.tuning.resistance.enabled || world.resistance === undefined) return null
+  let sum = 0
+  let max = -Infinity
+  let count = 0
+  for (const bot of world.bots) {
+    if (bot.resist === undefined) continue
+    sum += bot.resist
+    if (bot.resist > max) max = bot.resist
+    count += 1
+  }
+  if (count === 0) return null
+  return { founderMean: world.resistance.founderMean, mean: sum / count, max }
+}
+
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis', 'taught', 'eld%', 'pFem', 'pMale', 'pMated', 'pAlone', '1sex%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis', 'taught', 'eld%', 'pFem', 'pMale', 'pMated', 'pAlone', '1sex%', 'res0', 'res', 'resMax']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -530,6 +554,9 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.predSexes === null ? '-' : r.predSexes.mated,
       r.predSexes === null ? '-' : r.predSexes.alone,
       r.predSexes === null ? '-' : r.predSexes.oneSexShare.toFixed(1),
+      r.resistance === null ? '-' : r.resistance.founderMean.toFixed(3),
+      r.resistance === null ? '-' : r.resistance.mean.toFixed(3),
+      r.resistance === null ? '-' : r.resistance.max.toFixed(3),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

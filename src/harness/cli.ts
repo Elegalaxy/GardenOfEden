@@ -20,6 +20,7 @@
 // `--no-poison` (either form) switches toxic food off (T1; it is off in Eden, flags apply before `--set`, so a later `--set poison.enabled=true` wins).
 // `--no-disease` (either form) switches disease off (D1; it is off in Eden, so it only matters after `--set disease.enabled=true`; flags apply before `--set`); the last survey columns are then `sick inf rec dis` (sick at the end, infected, recovered, disease deaths).
 // `--no-culture` (either form) switches elders teaching off (C1; it is off in Eden, so it only matters after `--set culture.enabled=true`; flags apply before `--set`); the last survey columns are then `taught eld%` (entries taught, share of bot-ticks after the warmup spent as an elder; dashes with culture off).
+// `--no-resistance` (either form) switches heritable disease resistance off (R1 resistance; it is off in Eden, turn it on with `--set resistance.enabled=true`; flags apply before `--set`); the last survey columns are then `res0 res resMax` (founder mean, living mean and living max resist at the end; dashes with it off or before the first outbreak).
 // `--no-terrain` (either form) switches rough ground off (R1; it is off in Eden, flags apply before `--set`, so a later `--set terrain.enabled=true` wins); the last survey columns are then `rgh%` and `pRgh%`.
 // `--no-predator-harm` (either form) stops meteors and plague hurting predators (EP1; off in Eden, so it only matters after `--set events.predatorHarm.enabled=true`); the last survey column is then `pEvt`.
 // `--static-predators` (either form) switches predator ecology off (fixed predators, as before E1; ecology is on by default since E2).
@@ -38,6 +39,7 @@ import { checkEcology, checkPredatorHarm, checkPrey } from '../sim/predators.ts'
 import { checkPerception } from '../sim/perception.ts'
 import { checkMateChoice } from '../sim/kin.ts'
 import { checkCulture } from '../sim/culture.ts'
+import { checkResistance } from '../sim/resistance.ts'
 import { checkPredatorSexes } from '../sim/predatorSexes.ts'
 import { checkDisease } from '../sim/disease.ts'
 import { checkPoison } from '../sim/poison.ts'
@@ -52,7 +54,7 @@ import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
 import { parseOverride, withOverrides } from './overrides.ts'
 import type { Override } from './overrides.ts'
-import { formatSurvey, withPredatorSexes, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutCulture, withoutDisease, withoutEcology, withoutFamily, withoutMateChoice, withoutPoison, withoutPredatorHarm, withoutPredatorSexes, withoutPrey, withoutSeasons, withoutSex, withoutTerrain } from './survey.ts'
+import { formatSurvey, withPredatorSexes, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutCulture, withoutDisease, withoutEcology, withoutFamily, withoutMateChoice, withoutPoison, withoutPredatorHarm, withoutPredatorSexes, withoutPrey, withoutResistance, withoutSeasons, withoutSex, withoutTerrain } from './survey.ts'
 
 const USAGE = [
   'usage: npm run sim -- --seed <seed> --ticks <1-1000000> [--preset <id>] [--every <1-1000000>]',
@@ -62,6 +64,7 @@ const USAGE = [
   '       and --static-predators (predator ecology off: fixed predators), --no-prey (P1 prey rule off), --predator-traits (H1 heritable predator traits on)',
   '       and --predator-sexes (PS1 predator sexes on) and --no-predator-sexes (off)',
   '       and --no-poison (T1 toxic food off; turn it on with --set poison.enabled=true)',
+  '       and --no-resistance (R1 disease resistance off; turn it on with --set resistance.enabled=true)',
   '       and --no-disease (D1 disease off; turn it on with --set disease.enabled=true, then start it with --event outbreak@<tick>:<x>,<y>)',
   '       and --no-culture (C1 elders teaching off; turn it on with --set culture.enabled=true)',
   '       and --no-predator-harm (EP1: events do not hurt predators; turn it on with --set events.predatorHarm.enabled=true)',
@@ -94,6 +97,7 @@ type Options = {
   noMateChoice: boolean
   noDisease: boolean
   noCulture: boolean
+  noResistance: boolean
   predatorSexes: boolean
   noPredatorSexes: boolean
   overrides: Override[]
@@ -127,6 +131,7 @@ function parseArgs(argv: string[]): Options {
   let noMateChoice = false
   let noDisease = false
   let noCulture = false
+  let noResistance = false
   let predatorSexes = false
   let noPredatorSexes = false
   const overrides: Override[] = []
@@ -143,6 +148,9 @@ function parseArgs(argv: string[]): Options {
       i -= 1
     } else if (flag === '--no-cone') {
       noCone = true
+      i -= 1
+    } else if (flag === '--no-resistance') {
+      noResistance = true
       i -= 1
     } else if (flag === '--no-seasons') {
       noSeasons = true
@@ -213,7 +221,7 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, predatorSexes, noPredatorSexes, overrides, script }
+  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, noResistance, predatorSexes, noPredatorSexes, overrides, script }
 }
 
 function row(world: World): string {
@@ -279,7 +287,8 @@ function main(argv: string[]): void {
   const mateRules = options.noMateChoice ? withoutMateChoice(harmRules) : harmRules
   const diseaseRules = options.noDisease ? withoutDisease(mateRules) : mateRules
   const cultureRules = options.noCulture ? withoutCulture(diseaseRules) : diseaseRules
-  const sexesRules = options.noPredatorSexes ? withoutPredatorSexes(cultureRules) : options.predatorSexes ? withPredatorSexes(cultureRules) : cultureRules
+  const resistRules = options.noResistance ? withoutResistance(cultureRules) : cultureRules
+  const sexesRules = options.noPredatorSexes ? withoutPredatorSexes(resistRules) : options.predatorSexes ? withPredatorSexes(resistRules) : resistRules
   let active: Rules
   try {
     active = withOverrides(sexesRules, options.overrides)
@@ -292,6 +301,7 @@ function main(argv: string[]): void {
     checkMateChoice(active.tuning.mateChoice)
     checkDisease(active.tuning.disease)
     checkCulture(active.tuning.culture)
+    checkResistance(active.tuning.resistance)
     checkPredatorHarm(active.tuning.events.predatorHarm)
     checkPredatorSexes(active.tuning.predator.sexes)
   } catch (error) {
@@ -299,7 +309,7 @@ function main(argv: string[]): void {
     process.exitCode = 1
     return
   }
-  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.noDisease ? ' no-disease' : ''}${options.noCulture ? ' no-culture' : ''}${options.predatorSexes ? ' predator-sexes' : ''}${options.noPredatorSexes ? ' no-predator-sexes' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
+  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.noDisease ? ' no-disease' : ''}${options.noCulture ? ' no-culture' : ''}${options.noResistance ? ' no-resistance' : ''}${options.predatorSexes ? ' predator-sexes' : ''}${options.noPredatorSexes ? ' no-predator-sexes' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine(active))

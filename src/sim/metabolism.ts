@@ -44,6 +44,8 @@ export function metabolise(bot: Bot, moved: boolean, exposure: Exposure, tuning:
   const step = moved ? t.moveDrain * (bot.intent.kind === 'flee' ? sprint : 1) : 0
   const traitMult = 1 + t.hardinessDrain * (hardiness - 1) + t.longevityDrain * (longevity - 1)
   bot.energy -= (t.baseDrain + sensing + upkeep + step) * bot.traits.metabolism * exposure.drainMult * traitMult
+  // R1: resistance costs `upkeep` energy a tick per point above 1 (only for a bot that has `resist`).
+  if (bot.resist !== undefined && tuning.resistance.upkeep > 0) bot.energy -= tuning.resistance.upkeep * (bot.resist - 1)
   const thirstLoss = t.thirstDrain * pow(Math.max(1, bot.traits.metabolism), t.thirstMetabolismPower)
   bot.thirst = Math.max(0, bot.thirst - thirstLoss)
   const harm = (exposure.damage + exposure.plague + exposure.predator + poison + sickness) / hardiness

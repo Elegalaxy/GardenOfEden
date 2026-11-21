@@ -89,6 +89,11 @@ export function createRng(seed: string): RngState {
   return streams
 }
 
+/** A stand-alone stream derived from a seed and a salt (R1 resistance): not one of `RNG_STREAM_NAMES`, so `createRng` and every named stream are untouched. */
+export function deriveStream(seed: string, salt: string): RngStream {
+  return takeStream(hashSeed(`${seed}#${salt}`)).stream
+}
+
 /** Next unsigned 32-bit sfc32 output. Advances `stream`. */
 function nextUint32(stream: RngStream): number {
   assertStream(stream)

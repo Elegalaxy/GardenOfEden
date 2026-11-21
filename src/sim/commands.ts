@@ -142,6 +142,7 @@ export function applyCommand(world: World, rules: Rules, cmd: Command, record = 
       const heading = nextFloat(world.rng.world) * Math.PI * 2
       // New ids are the largest so far, so pushing keeps `bots` in ascending id order.
       const bot = makeBot(id, cmd.x, cmd.y, heading, rules, cmd.sex ?? autoSex(world.bots), goldenHue(id))
+      if (world.resistance !== undefined) bot.resist = 1
       world.bots.push(bot)
       addRecord(world, id, null, null, bot.sex, bot.generation, bot.traits, bot.hue)
       pushEvent(world, tuning, {

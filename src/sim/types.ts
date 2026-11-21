@@ -224,6 +224,8 @@ export type Bot = {
   intent: Intent
   /** Radians. */
   heading: number
+  /** Disease resistance (R1): 1 or more; present only once the world has `World.resistance` (resistance.ts). Higher needs a bigger dose to fall sick and shortens sickness. */
+  resist?: number
   /** Disease (D1): present only while the bot is exposed, sick or immune (deleted when it clears). Last key. */
   illness?: Illness
 }
@@ -383,6 +385,8 @@ export type World = {
   culture?: { taught: number }
   /** Scenario script: entries not yet applied, sorted by tick (scenario.ts). Present only in a world made from a preset with a script, until the last entry is applied. Last key. */
   script?: ScriptEntry[]
+  /** Disease resistance (R1): created lazily at the first outbreak with `tuning.resistance.enabled` (resistance.ts), never before, so a run with no outbreak hashes as before. Last key. */
+  resistance?: { stream: RngStream; founderMean: number; activatedTick: number }
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -889,6 +893,23 @@ export type Tuning = {
   }
   /** Events kept in `World.log` (births, deaths and player commands). */
   logCap: number
+  /**
+   * Disease resistance (R1, off): a latent heritable number. At the first outbreak every living bot gets `resist` between `founderMin`
+   * and `founderMax` (own RNG stream kept in `World.resistance`, not one of the named streams); newborns inherit it (mother or father,
+   * then a mutation, clamped to `min`..`max`). `resist` r multiplies the dose needed to fall sick by 1 + catchWeight * (r - 1) and divides
+   * sickness length by 1 + sickWeight * (r - 1); `upkeep` is the energy a tick per point above 1. See resistance.ts.
+   */
+  resistance: {
+    enabled: boolean
+    founderMin: number
+    founderMax: number
+    min: number
+    max: number
+    catchWeight: number
+    sickWeight: number
+    upkeep: number
+    mutation: { rate: number; strength: number }
+  }
 }
 
 /** What the sim needs from content: behaviour numbers and node numbers. */

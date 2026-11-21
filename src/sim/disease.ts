@@ -10,10 +10,16 @@
 // `startOutbreak` makes every living bot within `outbreakRadius` of the spot sick at once. A bot that fell sick this tick does not spread it
 // until the next tick. Newborns start healthy and predators are untouched. `World.disease` {infected, recovered} is created at the first
 // outbreak (as the last key), so a run with no outbreak hashes the same with the rule on or off. No random draws.
-// This file imports only types and perception's `distance`.
+// Resistance (R1, resistance.ts, off): the first outbreak with `tuning.resistance.enabled` activates it; a bot with `resist` needs a bigger dose
+// (`catchThreshold`) and is sick for fewer ticks (`sickLength`). A bot without `resist` takes the plain numbers.
+// This file imports only types, perception's `distance` and resistance.ts.
 
 import { distance } from './perception.ts'
+import { activate, catchThreshold, resistanceOn, sickLength } from './resistance.ts'
 import type { Bot, Tuning, World } from './types.ts'
+
+/** What disease.ts reads from the tuning; `resistance` may be left out (callers that never use it). */
+type DiseaseTuning = Pick<Tuning, 'disease'> & Partial<Pick<Tuning, 'resistance'>>
 
 const CELL = 4
 
@@ -34,14 +40,16 @@ export function sickDamage(bot: Pick<Bot, 'illness'>, tuning: Pick<Tuning, 'dise
   return bot.illness !== undefined && bot.illness.stage === 'sick' ? tuning.disease.sickDrain : 0
 }
 
-function makeSick(world: World, bot: Bot, tuning: Pick<Tuning, 'disease'>): void {
-  bot.illness = { stage: 'sick', dose: 0, until: world.tick + tuning.disease.sickTicks }
+function makeSick(world: World, bot: Bot, tuning: DiseaseTuning): void {
+  const length = tuning.resistance === undefined ? tuning.disease.sickTicks : sickLength(bot, tuning.resistance, tuning.disease.sickTicks)
+  bot.illness = { stage: 'sick', dose: 0, until: world.tick + length }
   const counters = (world.disease ??= { infected: 0, recovered: 0 })
   counters.infected += 1
 }
 
 /** The outbreak: every living bot within `outbreakRadius` of (x, y), in id order, falls sick (an already sick bot is left alone). Returns how many fell sick. */
-export function startOutbreak(world: World, x: number, y: number, tuning: Pick<Tuning, 'disease'>): number {
+export function startOutbreak(world: World, x: number, y: number, tuning: DiseaseTuning): number {
+  if (tuning.resistance !== undefined && resistanceOn({ resistance: tuning.resistance }) && world.resistance === undefined) activate(world, { resistance: tuning.resistance })
   let count = 0
   for (const bot of world.bots) {
     if (distance(x, y, bot.x, bot.y) > tuning.disease.outbreakRadius) continue
@@ -57,7 +65,7 @@ function key(cx: number, cy: number): number {
 }
 
 /** One tick of spreading, after the bots acted (step.ts). Returns at once when no bot has an illness. */
-export function spreadDisease(world: World, tuning: Pick<Tuning, 'disease'>): void {
+export function spreadDisease(world: World, tuning: DiseaseTuning): void {
   if (world.disease === undefined) return
   const { contactRadius, catchAfter, immuneTicks } = tuning.disease
   let any = false
@@ -113,7 +121,8 @@ export function spreadDisease(world: World, tuning: Pick<Tuning, 'disease'>): vo
     }
     if (touched) {
       const dose = (illness === undefined ? 0 : illness.dose) + 1
-      if (dose >= catchAfter) makeSick(world, bot, tuning)
+      const needed = tuning.resistance === undefined ? catchAfter : catchThreshold(bot, tuning.resistance, catchAfter)
+      if (dose >= needed) makeSick(world, bot, tuning)
       else bot.illness = { stage: 'exposed', dose, until: 0 }
     } else if (illness !== undefined) {
       if (illness.dose <= 1) delete bot.illness

@@ -215,3 +215,13 @@ export function noPredatorSexes(rules: Rules): Rules {
   const { predator } = rules.tuning
   return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, sexes: { ...predator.sexes, enabled: false } } } }
 }
+
+/** Disease resistance (R1) switched on, with optional number overrides (it is off in the shipped numbers). */
+export function withDiseaseResistance(rules: Rules, over: Partial<Rules['tuning']['resistance']> = {}): Rules {
+  return { ...rules, tuning: { ...rules.tuning, resistance: { ...rules.tuning.resistance, enabled: true, ...over } } }
+}
+
+/** The same rules with disease resistance forced off (the shipped state). */
+export function noDiseaseResistance(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, resistance: { ...rules.tuning.resistance, enabled: false } } }
+}

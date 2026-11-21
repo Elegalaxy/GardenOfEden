@@ -12,6 +12,7 @@ import { addDen, checkEcology, checkPredatorHarm, checkPrey, startLife } from '.
 import { checkMateChoice } from './kin.ts'
 import { checkCulture } from './culture.ts'
 import { checkDisease } from './disease.ts'
+import { checkResistance } from './resistance.ts'
 import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorSexes, predatorAutoSex, sexesOn, startSex } from './predatorSexes.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
@@ -175,6 +176,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   checkPoison(rules.tuning.poison)
   checkDisease(rules.tuning.disease)
   checkCulture(rules.tuning.culture)
+  checkResistance(rules.tuning.resistance)
   checkTerrain(rules.tuning.terrain)
   checkMateChoice(rules.tuning.mateChoice)
   checkScript(preset)

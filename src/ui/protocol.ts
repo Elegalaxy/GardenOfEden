@@ -60,7 +60,7 @@ export type IllnessStage = NonNullable<Bot['illness']>['stage']
  * the illness record (D3): the frame carries only its stage (`illnessStage`, absent for a healthy bot); the ticks left and the
  * dose come with the selected bot (`ViewWorld.selectedBot`).
  */
-export type ViewBot = Omit<Bot, 'memory' | 'illness'> & {
+export type ViewBot = Omit<Bot, 'memory' | 'illness' | 'resist'> & {
   /** Disease stage (D3), absent for a healthy bot. */
   illnessStage?: IllnessStage
   /** Entries in the bot's memory. */

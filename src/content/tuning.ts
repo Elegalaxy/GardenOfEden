@@ -338,4 +338,9 @@ export const tuning: Tuning = {
   // or knows an older sighting. Elders learn nothing here. `beyondSense` (C2b) limits lessons to places farther from the pupil than its own sense radius. A user-approved exception to the "no sharing with strangers" rule. No draws. See src/sim/culture.ts.
   culture: { enabled: false, elderAge: 1800, youngAge: 600, teachRadius: 3, teachEvery: 20, perLesson: 2, teachKinds: ['water', 'shelter'], beyondSense: false },
   logCap: 500,
+  // Disease resistance (R1, off): a latent heritable number, given to every living bot at the first outbreak (founders drawn between founderMin and
+  // founderMax from their own stream) and inherited by newborns (mother or father, then mutated by `rate` / `strength`, clamped to min..max). Resist r
+  // raises the dose needed to fall sick to catchAfter x (1 + catchWeight x (r - 1)) and shortens sickness to sickTicks / (1 + sickWeight x (r - 1));
+  // `upkeep` is the energy a tick per point above 1. Before any outbreak nothing exists, nothing is drawn. See src/sim/resistance.ts.
+  resistance: { enabled: false, founderMin: 1, founderMax: 1.3, min: 1, max: 2, catchWeight: 1, sickWeight: 0.5, upkeep: 0, mutation: { rate: 0.1, strength: 0.1 } },
 }

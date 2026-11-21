@@ -33,6 +33,8 @@
 // only: the child's sex (female when below `sex.femaleChance`) and eight crossover draws (one per
 // trait: mother's or father's value, see traits.ts); then sixteen mutation draws (two per trait; eight traits since M22).
 // That is 28 draws per sexual child and 19 per asexual child (whose sex is autoSex, no draw).
+// Disease resistance (R1, resistance.ts): once `World.resistance` exists a child also takes 3 draws (sexual) or 2 (asexual) from that world's own
+// resistance stream, none from the named streams.
 // Longevity (M22) scales the child's `lifespan` and, through `fertilityAt`'s scale, every age threshold of its fertility.
 // A child inherits traits (crossed, then mutated), clamped into the bounds in `tuning.mutation`.
 // Its bloodline hue (genes.ts, M20) comes from the separate `gene` stream: two draws per sexual child, one per asexual child.
@@ -48,6 +50,7 @@ import { kinship } from './kin.ts'
 import { addRecord, findRecord, relatedness } from './lineage.ts'
 import { nextFloat } from './rng.ts'
 import { distance } from './perception.ts'
+import { inheritResist } from './resistance.ts'
 import { crossTraits, mutateTraits } from './traits.ts'
 import type { Bot, MemoryEntry, Sex, Tuning, Traits, World } from './types.ts'
 import { autoSex, pushEvent } from './world.ts'
@@ -64,6 +67,10 @@ export type Conception = {
   generation: number
   traits: Traits
   fatherTraits: Traits | null
+  /** The mother's disease resistance (R1); present only once `World.resistance` exists. */
+  resist?: number
+  /** The father's resistance (R1); present only with a father and a resistance world. */
+  fatherResist?: number
   /** The mother's bloodline hue (M20). */
   hue: number
   /** The father's hue; null when sex is off. */
@@ -121,7 +128,7 @@ export function payFather(bot: Bot, tuning: Tuning): void {
 export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning: Tuning): Conception | null {
   if (!inShelter || !hasRoom || !meetsReproductionNeeds(bot, tuning)) return null
   const energy = payMother(bot, tuning)
-  return {
+  const conception: Conception = {
     parentId: bot.id,
     fatherId: null,
     generation: bot.generation,
@@ -135,6 +142,8 @@ export function conceive(bot: Bot, inShelter: boolean, hasRoom: boolean, tuning:
     y: bot.y,
     energy,
   }
+  if (bot.resist !== undefined) conception.resist = bot.resist
+  return conception
 }
 
 /**
@@ -187,6 +196,8 @@ export function pairMates(candidates: readonly Bot[], roomLeft: number, tuning: 
       y: female.y,
       energy: 0,
     }
+    if (female.resist !== undefined) conception.resist = female.resist
+    if (male.resist !== undefined) conception.fatherResist = male.resist
     conception.energy = payMother(female, tuning)
     payFather(male, tuning)
     conceptions.push(conception)
@@ -248,6 +259,10 @@ export function spawnChildren(world: World, conceptions: Conception[], tuning: T
         if (live === null) live = new Set(world.nodes.map((node) => node.id))
         child.memory = inheritFromParents(c.memory, c.parentId, c.fatherMemory, c.fatherId, tuning, live)
       }
+    }
+    // Disease resistance (R1): only once the first outbreak has activated it (conception and spawning share a step, outbreaks fall between steps).
+    if (world.resistance !== undefined) {
+      child.resist = inheritResist(c.resist ?? 1, c.fatherId === null ? null : (c.fatherResist ?? 1), tuning.resistance, world.resistance.stream)
     }
     world.familyLearned += child.memory.length
     world.nextId += 1
