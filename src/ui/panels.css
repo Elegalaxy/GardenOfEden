@@ -2391,6 +2391,13 @@ button.fam-founder-button:hover:not(:disabled) {
   border-radius: 3px;
 }
 
+.colour-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid #0b0f16;
+}
+
 .colour-sex {
   display: inline-flex;
   align-items: center;
@@ -2402,8 +2409,15 @@ button.fam-founder-button:hover:not(:disabled) {
     flex: 1 1 100%;
   }
 
+  /* Five options: wrap to two rows (three, then two) instead of squeezing the labels. */
   .colour-controls .heat-group {
     flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+
+  .colour-controls .heat-option {
+    flex: 1 1 30%;
+    min-width: 0;
   }
 
   .colour-legend {

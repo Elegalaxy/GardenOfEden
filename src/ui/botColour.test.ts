@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  BOT_COLOUR_LABEL,
   BOT_COLOUR_MODES,
   FEMALE_FILL,
+  HEALTHY_FILL,
+  ILLNESS_FILL,
   MALE_FILL,
   PLAIN_FILL,
   TRAIT_RAMP,
@@ -41,10 +44,12 @@ function hslToHex(h: number, s: number, l: number): string {
 }
 
 describe('mode cycle and key', () => {
-  it('cycles plain, bloodline, sex, trait, plain', () => {
-    expect(BOT_COLOUR_MODES).toEqual(['plain', 'bloodline', 'sex', 'trait'])
+  it('cycles plain, bloodline, sex, trait, illness, plain', () => {
+    expect(BOT_COLOUR_MODES).toEqual(['plain', 'bloodline', 'sex', 'trait', 'illness'])
     expect(nextBotColourMode('plain')).toBe('bloodline')
-    expect(nextBotColourMode('trait')).toBe('plain')
+    expect(nextBotColourMode('trait')).toBe('illness')
+    expect(nextBotColourMode('illness')).toBe('plain')
+    expect(BOT_COLOUR_LABEL.illness).toBe('Illness')
   })
 
   it('takes C on its own only', () => {
@@ -105,6 +110,27 @@ describe('traitRange and rampStep', () => {
   it('uses the middle step when everyone is equal or there is no range', () => {
     expect(rampStep(3, { min: 3, max: 3 })).toBe(2)
     expect(rampStep(3, null)).toBe(2)
+  })
+})
+
+describe('illness mode', () => {
+  it('colours each stage, healthy when the stage is absent', () => {
+    const fill = (illnessStage?: ColourBot['illnessStage']): string => botFill(bot(illnessStage === undefined ? {} : { illnessStage }), 'illness', 'caution', null)
+    expect(fill()).toBe(HEALTHY_FILL)
+    expect(fill('exposed')).toBe(ILLNESS_FILL.exposed)
+    expect(fill('sick')).toBe(ILLNESS_FILL.sick)
+    expect(fill('immune')).toBe(ILLNESS_FILL.immune)
+  })
+
+  it('keeps every colour at 3:1 on the map and all four different', () => {
+    const colours = [HEALTHY_FILL, ...Object.values(ILLNESS_FILL)]
+    for (const colour of colours) expect(contrast(colour)).toBeGreaterThanOrEqual(3)
+    expect(new Set(colours).size).toBe(4)
+  })
+
+  it('ignores the stage in the other modes', () => {
+    expect(botFill(bot({ illnessStage: 'sick' }), 'plain', 'caution', null)).toBe(PLAIN_FILL)
+    expect(botShape(bot({ sex: 'male', illnessStage: 'sick' }), 'illness')).toBe('circle')
   })
 })
 

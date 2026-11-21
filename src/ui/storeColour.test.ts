@@ -15,13 +15,13 @@ describe('the bot colour in the store', () => {
     expect(getSnapshot().botColour).toEqual({ mode: 'plain', trait: 'senseRadius' })
   })
 
-  it('cycles plain, bloodline, sex, trait and round again with the C key', () => {
+  it('cycles plain, bloodline, sex, trait, illness and round again with the C key', () => {
     const seen = [getSnapshot().botColour.mode]
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 5; i += 1) {
       cycleBotColour()
       seen.push(getSnapshot().botColour.mode)
     }
-    expect(seen).toEqual(['plain', 'bloodline', 'sex', 'trait', 'plain'])
+    expect(seen).toEqual(['plain', 'bloodline', 'sex', 'trait', 'illness', 'plain'])
   })
 
   it('keeps the trait while the mode changes, and changes the trait on its own', () => {

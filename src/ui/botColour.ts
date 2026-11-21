@@ -7,12 +7,16 @@
 //   sex       females a warm gold dot, males a cool blue diamond (the shape is the second cue).
 //   trait     one trait on a 5-step sequential ramp (dim violet to bright yellow) over the living
 //             population's lowest to highest value. The legend prints those two numbers.
-// Colour is never the only cue: sex has a shape, and the legend and the inspector print the numbers.
+//   illness   the bot's disease stage: healthy a calm tan, exposed amber, sick red-orange, immune teal (each at
+//             least 3:1 against the map). The map's illness rings and dot (render.ts drawIllness) stay on in every
+//             mode, so the stage is told apart by shape too.
+// Colour is never the only cue: sex has a shape, illness has its rings, and the legend and the inspector print the numbers.
 
 import { TRAIT_NAMES } from '../sim/traits.ts'
 import type { Bot, TraitName } from '../sim/types.ts'
+import type { IllnessStage } from './protocol.ts'
 
-export const BOT_COLOUR_MODES = ['plain', 'bloodline', 'sex', 'trait'] as const
+export const BOT_COLOUR_MODES = ['plain', 'bloodline', 'sex', 'trait', 'illness'] as const
 export type BotColourMode = (typeof BOT_COLOUR_MODES)[number]
 
 export const BOT_COLOUR_LABEL: Record<BotColourMode, string> = {
@@ -20,6 +24,7 @@ export const BOT_COLOUR_LABEL: Record<BotColourMode, string> = {
   bloodline: 'Bloodline',
   sex: 'Sex',
   trait: 'Trait',
+  illness: 'Illness',
 }
 
 /** The colour setting the page keeps: a mode, and which trait the `trait` mode shows. */
@@ -34,11 +39,15 @@ export const MALE_FILL = '#6ec8ff'
 /** The trait ramp, lowest to highest (each at least 3:1 against the map colour #141a24). */
 export const TRAIT_RAMP: readonly string[] = ['#8a7fd8', '#5aa0e0', '#3fc1b0', '#8ad66a', '#f4e04d']
 
+/** The illness colours: a healthy bot (absent stage), then exposed, sick and immune (each at least 3:1 against #141a24). */
+export const HEALTHY_FILL = '#c9b98a'
+export const ILLNESS_FILL: Record<IllnessStage, string> = { exposed: '#ffb020', sick: '#ff5a36', immune: '#2ec4b6' }
+
 export type TraitRange = { min: number; max: number }
 
-export type ColourBot = Pick<Bot, 'hue' | 'sex' | 'traits'>
+export type ColourBot = Pick<Bot, 'hue' | 'sex' | 'traits'> & { illnessStage?: IllnessStage }
 
-/** The next mode in the cycle plain, bloodline, sex, trait, plain (the C key). */
+/** The next mode in the cycle plain, bloodline, sex, trait, illness, plain (the C key). */
 export function nextBotColourMode(mode: BotColourMode): BotColourMode {
   return BOT_COLOUR_MODES[(BOT_COLOUR_MODES.indexOf(mode) + 1) % BOT_COLOUR_MODES.length]!
 }
@@ -86,6 +95,8 @@ export function botFill(bot: ColourBot, mode: BotColourMode, trait: TraitName, r
       return bot.sex === 'male' ? MALE_FILL : FEMALE_FILL
     case 'trait':
       return TRAIT_RAMP[rampStep(bot.traits[trait], range)]!
+    case 'illness':
+      return bot.illnessStage === undefined ? HEALTHY_FILL : ILLNESS_FILL[bot.illnessStage]
   }
 }
 

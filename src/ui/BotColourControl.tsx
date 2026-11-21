@@ -1,6 +1,6 @@
-// "Colour bots by" (M20): a row of exclusive choices (Plain, Bloodline, Sex, Trait; key C cycles them), a trait
+// "Colour bots by" (M20): a row of exclusive choices (Plain, Bloodline, Sex, Trait, Illness; key C cycles them), a trait
 // picker that is always laid out but only visible in Trait mode, and a one-line legend that reads out what the
-// colours mean (the trait ramp with its lowest and highest value, or the sex shapes). The choice lives in the page's
+// colours mean (the trait ramp with its lowest and highest value, the sex shapes, or the illness stages with a live sick and immune count). The choice lives in the page's
 // store only. Nothing here changes size when the mode changes: the legend line and the picker keep their room.
 
 import { useEffect } from 'react'
@@ -11,6 +11,8 @@ import {
   BOT_COLOUR_LABEL,
   BOT_COLOUR_MODES,
   FEMALE_FILL,
+  HEALTHY_FILL,
+  ILLNESS_FILL,
   MALE_FILL,
   TRAIT_RAMP,
   bloodlineColour,
@@ -18,6 +20,7 @@ import {
   traitRange,
 } from './botColour.ts'
 import type { BotColourMode } from './botColour.ts'
+import { outbreakSummary } from './eventInfo.ts'
 import { TRAIT_LABEL, formatTrait } from './labels.ts'
 import { cycleBotColour, setBotColour, useStoreValue } from './store.ts'
 import { isTypingTarget } from './typing.ts'
@@ -51,6 +54,25 @@ function Legend({ mode, trait }: { mode: BotColourMode; trait: TraitName }) {
         <span className="colour-sex">
           <span style={{ color: MALE_FILL }} aria-hidden="true">◆</span> male
         </span>
+      </p>
+    )
+  }
+  if (mode === 'illness') {
+    const summary = outbreakSummary(bots)
+    const stages: [string, string][] = [
+      ['Healthy', HEALTHY_FILL],
+      ['Exposed', ILLNESS_FILL.exposed],
+      ['Sick', ILLNESS_FILL.sick],
+      ['Immune', ILLNESS_FILL.immune],
+    ]
+    return (
+      <p className="colour-legend">
+        {stages.map(([label, colour]) => (
+          <span key={label} className="colour-sex">
+            <span className="colour-dot" style={{ backgroundColor: colour }} aria-hidden="true" /> {label}
+          </span>
+        ))}
+        <span className="colour-note figure">{summary === null ? 'No one sick or immune' : `${summary.sick} sick · ${summary.immune} immune`}</span>
       </p>
     )
   }
