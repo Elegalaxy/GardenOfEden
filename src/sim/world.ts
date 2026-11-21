@@ -16,6 +16,7 @@ import { checkPoison, markToxic } from './poison.ts'
 import { checkPredatorSexes, predatorAutoSex, sexesOn, startSex } from './predatorSexes.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
+import { checkScript } from './scenario.ts'
 import { checkTerrain } from './terrain.ts'
 import { meanTraits } from './traits.ts'
 import type { Bot, NodeDef, NodeKind, Preset, Rules, Sample, Sex, SimEvent, Tuning, World, WorldNode } from './types.ts'
@@ -176,6 +177,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   checkCulture(rules.tuning.culture)
   checkTerrain(rules.tuning.terrain)
   checkMateChoice(rules.tuning.mateChoice)
+  checkScript(preset)
 
   const world: World = {
     seed,
@@ -274,5 +276,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   }
 
   world.samples.push(takeSample(world))
+  // Scenario script: a private copy of the pending entries, added last so the key stays last and plain worlds are untouched.
+  if (preset.script?.length) world.script = preset.script.map((entry) => ({ tick: entry.tick, cmd: { ...entry.cmd } }))
   return world
 }

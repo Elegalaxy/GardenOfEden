@@ -1,7 +1,7 @@
 // Player commands. `checkCommand` says whether a command would be accepted
 // (the UI uses it to preview a placement); `applyCommand` checks it, changes
 // the world, records `{ tick, cmd }` in `World.commands` and logs a `command`
-// event. A rejected command changes nothing and is not recorded, so replaying
+// event (a scenario script's events are applied with `record` false, so they are not in the list: scenario.ts). A rejected command changes nothing and is not recorded, so replaying
 // the recorded list always reproduces the run.
 //
 // Ruins are made by the sim when a bot dies, so the player cannot place them
@@ -87,7 +87,8 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
   }
 }
 
-export function applyCommand(world: World, rules: Rules, cmd: Command): CommandResult {
+/** `record` is false only for a scenario script's events (scenario.ts): the sim re-creates them from the preset, so they stay out of `World.commands`. */
+export function applyCommand(world: World, rules: Rules, cmd: Command, record = true): CommandResult {
   const reason = checkCommand(world, rules, cmd)
   if (reason !== null) return { ok: false, reason }
   const { tuning } = rules
@@ -157,6 +158,6 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       id = startEvent(world, rules, cmd)
       break
   }
-  world.commands.push({ tick: world.tick, cmd: { ...cmd } })
+  if (record) world.commands.push({ tick: world.tick, cmd: { ...cmd } })
   return { ok: true, id }
 }

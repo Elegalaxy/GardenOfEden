@@ -280,6 +280,9 @@ export type Command =
 
 export type TraitName = keyof Traits
 
+/** One scripted world event of a scenario preset: applied by the sim itself when the world reaches `tick`, and not recorded in `World.commands`. */
+export type ScriptEntry = { tick: number; cmd: Extract<Command, { type: 'triggerEvent' }> }
+
 /**
  * One stats row. `births` and `deaths` are running totals; `food` is the sum of resource amounts;
  * `traits` is the population mean of each trait, or null when nobody is alive.
@@ -378,6 +381,8 @@ export type World = {
   disease?: { infected: number; recovered: number }
   /** Culture (C1): counters, created in createWorld only when `tuning.culture.enabled` (absent with culture off). */
   culture?: { taught: number }
+  /** Scenario script: entries not yet applied, sorted by tick (scenario.ts). Present only in a world made from a preset with a script, until the last entry is applied. Last key. */
+  script?: ScriptEntry[]
 }
 
 /** Numbers for one kind of node, applied by createWorld and by the placeNode command. */
@@ -910,4 +915,8 @@ export type Preset = {
   scatterBots: number
   /** Rough ground discs (R1), made only when `terrain.enabled`; they come last in the node list so no other id changes. */
   terrain?: { x: number; y: number; radius: number }[]
+  /** Scenario events at fixed ticks (scenario.ts). Absent for a plain world. */
+  script?: ScriptEntry[]
+  /** One sentence shown under the World select. */
+  description?: string
 }

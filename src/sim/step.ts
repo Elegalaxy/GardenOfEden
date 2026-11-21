@@ -31,6 +31,7 @@
 // `deathCause` then count with the other health damage; a poison death adds to `deathsByCause.poison`. Nothing changes with poison off.
 // Disease (D1, disease.ts): a sick bot's `sickDrain` is counted the same way (cause 'disease'); `spreadDisease` runs last, after the family
 // sharing, and returns at once until the player has started an outbreak. No draws.
+// Scenario script (scenario.ts): `applyScript` is the last statement of `step`, after the stats row, so a scripted event at tick T starts after step T and before any player command at T (as a command would). It returns at once for a world with no script. No draws of its own.
 // Culture (C1, culture.ts): `teachElders` runs right after the family sharing (before `spreadDisease`) and returns at once with culture off. No draws.
 
 import { decide } from './brain.ts'
@@ -49,6 +50,7 @@ import type { Conception } from './reproduction.ts'
 import { decayRuins, leaveRuin } from './ruins.ts'
 import { roughNodes } from './terrain.ts'
 import type { Bot, Rules, World, WorldNode } from './types.ts'
+import { applyScript } from './scenario.ts'
 import { pushEvent, takeSample } from './world.ts'
 import { expireEvents } from './worldEvents.ts'
 
@@ -124,4 +126,5 @@ export function step(world: World, rules: Rules): void {
       world.samples.splice(0, world.samples.length - tuning.stats.maxSamples)
     }
   }
+  applyScript(world, rules)
 }
