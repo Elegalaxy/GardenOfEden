@@ -66,7 +66,7 @@ function Legend({ mode, trait }: { mode: BotColourMode; trait: TraitName }) {
       ['Immune', ILLNESS_FILL.immune],
     ]
     return (
-      <p className="colour-legend">
+      <p className="colour-legend" title="Colour shows the stage in this mode. The map also marks it by shape in every mode: a dashed ring is sick, a thin dotted ring is exposed, a small dot at the upper right is immune.">
         {stages.map(([label, colour]) => (
           <span key={label} className="colour-sex">
             <span className="colour-dot" style={{ backgroundColor: colour }} aria-hidden="true" /> {label}
