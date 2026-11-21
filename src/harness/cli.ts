@@ -143,6 +143,7 @@ function parseArgs(argv: string[]): Options {
       i -= 1
     } else if (flag === '--no-cone') {
       noCone = true
+      i -= 1
     } else if (flag === '--no-seasons') {
       noSeasons = true
       i -= 1
