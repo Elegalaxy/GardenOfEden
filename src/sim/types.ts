@@ -820,6 +820,8 @@ export type Tuning = {
     botSpeedMult: number
     /** Step length multiplier for a predator on rough ground (finite, above 0, at most 1). */
     predatorSpeedMult: number
+    /** R2b: when true a FLEEING bot is not slowed by rough ground (it keeps speed x sprint); walking and wandering still are. Only read with terrain on. */
+    fleeExempt: boolean
     /** Most rough nodes the player may have in the world (a whole number from 0; checked on placing, preset ones count). */
     maxCount: number
   }

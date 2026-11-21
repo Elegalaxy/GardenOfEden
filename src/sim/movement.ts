@@ -19,7 +19,7 @@
 // Steps are `speedOf(bot)` cells long: the base speed scaled by the metabolism
 // trait (metabolism.ts). `act` works that out once per tick; with rough ground on (R1, terrain.ts) and the
 // bot's position at the start of its step inside a rough disc, it is also times `terrain.botSpeedMult`
-// (a flee step then is speed x mult x sprint). With terrain off `rough` is null and nothing is multiplied.
+// (a flee step then is speed x mult x sprint, unless `terrain.fleeExempt` is on, R2b: then a flee step ignores rough ground). With terrain off `rough` is null and nothing is multiplied.
 //
 // `act` returns whether the bot moved (moving costs extra energy). Its optional last argument `intake` receives the poison dose of
 // the bite it took this tick (toxic food, T1); the caller resets it before each bot.
@@ -130,7 +130,8 @@ function wander(world: World, bot: Bot, dangers: MemoryEntry[], rules: Rules, sp
 /** Does the bot move this tick? Used by the energy cost. */
 export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number, WorldNode>, intake: { poison: number } | null = null, rough: readonly WorldNode[] | null = null): boolean {
   const { tuning } = rules
-  let speed = speedOf(bot, tuning)
+  const baseSpeed = speedOf(bot, tuning)
+  let speed = baseSpeed
   if (rough !== null && onRough(rough, bot.x, bot.y)) speed *= tuning.terrain.botSpeedMult
   bot.px = bot.x
   bot.py = bot.y
@@ -139,7 +140,8 @@ export function act(world: World, bot: Bot, rules: Rules, nodesById: Map<number,
 
   switch (bot.intent.kind) {
     case 'flee':
-      if (flee(world, bot, rules, speed)) return true
+      // R2b: with `terrain.fleeExempt` a flee step keeps the full speed (rough ground slows only walking and wandering).
+      if (flee(world, bot, rules, tuning.terrain.fleeExempt ? baseSpeed : speed)) return true
       break
     case 'seekFood':
       if (target) {
