@@ -107,6 +107,7 @@ export function withEcology(rules: Rules, over: Partial<Rules['tuning']['predato
         ecology: { ...predator.ecology, ...over, enabled: true },
         prey: { ...predator.prey, enabled: false },
         traits: { ...predator.traits, enabled: false },
+        sexes: { ...predator.sexes, enabled: false },
       },
     },
   }
@@ -137,7 +138,7 @@ export function noPreyRule(rules: Rules): Rules {
 /** The same rules with predator ecology off: fixed predators (the shipped rules have it on since E2). */
 export function staticPredators(rules: Rules): Rules {
   const { predator } = rules.tuning
-  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false }, traits: { ...predator.traits, enabled: false } } } }
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: false }, traits: { ...predator.traits, enabled: false }, sexes: { ...predator.sexes, enabled: false } } } }
 }
 
 /** The same rules with H1 heritable predator traits (and ecology, which they need) switched on, with optional overrides for the trait numbers. */
@@ -198,4 +199,19 @@ export function noCulture(rules: Rules): Rules {
 /** The same rules with disease forced off (the shipped state). */
 export function noDisease(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, disease: { ...rules.tuning.disease, enabled: false } } }
+}
+
+/** Predator sexes (PS1) switched on (ecology too, which they need), with optional number overrides (they are off in the shipped numbers). */
+export function withPredatorSexes(rules: Rules, over: Partial<Rules['tuning']['predator']['sexes']> = {}): Rules {
+  const { predator } = rules.tuning
+  return {
+    ...rules,
+    tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: true }, sexes: { ...predator.sexes, ...over, enabled: true } } },
+  }
+}
+
+/** The same rules with predator sexes forced off (the shipped state). */
+export function noPredatorSexes(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, sexes: { ...predator.sexes, enabled: false } } } }
 }

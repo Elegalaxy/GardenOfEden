@@ -198,3 +198,24 @@ describe('placeBot with a chosen sex', () => {
     expect(stateHash(copy)).toBe(stateHash(live))
   })
 })
+
+describe('placeNode with a predator sex (PS1)', () => {
+  it('refuses a sex on any other kind, and a value that is not a sex, with the sex rules off', () => {
+    const world = createWorld('a', empty, rules)
+    const wrongKind = { type: 'placeNode', kind: 'resource', x: 5, y: 5, sex: 'male' } as Command
+    const badValue = { type: 'placeNode', kind: 'predator', x: 5, y: 5, sex: 'other' } as unknown as Command
+    expect(checkCommand(world, rules, wrongKind)).toBe('Only a predator can have a sex.')
+    expect(checkCommand(world, rules, badValue)).toBe('The sex must be female or male.')
+    expect(applyCommand(world, rules, wrongKind).ok).toBe(false)
+    expect(applyCommand(world, rules, badValue).ok).toBe(false)
+    expect(world.nodes).toHaveLength(0)
+    expect(world.commands).toHaveLength(0)
+  })
+
+  it('accepts a sex on a predator and records it as the last key', () => {
+    const world = createWorld('a', empty, rules)
+    expect(checkCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 5, y: 5, sex: 'female' })).toBeNull()
+    expect(applyCommand(world, rules, { type: 'placeNode', kind: 'predator', x: 5, y: 5, sex: 'female' }).ok).toBe(true)
+    expect(Object.keys(world.commands[0]!.cmd)).toEqual(['type', 'kind', 'x', 'y', 'sex'])
+  })
+})

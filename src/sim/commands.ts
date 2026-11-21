@@ -25,6 +25,7 @@ import { nextFloat } from './rng.ts'
 import type { Command, Rules, World } from './types.ts'
 import { goldenHue } from './genes.ts'
 import { addDen, releaseDen, startLife } from './predators.ts'
+import { predatorAutoSex, sexesOn, startSex } from './predatorSexes.ts'
 import { DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { autoSex, makeBot, makeNode, placedNodeCount, pushEvent } from './world.ts'
 import { checkEvent, startEvent } from './worldEvents.ts'
@@ -42,6 +43,10 @@ export function checkCommand(world: CheckableWorld, rules: Rules, cmd: Command):
   switch (cmd.type) {
     case 'placeNode': {
       if (!insideMap(world, cmd.x, cmd.y)) return 'That spot is outside the map.'
+      if (cmd.sex !== undefined) {
+        if (cmd.kind !== 'predator') return 'Only a predator can have a sex.'
+        if (cmd.sex !== 'female' && cmd.sex !== 'male') return 'The sex must be female or male.'
+      }
       if (cmd.kind === 'ruin') return 'Ruins are left by dead bots. They cannot be placed.'
       if (cmd.kind === 'danger') return 'Danger zones were replaced by predators.'
       if (cmd.kind === 'rough') {
@@ -96,6 +101,7 @@ export function applyCommand(world: World, rules: Rules, cmd: Command): CommandR
       if (cmd.kind === 'predator' && world.ecology !== undefined) {
         startLife(world, placed, tuning, 'placed', null)
         if (traitsOn(world, tuning)) startTraits(placed.hunt, DEFAULT_PREDATOR_TRAITS, 0)
+        if (sexesOn(world, tuning)) startSex(placed.hunt, cmd.sex ?? predatorAutoSex(world.nodes))
         addDen(world, cmd.x, cmd.y, tuning)
       }
       pushEvent(world, tuning, {

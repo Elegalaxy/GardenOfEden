@@ -7,6 +7,8 @@
 // `inheritPredatorTraits` mirrors `mutateTraits` (traits.ts): per trait, in order, a roll then an amount, always both draws (so six draws a cub,
 // whatever the numbers), the trait changes by 1 + (2 * amount - 1) * strength when roll < rate, then it is clamped into its bounds.
 // Draws come from the `predator` stream, taken only after a cub has found a valid territory. With strength 0 a cub copies its parent.
+// With predator sexes on (PS1) a cub made by a pair may cross over first: `crossPredatorTraits` takes one draw a trait, in name order, to pick the mother's
+// (below 0.5) or the father's value, then runs the same mutation on the picked values, so a crossed cub takes 3 + 6 = 9 draws (a mother-only or lone cub still 6).
 //
 // `predatorDrain` is `ecology.drain` itself (no arithmetic) when a predator has no traits, else drain * (1 + sum of price * (trait - 1)), summed in
 // name order: the price of a bigger body or longer sight is hunger. `predatorTrait` reads 1 when the key is absent, so every caller is unchanged
@@ -62,6 +64,20 @@ export function inheritPredatorTraits(parent: Readonly<PredatorTraits>, traits: 
     child[name] = Math.min(max, Math.max(min, value))
   }
   return child
+}
+
+/** A cub's traits from a pair (PS1): one draw a trait picks the mother's (below 0.5) or the father's value, then `inheritPredatorTraits` mutates them. 3 + 6 draws. */
+export function crossPredatorTraits(
+  mother: Readonly<PredatorTraits>,
+  father: Readonly<PredatorTraits>,
+  traits: Tuning['predator']['traits'],
+  stream: RngStream,
+): PredatorTraits {
+  const picked: PredatorTraits = { ...mother }
+  for (const name of PREDATOR_TRAIT_NAMES) {
+    picked[name] = nextFloat(stream) < 0.5 ? mother[name] : father[name]
+  }
+  return inheritPredatorTraits(picked, traits, stream)
 }
 
 /** One trait of a predator; 1 when it has none. */

@@ -107,6 +107,8 @@ export type PredatorState = {
   traits?: PredatorTraits
   /** Generations from a founder, placed or arrived predator (0); present exactly when `traits` is. After `traits`. */
   generation?: number
+  /** Predator sex (PS1): absent unless `predator.sexes.enabled` and ecology were on when the predator appeared. The last key, after `generation`. */
+  sex?: Sex
 }
 
 /** The three heritable predator traits (H1), each a multiplier of the shipped number (1 = as before). */
@@ -126,6 +128,8 @@ export type PredatorLife = {
   /** The parent predator's node id for a cub, else null. */
   parentId: number | null
   kidsKills: number
+  /** The father's node id for a cub made by a pair (PS1), else absent (founders, arrivals, placed predators and lone cubs). The last key. */
+  fatherId?: number
 }
 
 /** A predator territory marker (E1): an empty den (no predator homed within `denRadius`) is re-colonised after `recolonizeTicks`. */
@@ -140,6 +144,11 @@ export type PredatorEcology = {
    * `left` the predators that have left the map. The key is last and absent unless both `ecology` and `prey` were on at creation.
    */
   prey?: { overSince: number | null; left: number }
+  /**
+   * Predator sexes (PS1) bookkeeping: `oneSexSince` is the tick from which only one sex was alive (null while both are, or no predator is),
+   * `mated` and `alone` count cubs made by a pair and by a lone parent. The key is last and absent unless both `ecology` and `sexes` were on at creation.
+   */
+  sexes?: { oneSexSince: number | null; mated: number; alone: number }
 }
 
 /** Per-bot numbers that children inherit with a small mutation (M6). */
@@ -262,7 +271,7 @@ export type SimEvent = {
 
 /** Player actions (M4). Recorded in `World.commands` so a run can be replayed. */
 export type Command =
-  | { type: 'placeNode'; kind: NodeKind; x: number; y: number }
+  | { type: 'placeNode'; kind: NodeKind; x: number; y: number; sex?: Sex }
   | { type: 'removeNode'; id: number }
   /** `sex` is the player's choice; absent means Auto (`autoSex`). It is the last key, and only present when given. */
   | { type: 'placeBot'; x: number; y: number; sex?: Sex }
@@ -761,6 +770,22 @@ export type Tuning = {
       mutation: { rate: number; strength: number }
       bounds: Record<PredatorTraitName, { min: number; max: number }>
       price: Record<PredatorTraitName, number>
+    }
+    /**
+     * Predator sexes (PS1; off). Acts only when `ecology.enabled` is also true. Predators are female or male; only a female bears a cub, and only with an adult
+     * male within `mateRange` of her (the male pays nothing). When only one sex has been alive for `loneAfter` ticks any predator breeds alone (E1 rule).
+     * `killsPerCub` replaces `ecology.killsPerCub` while sexes are on. With `crossover` a cub takes each trait from its mother or its father.
+     */
+    sexes: {
+      enabled: boolean
+      /** Cells: how far from the female an adult male may be to mate (the whole map is 96 wide). */
+      mateRange: number
+      /** Ticks one sex may be missing before any predator may breed alone (whole number from 1). */
+      loneAfter: number
+      /** Kills a female needs for a cub (whole number from 1). */
+      killsPerCub: number
+      /** A cub's traits come from either parent (else the mother's). */
+      crossover: boolean
     }
   }
   /**

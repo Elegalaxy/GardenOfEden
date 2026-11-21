@@ -122,6 +122,33 @@ describe('encodeSave and decodeSave', () => {
     }
   })
 
+  it('round-trips a predator placeNode with and without a sex, in the sim key order (PS1)', () => {
+    const value = raw()
+    value.commands = [
+      { tick: 1, cmd: { type: 'placeNode', kind: 'predator', x: 1, y: 2 } },
+      { tick: 2, cmd: { type: 'placeNode', kind: 'predator', x: 1, y: 2, sex: 'female' } },
+      { tick: 3, cmd: { sex: 'male', y: 2, x: 1, kind: 'predator', type: 'placeNode' } }, // keys in another order
+    ]
+    const result = validateSave(value)
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.save.commands.map((c) => Object.keys(c.cmd))).toEqual([['type', 'kind', 'x', 'y'], ['type', 'kind', 'x', 'y', 'sex'], ['type', 'kind', 'x', 'y', 'sex']])
+    expect(result.save.commands[2]?.cmd).toEqual({ type: 'placeNode', kind: 'predator', x: 1, y: 2, sex: 'male' })
+  })
+
+  it('refuses a placeNode with a sex on a node that is not a predator, or with a bad sex (PS1)', () => {
+    for (const cmd of [
+      { type: 'placeNode', kind: 'resource', x: 1, y: 1, sex: 'male' },
+      { type: 'placeNode', kind: 'predator', x: 1, y: 1, sex: 'other' },
+      { type: 'placeNode', kind: 'predator', x: 1, y: 1, sex: null },
+      { type: 'placeNode', kind: 'predator', x: 1, y: 1, sex: 1 },
+    ]) {
+      const value = raw()
+      value.commands = [{ tick: 0, cmd }]
+      expectError(value, 'bad-command')
+    }
+  })
+
   it('makeSave copies the commands so later play cannot change the save', () => {
     const live = [{ tick: 1, cmd: { type: 'placeBot' as const, x: 1, y: 2 } }]
     const save = makeSave({ seed: 'a', tick: 5, commands: live }, 'eden', HASH, 1)

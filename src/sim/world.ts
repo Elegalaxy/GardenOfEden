@@ -13,6 +13,7 @@ import { checkMateChoice } from './kin.ts'
 import { checkCulture } from './culture.ts'
 import { checkDisease } from './disease.ts'
 import { checkPoison, markToxic } from './poison.ts'
+import { checkPredatorSexes, predatorAutoSex, sexesOn, startSex } from './predatorSexes.ts'
 import { checkPredatorTraits, DEFAULT_PREDATOR_TRAITS, startTraits, traitsOn } from './predatorTraits.ts'
 import { createRng, nextFloat } from './rng.ts'
 import { checkTerrain } from './terrain.ts'
@@ -167,6 +168,7 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   if (rules.tuning.predator.ecology.enabled) checkEcology(rules.tuning.predator.ecology)
   if (rules.tuning.predator.ecology.enabled && rules.tuning.predator.prey.enabled) checkPrey(rules.tuning.predator.prey, rules.tuning.predator.maxCount)
   checkPredatorTraits(rules.tuning.predator.traits)
+  checkPredatorSexes(rules.tuning.predator.sexes)
   checkPredatorHarm(rules.tuning.events.predatorHarm)
   if (rules.tuning.perception.cone.enabled) checkPerception(rules.tuning.perception.cone)
   checkPoison(rules.tuning.poison)
@@ -261,10 +263,12 @@ export function createWorld(seed: string, preset: Preset, rules: Rules): World {
   if (rules.tuning.predator.ecology.enabled) {
     world.ecology = { dens: [], stats: { births: 0, arrivals: 0, starved: 0, aged: 0, removed: 0 } }
     if (rules.tuning.predator.prey.enabled) world.ecology.prey = { overSince: null, left: 0 }
+    if (rules.tuning.predator.sexes.enabled) world.ecology.sexes = { oneSexSince: null, mated: 0, alone: 0 }
     for (const node of world.nodes) {
       if (node.kind !== 'predator') continue
       startLife(world, node, rules.tuning, 'founder', null)
       if (traitsOn(world, rules.tuning)) startTraits(node.hunt, DEFAULT_PREDATOR_TRAITS, 0)
+      if (sexesOn(world, rules.tuning)) startSex(node.hunt, predatorAutoSex(world.nodes))
       addDen(world, node.x, node.y, rules.tuning)
     }
   }

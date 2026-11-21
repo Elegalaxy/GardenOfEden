@@ -20,6 +20,7 @@
 // the `danger` node kind from `placeNode`: a version 1 or 2 save that places one is refused (`retired-kind`),
 // any other older save is the same data. A `placeBot` may carry an optional last key `sex` (the Add bot sex picker); it
 // is absent for Auto, so older saves read unchanged, but a save that has it cannot be opened by an older build.
+// A `placeNode` of a predator may likewise carry an optional last key `sex` (PS1, predator sexes); no `SAVE_VERSION` bump, an older build refuses such a save as a bad command.
 
 import type { Command, EventKind, NodeKind, Sex } from '../sim/types.ts'
 
@@ -106,9 +107,12 @@ function readCommand(raw: unknown): Command | null {
   if (!isRecord(raw)) return null
   switch (raw.type) {
     case 'placeNode':
-      if (!onlyKeys(raw, ['type', 'kind', 'x', 'y']) || !inList(PLACEABLE_KINDS, raw.kind)) return null
+      if (!onlyKeys(raw, ['type', 'kind', 'x', 'y', 'sex']) || !inList(PLACEABLE_KINDS, raw.kind)) return null
       if (!isCoord(raw.x) || !isCoord(raw.y)) return null
-      return { type: 'placeNode', kind: raw.kind, x: raw.x, y: raw.y }
+      if (raw.sex === undefined) return { type: 'placeNode', kind: raw.kind, x: raw.x, y: raw.y }
+      // A sex (PS1) belongs to a predator only.
+      if (raw.kind !== 'predator' || !inList(SEXES, raw.sex)) return null
+      return { type: 'placeNode', kind: raw.kind, x: raw.x, y: raw.y, sex: raw.sex }
     case 'removeNode':
       if (!onlyKeys(raw, ['type', 'id'])) return null
       if (typeof raw.id !== 'number' || !Number.isInteger(raw.id) || raw.id < 0 || raw.id > MAX_ID) return null

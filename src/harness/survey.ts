@@ -30,6 +30,8 @@
 // EP1 appends `pEvt` after `inb%` (predators killed by a meteor or drained to death by a plague; a dash with the harm rule or ecology off); `withoutPredatorHarm` and `--no-predator-harm` switch it off.
 // R1 appends `rgh%` and `pRgh%` last (rough ground, `--set terrain.enabled=true`; a dash with terrain off): the share of bot-ticks, and of predator-ticks, after the warmup
 // that began on rough ground. `withoutTerrain` and `--no-terrain` switch it off.
+// PS1 appends `pFem pMale pMated pAlone 1sex%` last (predator sexes, `--predator-sexes` or `--set predator.sexes.enabled=true`; dashes with the rule off): females and males alive at
+// the end, cubs made by a pair and by a lone parent, and the percentage of ticks after the warmup with only one sex alive. `withoutPredatorSexes` and `--no-predator-sexes` switch it off.
 // `withoutFamily` gives the rules with that
 // sharing switched off, for an A/B comparison (`--no-family`); `withoutSex` gives the rules with sexes off (`--asexual`); `withoutSeasons` switches seasons off (`--no-seasons`); `withoutEcology` switches predator ecology off (`--static-predators`); `withoutCone` switches the V1 vision cone off (`--no-cone`).
 
@@ -37,6 +39,7 @@ import { isElder } from '../sim/culture.ts'
 import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { harmOn } from '../sim/predators.ts'
+import { predatorSexCounts } from '../sim/predatorSexes.ts'
 import { predatorTraitStats } from '../sim/predatorTraits.ts'
 import { onRough, roughNodes } from '../sim/terrain.ts'
 import { meanTraits } from '../sim/traits.ts'
@@ -104,6 +107,8 @@ export type SeedSurvey = {
   disease: { sick: number; infected: number; recovered: number; deaths: number } | null
   /** Culture (C1): memory entries taught by elders over the run, and the percentage of bot-ticks after the warmup spent as an elder; null with culture off. */
   culture: { taught: number; elderShare: number } | null
+  /** Predator sexes (PS1): females and males alive at the end, cubs made by a pair and by a lone parent over the run, and the percentage of ticks after the warmup with only one sex alive; null with the rule off. */
+  predSexes: { females: number; males: number; mated: number; alone: number; oneSexShare: number } | null
   hash: string
   /** Scripted commands the sim refused. */
   refused: string[]
@@ -194,6 +199,18 @@ export function withoutPredatorHarm(rules: Rules): Rules {
 /** The same rules with mate choice off: `--no-mate-choice` (G1). */
 export function withoutMateChoice(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, mateChoice: { ...rules.tuning.mateChoice, enabled: false } } }
+}
+
+/** The same rules with predator sexes off: `--no-predator-sexes` (PS1). */
+export function withoutPredatorSexes(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, sexes: { ...predator.sexes, enabled: false } } } }
+}
+
+/** The same rules with predator sexes (and ecology, which they need) on: `--predator-sexes` (PS1). */
+export function withPredatorSexes(rules: Rules): Rules {
+  const { predator } = rules.tuning
+  return { ...rules, tuning: { ...rules.tuning, predator: { ...predator, ecology: { ...predator.ecology, enabled: true }, sexes: { ...predator.sexes, enabled: true } } } }
 }
 
 /** Lags (ticks) at which the predator count is compared with the bot count (P1). */
@@ -311,6 +328,7 @@ export function surveySeed(
   const cultureTracked = rules.tuning.culture.enabled
   let elderBotTicks = 0
   let allBotTicks = 0
+  let oneSexTicks = 0
   const gapTracker = createGapTracker()
   const gaps: number[] = []
   const botSeries: number[] = []
@@ -346,6 +364,8 @@ export function surveySeed(
           if (onRough(rough, node.x, node.y)) predTicksRough += 1
         }
       }
+      const sexState = world.ecology?.sexes
+      if (sexState !== undefined && sexState.oneSexSince !== null) oneSexTicks += 1
       min = Math.min(min, world.bots.length)
       max = Math.max(max, world.bots.length)
       const predators = predatorCount()
@@ -426,13 +446,22 @@ export function surveySeed(
         }
       : null,
     culture: cultureTracked ? { taught: world.culture?.taught ?? 0, elderShare: allBotTicks === 0 ? 0 : (100 * elderBotTicks) / allBotTicks } : null,
+    predSexes:
+      world.ecology?.sexes === undefined
+        ? null
+        : {
+            ...predatorSexCounts(world.nodes),
+            mated: world.ecology.sexes.mated,
+            alone: world.ecology.sexes.alone,
+            oneSexShare: ticks > warmup ? (100 * oneSexTicks) / (ticks - warmup) : 0,
+          },
     hash: stateHash(world),
     refused,
   }
 }
 
 export function formatSurvey(rows: SeedSurvey[]): string {
-  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis', 'taught', 'eld%']
+  const head = ['seed', 'final', 'min', 'max', 'births', 'starve', 'thirst', 'danger', 'plague', 'meteor', 'predator', 'age', 'sense', 'caution', 'reproAt', 'metab', 'sprint', 'longev', 'hardy', 'wary', 'ruin%', 'learned', 'lineage', 'pruned', 'pAge', 'fem', 'inb', 'preds', 'pMin', 'pMax', 'pBorn', 'pArr', 'pStarve', 'pAged', 'huntGap', 'idle', 'pZero', 'pCap%', 'pCorr', 'pCorrL', 'pLag', 'pLeft', 'pSense', 'pSpeed', 'pStam', 'pGen', 'pois', 'tox', 'toxK', 'inb%', 'pEvt', 'rgh%', 'pRgh%', 'sick', 'inf', 'rec', 'dis', 'taught', 'eld%', 'pFem', 'pMale', 'pMated', 'pAlone', '1sex%']
     .map((c) => c.padStart(9))
     .join('')
   const lines = rows.map((r) =>
@@ -496,6 +525,11 @@ export function formatSurvey(rows: SeedSurvey[]): string {
       r.disease === null ? '-' : r.disease.deaths,
       r.culture === null ? '-' : r.culture.taught,
       r.culture === null ? '-' : r.culture.elderShare.toFixed(1),
+      r.predSexes === null ? '-' : r.predSexes.females,
+      r.predSexes === null ? '-' : r.predSexes.males,
+      r.predSexes === null ? '-' : r.predSexes.mated,
+      r.predSexes === null ? '-' : r.predSexes.alone,
+      r.predSexes === null ? '-' : r.predSexes.oneSexShare.toFixed(1),
     ]
       .map((cell) => String(cell).padStart(9))
       .join(''),

@@ -49,10 +49,19 @@
 // chase at predator.chaseTicks * stamina; `life.energy` falls by `predatorDrain` instead of `ecology.drain`. A cub inherits its parent's traits
 // (`inheritPredatorTraits`: six `predator` draws, after the territory draws and only once a spot is found); founders, placed and arriving predators get
 // the defaults (no draws). With the key absent every factor is 1 and the drain is `ecology.drain` itself, so nothing changes.
+//
+// Predator sexes (PS1, `Tuning.predator.sexes`, off; see predatorSexes.ts; acts only with ecology on and in a world made with both). Every new predator gets
+// `hunt.sex` (the sex there are fewer of, no draw). Only a female bears a cub, under the same checks but with `sexes.killsPerCub`, and she needs a mate: an adult
+// male within `mateRange` (looked up after the limit gate and before the territory draws; no mate means no cub and no draws). She pays `cubCost`, the male nothing.
+// Once only one sex has been alive for `loneAfter` ticks (`ecology.sexes.oneSexSince`, updated each tick before the cubs) any predator breeds alone as in E1 and the
+// cub is the missing sex. A cub of a pair records `life.fatherId`; with `crossover` its traits take each value from either parent (`crossPredatorTraits`: 3 + 6
+// draws instead of 6) and its generation is the higher of the two parents' plus 1. The prey rule's leaving step skips the only predator of its sex unless nobody
+// else can leave. With the rule off none of this runs and every path is as before.
 
 import { atan2, cos, hypot, sin } from './exactMath.ts'
 import { coneFactor } from './perception.ts'
-import { DEFAULT_PREDATOR_TRAITS, inheritPredatorTraits, predatorDrain, predatorTrait, startTraits, traitsOn } from './predatorTraits.ts'
+import { findMate, lastOfSex, predatorAutoSex, predatorSexCounts, sexesOn, startSex } from './predatorSexes.ts'
+import { crossPredatorTraits, DEFAULT_PREDATOR_TRAITS, inheritPredatorTraits, predatorDrain, predatorTrait, startTraits, traitsOn } from './predatorTraits.ts'
 import { nextFloat } from './rng.ts'
 import { onRough } from './terrain.ts'
 import type { Bot, PredatorEventKind, PredatorOrigin, Rules, Tuning, World, WorldNode } from './types.ts'
@@ -396,6 +405,7 @@ export function predatorLife(world: World, rules: Rules): void {
 
   // Prey rule (P1): more predators than the bots can carry for `leaveAfter` ticks sends the hungriest non-placed one away. No draws.
   const limit = predatorLimit(world.bots.length, tuning)
+  const sexes = sexesOn(world, tuning)
   const prey = ecology.prey
   if (prey !== undefined && tuning.predator.prey.enabled) {
     let living = 0
@@ -404,10 +414,14 @@ export function predatorLife(world: World, rules: Rules): void {
       prey.overSince ??= world.tick
       if (world.tick - prey.overSince >= tuning.predator.prey.leaveAfter) {
         let leaver: WorldNode | null = null
-        for (const node of world.nodes) {
-          const life = node.hunt?.life
-          if (node.kind !== 'predator' || life === undefined || life.origin === 'placed') continue
-          if (leaver === null || life.energy < (leaver.hunt?.life?.energy ?? Infinity)) leaver = node
+        // PS1: with sexes on, a first pass skips the only predator of its sex; if that leaves nobody, a second pass chooses as before.
+        for (let pass = sexes ? 0 : 1; pass < 2 && leaver === null; pass += 1) {
+          for (const node of world.nodes) {
+            const life = node.hunt?.life
+            if (node.kind !== 'predator' || life === undefined || life.origin === 'placed') continue
+            if (pass === 0 && lastOfSex(world.nodes, node)) continue
+            if (leaver === null || life.energy < (leaver.hunt?.life?.energy ?? Infinity)) leaver = node
+          }
         }
         if (leaver !== null) {
           const id = leaver.id
@@ -421,6 +435,15 @@ export function predatorLife(world: World, rules: Rules): void {
       prey.overSince = null
     }
   }
+
+  // Sexes (PS1): note the tick from which only one sex is alive (null while both are, or nobody is).
+  const sexState = sexes ? ecology.sexes : undefined
+  if (sexState !== undefined) {
+    const counts = predatorSexCounts(world.nodes)
+    if ((counts.females > 0) === (counts.males > 0)) sexState.oneSexSince = null
+    else sexState.oneSexSince ??= world.tick
+  }
+  const lone = sexState !== undefined && sexState.oneSexSince !== null && world.tick - sexState.oneSexSince >= tuning.predator.sexes.loneAfter
 
   // Cubs: each adult predator that has earned one looks for free territory around its own home.
   const shelters = world.nodes.filter((node) => node.kind === 'shelter')
@@ -437,8 +460,15 @@ export function predatorLife(world: World, rules: Rules): void {
     const hunt = parent.hunt
     const life = hunt?.life
     if (hunt === null || life === undefined) continue
-    if (life.kidsKills < eco.killsPerCub || life.age < eco.adultAge || life.energy < eco.cubCost + eco.huntBelow) continue
+    if (life.kidsKills < (sexes ? tuning.predator.sexes.killsPerCub : eco.killsPerCub) || life.age < eco.adultAge || life.energy < eco.cubCost + eco.huntBelow) continue
+    if (sexes && !lone && hunt.sex !== 'female') continue
     if (count + cubs.length >= limit) continue
+    // PS1: a female needs an adult male in range before any territory draw; a lone parent needs nobody.
+    let mate: WorldNode | null = null
+    if (sexes && !lone) {
+      mate = findMate(world.nodes, parent, tuning)
+      if (mate === null) continue
+    }
     for (let attempt = 0; attempt < eco.homeTries; attempt += 1) {
       const angle = 2 * Math.PI * nextFloat(world.rng.predator)
       const distance = eco.homeSpacing * (1 + nextFloat(world.rng.predator))
@@ -447,14 +477,30 @@ export function predatorLife(world: World, rules: Rules): void {
       if (x < eco.homeMargin || y < eco.homeMargin || x > world.width - eco.homeMargin || y > world.height - eco.homeMargin) continue
       if (insideShelter(shelters, x, y)) continue
       if (homes.some((home) => hypot(home.x - x, home.y - y) < eco.homeSpacing)) continue
-      const childTraits = traitsOn(world, tuning) && hunt.traits !== undefined ? inheritPredatorTraits(hunt.traits, tuning.predator.traits, world.rng.predator) : null
+      const fatherTraits = mate?.hunt?.traits
+      let childTraits = null
+      if (traitsOn(world, tuning) && hunt.traits !== undefined) {
+        childTraits =
+          tuning.predator.sexes.crossover && fatherTraits !== undefined
+            ? crossPredatorTraits(hunt.traits, fatherTraits, tuning.predator.traits, world.rng.predator)
+            : inheritPredatorTraits(hunt.traits, tuning.predator.traits, world.rng.predator)
+      }
       const cub = makeNode(0, 'predator', parent.x, parent.y, rules.nodeDefs.predator)
       if (cub.hunt !== null) {
         cub.hunt.homeX = x
         cub.hunt.homeY = y
       }
       startLife(world, cub, tuning, 'cub', parent.id)
-      if (childTraits !== null) startTraits(cub.hunt, childTraits, (hunt.generation ?? 0) + 1)
+      if (childTraits !== null) startTraits(cub.hunt, childTraits, Math.max(hunt.generation ?? 0, mate?.hunt?.generation ?? 0) + 1)
+      if (sexState !== undefined) {
+        startSex(cub.hunt, predatorAutoSex([...world.nodes, ...cubs]))
+        if (mate !== null && cub.hunt !== null && cub.hunt.life !== undefined) {
+          cub.hunt.life.fatherId = mate.id
+          sexState.mated += 1
+        } else {
+          sexState.alone += 1
+        }
+      }
       cubs.push(cub)
       homes.push({ x, y })
       life.energy -= eco.cubCost
@@ -491,6 +537,7 @@ export function predatorLife(world: World, rules: Rules): void {
     }
     startLife(world, newcomer, tuning, 'arrived', null)
     if (traitsOn(world, tuning)) startTraits(newcomer.hunt, DEFAULT_PREDATOR_TRAITS, 0)
+    if (sexes) startSex(newcomer.hunt, predatorAutoSex(world.nodes))
     world.nodes.push(newcomer)
     count += 1
     den.vacantSince = null

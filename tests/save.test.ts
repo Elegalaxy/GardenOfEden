@@ -11,6 +11,7 @@ import { step } from '../src/sim/step.ts'
 import type { Command, World } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
 import { createReplayJob } from '../src/ui/replayJob.ts'
+import { withPredatorSexes } from './variants.ts'
 
 // Save, link and chunked-replay tests need the real rules and preset, so they live here
 // (src/persist may not import src/content).
@@ -120,6 +121,21 @@ describe('replaying a saved run', () => {
     if (!decoded.ok) throw new Error('decode failed')
     expect(decoded.save.commands[0]?.cmd).toEqual({ type: 'placeBot', x: 30.5, y: 30.5, sex: 'male' })
     const replayed = replayWorld(decoded.save.seed, edenPreset, rules, decoded.save.commands, decoded.save.tick)
+    expect(stateHash(replayed)).toBe(stateHash(live))
+  })
+
+  it('a run with a chosen-sex predator survives save, decode and replay with the same hash (PS1)', () => {
+    const sexRules = withPredatorSexes(rules)
+    const live = createWorld('save-psex', edenPreset, sexRules)
+    while (live.tick < 20) step(live, sexRules)
+    expect(applyCommand(live, sexRules, { type: 'placeNode', kind: 'predator', x: 20.5, y: 20.5, sex: 'male' }).ok).toBe(true)
+    expect(applyCommand(live, sexRules, { type: 'placeNode', kind: 'predator', x: 70.5, y: 50.5 }).ok).toBe(true)
+    while (live.tick < 400) step(live, sexRules)
+    const decoded = decodeSave(encodeSave(makeSave(live, edenPreset.id, stateHash(live), SIM_VERSION)))
+    if (!decoded.ok) throw new Error('decode failed')
+    expect(decoded.save.commands[0]?.cmd).toEqual({ type: 'placeNode', kind: 'predator', x: 20.5, y: 20.5, sex: 'male' })
+    expect(Object.keys(decoded.save.commands[1]!.cmd)).toEqual(['type', 'kind', 'x', 'y'])
+    const replayed = replayWorld(decoded.save.seed, edenPreset, sexRules, decoded.save.commands, decoded.save.tick)
     expect(stateHash(replayed)).toBe(stateHash(live))
   })
 

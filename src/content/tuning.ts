@@ -295,6 +295,11 @@ export const tuning: Tuning = {
       bounds: { sense: { min: 0.75, max: 1.5 }, speed: { min: 0.8, max: 1.2 }, stamina: { min: 0.5, max: 2 } },
       price: { sense: 0.15, speed: 0.3, stamina: 0.06 },
     },
+    // Predator sexes (PS1 mechanics, OFF; works only with ecology on): a predator is female or male (the sex there are fewer of, no draw). Only a female bears a cub, and only
+    // with an adult male within `mateRange` of her (120 covers the whole 96 x 64 map: no courtship, the male pays nothing); she needs `killsPerCub` kills (replaces
+    // ecology.killsPerCub). If one sex has been missing for `loneAfter` ticks any predator breeds alone (the E1 rule) and the cub is the missing sex. With `crossover` a cub takes each
+    // trait from its mother or its father (one draw a trait, then the usual mutation). Numbers are first guesses, not retuned. See src/sim/predatorSexes.ts.
+    sexes: { enabled: false, mateRange: 120, loneAfter: 3000, killsPerCub: 3, crossover: true },
   },
   // Seasons (S1 mechanics, S2 retune and switch-on). Food regrowth is multiplied by
   // base + amplitude * sin(2 * pi * tick / period). `base` exists because nodes that are already full waste the
