@@ -6,10 +6,10 @@
 // (the same one already running, or too many at once). Below the cards, the events
 // in progress with the ticks left; a standing meteor crater can be selected.
 
-import { rules, tuning } from '../content/index.ts'
+import { presets, rules, tuning } from '../content/index.ts'
 import { activeEntries } from '../sim/worldEvents.ts'
 import type { ActiveEntry } from '../sim/worldEvents.ts'
-import { EVENT_INFOS, blockedReason, effectSummary, eventInfo, eventRows, formatTicks, outbreakSummary } from './eventInfo.ts'
+import { EVENT_INFOS, blockedReason, effectSummary, eventInfo, eventRows, formatTicks, nextScripted, outbreakSummary } from './eventInfo.ts'
 import type { EventInfo } from './eventInfo.ts'
 import { formatPoint } from './labels.ts'
 import { dispatch, select, setTool, useWorldStore } from './store.ts'
@@ -92,7 +92,8 @@ function ActiveRow({ entry, tick }: { entry: ActiveEntry; tick: number }) {
 }
 
 export function EventsPanel() {
-  const { world, tick } = useWorldStore()
+  const { world, tick, presetId } = useWorldStore()
+  const upcoming = nextScripted(presets.find((preset) => preset.id === presetId)?.script, tick)
   const entries = activeEntries(world, tuning)
   const outbreak = outbreakSummary(world.bots)
   return (
@@ -117,6 +118,9 @@ export function EventsPanel() {
       </div>
       <p className="outbreak-line figure" role="status" aria-label="Outbreak">
         {outbreak === null ? ' ' : <><span className="key key-event key-outbreak" aria-hidden="true">{eventInfo('outbreak').letter}</span> {outbreak.text}</>}
+      </p>
+      <p className="next-event-line figure" aria-label="Next scripted event">
+        {upcoming === null ? ' ' : <><span className={`key key-event key-${upcoming.kind}`} aria-hidden="true">{eventInfo(upcoming.kind).letter}</span> Scenario: {eventInfo(upcoming.kind).label} in {formatTicks(upcoming.inTicks)} (t {upcoming.tick.toLocaleString('en-US')})</>}
       </p>
     </section>
   )

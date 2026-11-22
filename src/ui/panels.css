@@ -1540,6 +1540,16 @@ button.log-button[aria-pressed='true'] {
   font-size: 0.9rem;
 }
 
+.next-event-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 2rem; /* reserved: the line appearing or going moves nothing */
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .active-wrap {
   min-height: 5.5rem; /* room for two rows, so the first event appearing barely moves the chart */
   max-height: 16rem;

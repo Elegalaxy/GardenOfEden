@@ -141,3 +141,15 @@ export function outbreakSummary(bots: readonly { illnessStage?: string }[]): { s
   if (sick === 0 && immune === 0) return null
   return { sick, immune, text: `Outbreak: ${sick} sick · ${immune} immune` }
 }
+
+/** The next scripted scenario event still to come after `tick` (null when there is none), with the ticks until it fires. */
+export function nextScripted(
+  script: readonly { tick: number; cmd: { event: EventKind; x?: number; y?: number } }[] | undefined,
+  tick: number,
+): { kind: EventKind; tick: number; inTicks: number; x?: number; y?: number } | null {
+  if (script === undefined) return null
+  let best: (typeof script)[number] | null = null
+  for (const entry of script) if (entry.tick > tick && (best === null || entry.tick < best.tick)) best = entry
+  if (best === null) return null
+  return { kind: best.cmd.event, tick: best.tick, inTicks: best.tick - tick, x: best.cmd.x, y: best.cmd.y }
+}

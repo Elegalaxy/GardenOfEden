@@ -10,6 +10,7 @@ import {
   eventRows,
   formatMult,
   formatTicks,
+  nextScripted,
   globalEventForKey,
   outbreakSummary,
   startedMessage,
@@ -98,5 +99,20 @@ describe('event info', () => {
     expect(startedMessage({ type: 'triggerEvent', event: 'blight', x: 12.5, y: 7.5 }, tuning, 0)).toContain('Blight started at 12.5, 7.5')
     expect(startedMessage({ type: 'triggerEvent', event: 'meteor', x: 1.5, y: 2.5 }, tuning, 1)).toContain('1 bot killed')
     expect(startedMessage({ type: 'triggerEvent', event: 'meteor', x: 1.5, y: 2.5 }, tuning, 3)).toContain('3 bots killed')
+  })
+})
+
+describe('nextScripted', () => {
+  const script = [
+    { tick: 3000, cmd: { event: 'drought' as const } },
+    { tick: 6000, cmd: { event: 'plague' as const, x: 48, y: 32 } },
+  ]
+  it('finds the first entry after the tick, with the wait', () => {
+    expect(nextScripted(script, 0)).toMatchObject({ kind: 'drought', tick: 3000, inTicks: 3000 })
+    expect(nextScripted(script, 3000)).toMatchObject({ kind: 'plague', inTicks: 3000, x: 48, y: 32 })
+  })
+  it('is null when nothing is left or there is no script', () => {
+    expect(nextScripted(script, 6000)).toBeNull()
+    expect(nextScripted(undefined, 0)).toBeNull()
   })
 })
