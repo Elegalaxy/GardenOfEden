@@ -8,6 +8,7 @@ import type { Preset } from '../sim/types.ts'
 export const edenPreset: Preset = {
   id: 'eden',
   label: 'Eden',
+  description: 'The standard garden: three groves with a predator each, springs spread across the map, and 40 bots to start.',
   width: 96,
   height: 64,
   nodes: [
@@ -50,6 +51,7 @@ export const edenPreset: Preset = {
 export const blankPreset: Preset = {
   id: 'blank',
   label: 'Blank',
+  description: 'An empty map. Place food, water and shelter first, then the first bots.',
   width: 96,
   height: 64,
   nodes: [],
