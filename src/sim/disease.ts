@@ -15,7 +15,7 @@
 // This file imports only types, perception's `distance` and resistance.ts.
 
 import { distance } from './perception.ts'
-import { activate, catchThreshold, resistanceOn, sickLength } from './resistance.ts'
+import { activate, anchor, catchThreshold, resistanceOn, sickDrainFor, sickLength } from './resistance.ts'
 import type { Bot, Tuning, World } from './types.ts'
 
 /** What disease.ts reads from the tuning; `resistance` may be left out (callers that never use it). */
@@ -36,12 +36,15 @@ export function checkDisease(disease: Tuning['disease']): void {
 }
 
 /** Health damage per tick for a bot that is sick now (before hardiness divides it), else 0. */
-export function sickDamage(bot: Pick<Bot, 'illness'>, tuning: Pick<Tuning, 'disease'>): number {
-  return bot.illness !== undefined && bot.illness.stage === 'sick' ? tuning.disease.sickDrain : 0
+export function sickDamage(bot: Pick<Bot, 'illness' | 'resist'>, tuning: DiseaseTuning, resistance?: World['resistance']): number {
+  if (bot.illness === undefined || bot.illness.stage !== 'sick') return 0
+  // R3: a resistant bot takes less (only once the world has resistance and the bot has the key).
+  if (tuning.resistance === undefined || resistance === undefined || bot.resist === undefined) return tuning.disease.sickDrain
+  return sickDrainFor(bot, tuning.resistance, anchor(tuning.resistance, resistance), tuning.disease.sickDrain)
 }
 
 function makeSick(world: World, bot: Bot, tuning: DiseaseTuning): void {
-  const length = tuning.resistance === undefined ? tuning.disease.sickTicks : sickLength(bot, tuning.resistance, tuning.disease.sickTicks)
+  const length = tuning.resistance === undefined ? tuning.disease.sickTicks : sickLength(bot, tuning.resistance, tuning.disease.sickTicks, anchor(tuning.resistance, world.resistance))
   bot.illness = { stage: 'sick', dose: 0, until: world.tick + length }
   const counters = (world.disease ??= { infected: 0, recovered: 0 })
   counters.infected += 1
@@ -121,7 +124,7 @@ export function spreadDisease(world: World, tuning: DiseaseTuning): void {
     }
     if (touched) {
       const dose = (illness === undefined ? 0 : illness.dose) + 1
-      const needed = tuning.resistance === undefined ? catchAfter : catchThreshold(bot, tuning.resistance, catchAfter)
+      const needed = tuning.resistance === undefined ? catchAfter : catchThreshold(bot, tuning.resistance, catchAfter, anchor(tuning.resistance, world.resistance))
       if (dose >= needed) makeSick(world, bot, tuning)
       else bot.illness = { stage: 'exposed', dose, until: 0 }
     } else if (illness !== undefined) {

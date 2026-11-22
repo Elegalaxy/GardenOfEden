@@ -898,6 +898,9 @@ export type Tuning = {
    * and `founderMax` (own RNG stream kept in `World.resistance`, not one of the named streams); newborns inherit it (mother or father,
    * then a mutation, clamped to `min`..`max`). `resist` r multiplies the dose needed to fall sick by 1 + catchWeight * (r - 1) and divides
    * sickness length by 1 + sickWeight * (r - 1); `upkeep` is the energy a tick per point above 1. See resistance.ts.
+   * R3: `damageWeight` divides the sickness health damage by 1 + damageWeight * (r - anchor); `centred` makes every effect use
+   * the anchor `World.resistance.founderMean` instead of 1 (so a bot at the founders' mean is treated as before the gene existed, and a
+   * bot below it is a little worse off), in the dose, the length and the damage alike.
    */
   resistance: {
     enabled: boolean
@@ -909,6 +912,8 @@ export type Tuning = {
     sickWeight: number
     upkeep: number
     mutation: { rate: number; strength: number }
+    damageWeight: number
+    centred: boolean
   }
 }
 

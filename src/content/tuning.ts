@@ -341,6 +341,6 @@ export const tuning: Tuning = {
   // Disease resistance (R1, off): a latent heritable number, given to every living bot at the first outbreak (founders drawn between founderMin and
   // founderMax from their own stream) and inherited by newborns (mother or father, then mutated by `rate` / `strength`, clamped to min..max). Resist r
   // raises the dose needed to fall sick to catchAfter x (1 + catchWeight x (r - 1)) and shortens sickness to sickTicks / (1 + sickWeight x (r - 1));
-  // `upkeep` is the energy a tick per point above 1. Before any outbreak nothing exists, nothing is drawn. See src/sim/resistance.ts.
-  resistance: { enabled: false, founderMin: 1, founderMax: 1.3, min: 1, max: 2, catchWeight: 1, sickWeight: 0.5, upkeep: 0, mutation: { rate: 0.1, strength: 0.1 } },
+  // `upkeep` is the energy a tick per point above 1. R3: `damageWeight` divides the sickness damage by 1 + damageWeight x (r - anchor), and `centred` makes all effects use the founders' mean as the anchor instead of 1. Before any outbreak nothing exists, nothing is drawn. See src/sim/resistance.ts.
+  resistance: { enabled: false, founderMin: 1, founderMax: 1.3, min: 1, max: 2, catchWeight: 1, sickWeight: 0.5, upkeep: 0, mutation: { rate: 0.1, strength: 0.1 }, damageWeight: 0, centred: false },
 }

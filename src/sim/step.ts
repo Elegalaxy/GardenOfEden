@@ -84,7 +84,7 @@ export function step(world: World, rules: Rules): void {
     const moved = act(world, bot, rules, nodesById, intake, rough)
     const exposure = exposureAt(world, bot.x, bot.y, tuning)
     // Disease (D1): a sick bot's drain is one more health damage, counted like the poison dose (0 for everyone with no illness key).
-    const sickness = bot.illness === undefined ? 0 : sickDamage(bot, tuning)
+    const sickness = bot.illness === undefined ? 0 : sickDamage(bot, tuning, world.resistance)
     metabolise(bot, moved, exposure, tuning, intake.poison, sickness)
     const cause = deathCause(bot, exposure, intake.poison, sickness)
     if (cause !== null) {

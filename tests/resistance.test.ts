@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { edenPreset, rules } from '../src/content/index.ts'
 import { applyCommand } from '../src/sim/commands.ts'
-import { spreadDisease, startOutbreak } from '../src/sim/disease.ts'
+import { sickDamage, spreadDisease, startOutbreak } from '../src/sim/disease.ts'
 import { stateHash } from '../src/sim/hash.ts'
 import { replayWorld } from '../src/sim/replay.ts'
-import { catchThreshold, checkResistance, inheritResist } from '../src/sim/resistance.ts'
+import { anchor, catchThreshold, checkResistance, inheritResist, sickDrainFor, sickLength } from '../src/sim/resistance.ts'
 import { createRng, deriveStream, nextFloat } from '../src/sim/rng.ts'
 import { step } from '../src/sim/step.ts'
 import type { Command, Preset, Rules, World } from '../src/sim/types.ts'
@@ -225,6 +225,68 @@ describe('catchThreshold', () => {
     expect(catchThreshold({ resist: 1 }, half, 1)).toBe(1)
     // deterministic: the same inputs give the same answer
     expect(catchThreshold({ resist: 1.37 }, half, 5)).toBe(catchThreshold({ resist: 1.37 }, half, 5))
+  })
+})
+
+describe('damage and the centred anchor (R3)', () => {
+  const centred = { ...t, centred: true, catchWeight: 0.3, sickWeight: 0.3, damageWeight: 0.3, founderMax: 1.4 }
+  it('divides the sickness damage by the factor; no resist or damageWeight 0 gives the plain drain', () => {
+    expect(sickDrainFor({}, { ...t, damageWeight: 0.5 }, 1, 0.7)).toBe(0.7)
+    expect(sickDrainFor({ resist: 1.8 }, { ...t, damageWeight: 0 }, 1, 0.7)).toBe(0.7)
+    expect(sickDrainFor({ resist: 1.4 }, { ...t, damageWeight: 0.5 }, 1, 0.7)).toBeCloseTo(0.7 / 1.2, 12)
+    expect(sickDrainFor({ resist: 1.4 }, { ...t, damageWeight: 1 }, 1.4, 0.7)).toBe(0.7)
+    expect(sickDrainFor({ resist: 1.2 }, { ...t, damageWeight: 1 }, 1.4, 0.7)).toBeGreaterThan(0.7)
+  })
+
+  it('sickDamage uses it only with a resistance world and a resist key', () => {
+    const w = world({ ...on, tuning: { ...on.tuning, resistance: { ...t, damageWeight: 1 } } }, [[10, 10]])
+    const tun = { ...on.tuning, resistance: { ...t, damageWeight: 1 } }
+    startOutbreak(w, 10, 10, tun)
+    const bot = w.bots[0]!
+    bot.resist = 2
+    expect(sickDamage(bot, tun, w.resistance)).toBe(tun.disease.sickDrain / 2)
+    expect(sickDamage(bot, tun, undefined)).toBe(tun.disease.sickDrain)
+    delete bot.resist
+    expect(sickDamage(bot, tun, w.resistance)).toBe(tun.disease.sickDrain)
+    expect(sickDamage({ resist: 2 }, tun, w.resistance)).toBe(0)
+  })
+
+  it('anchor is 1 uncentred and the founders mean centred', () => {
+    expect(anchor({ centred: false }, { stream: deriveStream('a', 'x'), founderMean: 1.15, activatedTick: 0 })).toBe(1)
+    expect(anchor({ centred: true }, { stream: deriveStream('a', 'x'), founderMean: 1.15, activatedTick: 0 })).toBe(1.15)
+    expect(anchor({ centred: true }, undefined)).toBe(1)
+  })
+
+  it('a bot at the founders mean gets exactly the plain dose, length and drain; one below is worse off, one above better', () => {
+    const mean = 1.2
+    expect(catchThreshold({ resist: mean }, centred, 5, mean)).toBe(5)
+    expect(sickLength({ resist: mean }, centred, 200, mean)).toBe(200)
+    expect(sickDrainFor({ resist: mean }, centred, mean, 0.7)).toBe(0.7)
+    expect(catchThreshold({ resist: 1 }, { ...centred, catchWeight: 0.5 }, 20, mean)).toBe(18)
+    expect(sickLength({ resist: 1 }, centred, 200, mean)).toBeGreaterThan(200)
+    expect(sickDrainFor({ resist: 1 }, centred, mean, 0.7)).toBeGreaterThan(0.7)
+    expect(sickDrainFor({ resist: 1.4 }, centred, mean, 0.7)).toBeLessThan(0.7)
+  })
+
+  it('a centred world gives a founder at the mean the plain sickness length', () => {
+    const active = withDiseaseResistance(rules, { centred: true, catchWeight: 0, sickWeight: 0.4, damageWeight: 0.4, founderMax: 1.2 })
+    const w = world(active, [[10, 10], [20, 20]])
+    startOutbreak(w, 50, 50, active.tuning)
+    w.bots[0]!.resist = w.resistance!.founderMean
+    w.bots[1]!.resist = w.resistance!.founderMean + 0.1
+    startOutbreak(w, 10, 10, { ...active.tuning, disease: { ...active.tuning.disease, outbreakRadius: 30 } })
+    expect(w.bots[0]!.illness!.until).toBe(w.tick + active.tuning.disease.sickTicks)
+    expect(w.bots[1]!.illness!.until).toBeLessThan(w.tick + active.tuning.disease.sickTicks)
+  })
+
+  it('checkResistance rejects centred weights that could make a factor reach 0.5, and a non-boolean centred or bad damageWeight', () => {
+    expect(() => checkResistance({ ...t, centred: true, founderMax: 1.4, catchWeight: 0, sickWeight: 0.5, damageWeight: 1 })).not.toThrow()
+    expect(() => checkResistance({ ...t, centred: true, founderMax: 1.6, catchWeight: 0, sickWeight: 0, damageWeight: 1 })).toThrow(RangeError)
+    expect(() => checkResistance({ ...t, centred: true, founderMax: 1.5, damageWeight: 1 })).toThrow(RangeError)
+    expect(() => checkResistance({ ...t, centred: false, founderMax: 1.6, damageWeight: 1 })).not.toThrow()
+    expect(() => checkResistance({ ...t, centred: 1 as unknown as boolean })).toThrow(RangeError)
+    expect(() => checkResistance({ ...t, damageWeight: 1.5 })).toThrow(RangeError)
+    expect(() => checkResistance({ ...t, damageWeight: -0.1 })).toThrow(RangeError)
   })
 })
 

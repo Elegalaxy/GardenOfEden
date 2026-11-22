@@ -9,7 +9,10 @@
 // catchThreshold   the dose that makes a bot fall sick: catchAfter x (1 + catchWeight x (r - 1)) rounded to the nearest whole dose (R2b: the dose is a whole
 //                  number of contact ticks, so an unrounded 5.05 would cost a whole extra tick for a tiny resist; Math.round takes .5 up), at least 1;
 //                  plain `catchAfter` for a bot with no resist.
-// sickLength       ticks sick: round(sickTicks / (1 + sickWeight x (r - 1))), at least 1; plain `sickTicks` for a bot with no resist.
+// sickLength       ticks sick: round(sickTicks / (1 + sickWeight x (r - anchor))), at least 1; plain `sickTicks` for a bot with no resist.
+// sickDrainFor     (R3) the sickness health damage a tick: sickDrain / (1 + damageWeight x (r - anchor)); plain `sickDrain` for a bot with no resist or damageWeight 0.
+// anchor           (R3) 1, or with `centred` the founders' mean (`World.resistance.founderMean`): every effect above uses (r - anchor) in place of (r - 1), so a bot at the
+//                  founders' mean gets exactly the plain disease numbers and one below it is slightly worse off. catchThreshold also uses it.
 // A bot with no `resist` key takes the plain disease number through a branch (no multiplication by 1), so a run with the rule off is bit-identical.
 // This file imports only rng and types.
 
@@ -25,8 +28,13 @@ export function checkResistance(t: Tuning['resistance']): void {
   if (!(t.min >= 1 && t.min <= t.founderMin && t.founderMin <= t.founderMax && t.founderMax <= t.max)) {
     throw new RangeError(`resistance needs 1 <= min <= founderMin <= founderMax <= max, received min ${t.min}, founderMin ${t.founderMin}, founderMax ${t.founderMax}, max ${t.max}`)
   }
-  for (const name of ['catchWeight', 'sickWeight'] as const) {
+  for (const name of ['catchWeight', 'sickWeight', 'damageWeight'] as const) {
     if (!(Number.isFinite(t[name]) && t[name] >= 0 && t[name] <= 1)) throw new RangeError(`resistance.${name} must be a number from 0 to 1, received ${t[name]}`)
+  }
+  if (typeof t.centred !== 'boolean') throw new RangeError(`resistance.centred must be true or false, received ${String(t.centred)}`)
+  // Centred: a bot below the founders' mean has a factor 1 - weight x (anchor - resist), with the anchor at most founderMax and resist at least min; keep it above 0.5.
+  if (t.centred && Math.max(t.catchWeight, t.sickWeight, t.damageWeight) * (t.founderMax - t.min) >= 0.5) {
+    throw new RangeError(`resistance.centred needs max(catchWeight, sickWeight, damageWeight) x (founderMax - min) below 0.5, received ${Math.max(t.catchWeight, t.sickWeight, t.damageWeight) * (t.founderMax - t.min)}`)
   }
   if (!(Number.isFinite(t.upkeep) && t.upkeep >= 0)) throw new RangeError(`resistance.upkeep must be a finite number from 0, received ${t.upkeep}`)
   if (!(Number.isFinite(t.mutation.rate) && t.mutation.rate >= 0 && t.mutation.rate <= 1)) throw new RangeError(`resistance.mutation.rate must be a number from 0 to 1, received ${t.mutation.rate}`)
@@ -61,13 +69,24 @@ export function inheritResist(motherResist: number, fatherResist: number | null,
 }
 
 /** The dose at which this bot falls sick (whole number; see the header). */
-export function catchThreshold(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], catchAfter: number): number {
+export function catchThreshold(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], catchAfter: number, anchorValue = 1): number {
   if (bot.resist === undefined) return catchAfter
-  return Math.max(1, Math.round(catchAfter * (1 + t.catchWeight * (bot.resist - 1))))
+  return Math.max(1, Math.round(catchAfter * (1 + t.catchWeight * (bot.resist - anchorValue))))
+}
+
+/** The reference resist: 1, or with `centred` the founders' mean once the world has resistance (1 before that). */
+export function anchor(t: Pick<Tuning['resistance'], 'centred'>, resistance: World['resistance']): number {
+  return t.centred && resistance !== undefined ? resistance.founderMean : 1
+}
+
+/** The sickness health damage a tick (before hardiness divides it). */
+export function sickDrainFor(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], anchorValue: number, sickDrain: number): number {
+  if (bot.resist === undefined || t.damageWeight === 0) return sickDrain
+  return sickDrain / (1 + t.damageWeight * (bot.resist - anchorValue))
 }
 
 /** How many ticks this bot stays sick. */
-export function sickLength(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], sickTicks: number): number {
+export function sickLength(bot: Pick<Bot, 'resist'>, t: Tuning['resistance'], sickTicks: number, anchorValue = 1): number {
   if (bot.resist === undefined) return sickTicks
-  return Math.max(1, Math.round(sickTicks / (1 + t.sickWeight * (bot.resist - 1))))
+  return Math.max(1, Math.round(sickTicks / (1 + t.sickWeight * (bot.resist - anchorValue))))
 }
