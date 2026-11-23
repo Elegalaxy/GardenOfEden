@@ -14,7 +14,7 @@ import { noMateChoice, staticPredators } from './variants.ts'
 // next to src/sim. The family-tree queries and the pruning order are tested on hand-built records.
 
 const { tuning } = rules
-const SLOW = 120_000
+const SLOW = 600_000
 
 function scene(over: Partial<Preset>): Preset {
   return { id: 'test', label: 'Test scene', width: 40, height: 40, nodes: [], scatter: [], bots: [], scatterBots: 0, ...over }

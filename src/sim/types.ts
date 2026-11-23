@@ -787,7 +787,7 @@ export type Tuning = {
      */
     sexes: {
       enabled: boolean
-      /** Cells: how far from the female an adult male may be to mate (the whole map is 96 wide). */
+      /** Cells: how far from the female an adult male may be to mate (the whole map is 120 wide in Eden). */
       mateRange: number
       /** Ticks one sex may be missing before any predator may breed alone (whole number from 1). */
       loneAfter: number

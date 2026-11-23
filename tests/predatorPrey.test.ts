@@ -19,7 +19,7 @@ const pt = rules.tuning.predator
 const eco = pt.ecology
 
 // Hash of Eden seed 'a' after 5,000 ticks on the shipped rules, taken on the tree before P1 existed.
-const PRE_P1_HASH = 'e0135d1418760a37'
+const PRE_P1_HASH = 'ef146d118fc8cf30'
 
 function scene(over: Partial<Preset>): Preset {
   return { id: 'test', label: 'Test scene', width: 200, height: 200, nodes: [], scatter: [], bots: [], scatterBots: 0, ...over }

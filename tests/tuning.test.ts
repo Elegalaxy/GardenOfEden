@@ -31,7 +31,7 @@ function survey(seed: string): Promise<SeedSurvey> {
 }
 
 describe('eden preset survives 20,000 ticks', () => {
-  it.concurrent.each(SEEDS)('seed %s', { timeout: 180_000 }, async (seed) => {
+  it.concurrent.each(SEEDS)('seed %s', { timeout: 600_000 }, async (seed) => {
     const result = await survey(seed)
     expect(result.final).toBeGreaterThanOrEqual(MIN_ALIVE)
     expect(result.min).toBeGreaterThanOrEqual(MIN_ALIVE)
@@ -41,7 +41,7 @@ describe('eden preset survives 20,000 ticks', () => {
     expect(result.births).toBeGreaterThan(100)
   })
 
-  it.concurrent.each(SEEDS)('predators of seed %s are never gone long and are not at the cap most of the time', { timeout: 180_000 }, async (seed) => {
+  it.concurrent.each(SEEDS)('predators of seed %s are never gone long and are not at the cap most of the time', { timeout: 600_000 }, async (seed) => {
     const result = await survey(seed)
     expect(result.predZeroRun).toBeLessThanOrEqual(rules.tuning.predator.ecology.recolonizeTicks + 300)
     expect(result.predCapTicks).toBeLessThanOrEqual(0.5 * (TICKS - WARMUP))
@@ -49,7 +49,7 @@ describe('eden preset survives 20,000 ticks', () => {
 })
 
 describe('eden predators over ten seeds', () => {
-  it('move, breed and take a modest share of the deaths', { timeout: 180_000 }, async () => {
+  it('move, breed and take a modest share of the deaths', { timeout: 600_000 }, async () => {
     const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
     expect(rows.filter((r) => r.predMax - r.predMin >= 2).length).toBeGreaterThanOrEqual(8)
     expect(rows.filter((r) => r.predBorn > 0).length).toBeGreaterThanOrEqual(8)
@@ -61,7 +61,7 @@ describe('eden predators over ten seeds', () => {
 
   // P2: with the prey rule on the predator count follows the bot count. The pre-P2 world (rule off) had a median best-lag
   // correlation of about -0.05 and one seed of ten at 0.3 or more; the bar is a median of 0.5 and at least 7 of 10 seeds at 0.3.
-  it('track the bots: the predator count follows the bot count', { timeout: 180_000 }, async () => {
+  it('track the bots: the predator count follows the bot count', { timeout: 600_000 }, async () => {
     const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
     const corr = rows.map((r) => r.predCorrBest)
     expect(corr.every((c) => c !== null)).toBe(true)
@@ -72,7 +72,7 @@ describe('eden predators over ten seeds', () => {
   })
 
   // G2: mate choice is on. The measured baseline (mate choice off, eden a..j, 20,000 ticks) had a median of 18.4% inbred births; the bar is a third of that.
-  it('breed mostly outside the family: median inbred births at most a third of the 18.4% baseline', { timeout: 180_000 }, async () => {
+  it('breed mostly outside the family: median inbred births at most a third of the 18.4% baseline', { timeout: 600_000 }, async () => {
     const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
     const shares = rows.map((r) => (100 * r.inbred) / r.births).sort((a, b) => a - b)
     const median = (shares[shares.length / 2 - 1]! + shares[shares.length / 2]!) / 2
@@ -81,7 +81,7 @@ describe('eden predators over ten seeds', () => {
 
   // H2: predator traits are on. They must be inherited (a cub generation is reached), must move off the founders' 1 on some seeds, and no mean may
   // sit against a bound after 20,000 ticks (within 5% of the bound range). The 60,000-tick version of the bound check was run in the H2 sweep, not here.
-  it('inherit their traits: cubs carry a generation, the means move, and none sits at a bound', { timeout: 180_000 }, async () => {
+  it('inherit their traits: cubs carry a generation, the means move, and none sits at a bound', { timeout: 600_000 }, async () => {
     const rows = await Promise.all(SEEDS.map((seed) => survey(seed)))
     expect(rows.every((r) => r.predMaxGen !== null)).toBe(true)
     expect(rows.filter((r) => r.predMaxGen! >= 2).length).toBeGreaterThanOrEqual(8)

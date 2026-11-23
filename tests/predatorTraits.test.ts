@@ -57,8 +57,8 @@ describe('traits off equals before H1', () => {
       step(world, off)
     }
     // Recorded on the untouched tree (before H1) with the same script and the shipped rules (traits off, as they were until H2).
-    expect(stateHash(world)).toBe('d97a4c85e3ca126c')
-    expect(world.rng.predator).toEqual({ a: 4040596244, b: 1153508164, c: 935765933, d: 1357574499 })
+    expect(stateHash(world)).toBe('7098cfa7624a1750')
+    expect(world.rng.predator).toEqual({ a: 526400525, b: 3835584909, c: 2078522953, d: 1357585376 })
     expect(predatorsOf(world).every((node) => node.hunt !== null && !('traits' in node.hunt) && !('generation' in node.hunt))).toBe(true)
   })
 
@@ -66,7 +66,7 @@ describe('traits off equals before H1', () => {
     const off = noMateChoice(noPredatorTraits(rules))
     const world = createWorld('b', edenPreset, off)
     for (let i = 0; i < 20000; i += 1) step(world, off)
-    expect(stateHash(world)).toBe('002b6a896d393fad')
+    expect(stateHash(world)).toBe('f00f83a31df2c4e1')
   })
 
   it('ships on with the H2 numbers, within the checks, and speed max is the fastest bot flee speed', () => {

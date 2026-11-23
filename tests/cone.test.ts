@@ -15,7 +15,7 @@ import { noCone, noMateChoice, staticPredators, withCone, withEcology } from './
 
 const PI = Math.PI
 // Recorded on the untouched pre-V1 code: Eden, seed 'a', 5,000 ticks, shipped rules (the E2 numbers: no prey rule, killsPerCub 6).
-const PRE_V1_HASH = 'e9b82aa4ca6110de'
+const PRE_V1_HASH = '1e1c119880213033'
 
 function scene(over: Partial<Preset>): Preset {
   return { id: 'test', label: 'Test scene', width: 80, height: 80, nodes: [], scatter: [], bots: [], scatterBots: 0, ...over }

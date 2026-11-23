@@ -16,8 +16,8 @@ import { createWorld } from '../src/sim/world.ts'
 // and saves and replays need no new format.
 
 /** Eden seed a at 5,000 ticks and seed b at 20,000 (the same values tests/disease.test.ts pins). */
-const PIN_A_5000 = '731f770400f210aa'
-const PIN_B_20000 = 'be462fac79aff2af'
+const PIN_A_5000 = '03cc23ee3c4d0701'
+const PIN_B_20000 = 'a44d483eff987840'
 
 const SCENARIOS = presets.filter((preset) => preset.id !== 'eden' && preset.id !== 'blank')
 const SCRIPTED = SCENARIOS.filter((preset) => preset.script !== undefined)

@@ -15,22 +15,22 @@ import { noMateChoice, withMateChoice } from './variants.ts'
 // it is off. These need the real rules, so they live here.
 
 /** Eden seed a at 5,000 ticks, taken from main before any G1 change (mate choice is off, so it must not move). */
-const PRE_G1_HASH_A_5000 = 'bf108e00ab1fdc98'
+const PRE_G1_HASH_A_5000 = 'cd4e9e5c7ac79f8f'
 /** Eden seed b at 20,000 ticks, same origin. */
-const PRE_G1_HASH_B_20000 = '34829c673e410693'
+const PRE_G1_HASH_B_20000 = 'f49fe34b3f6a615f'
 const PRE_G1_RNG_A_5000 = {
-  world: { a: 3688263227, b: 3154447763, c: 1166763587, d: 3567969820 },
-  ai: { a: 2744722571, b: 210680577, c: 2613904024, d: 2412749370 },
-  birth: { a: 1975823846, b: 2078956634, c: 1864447484, d: 1463747106 },
-  gene: { a: 462374627, b: 1990044236, c: 1759150371, d: 3659276748 },
-  predator: { a: 2965271616, b: 3807059815, c: 2377451616, d: 1357575811 },
+  world: { a: 4041835896, b: 1899320074, c: 4088289150, d: 3567969942 },
+  ai: { a: 2926588574, b: 3513409781, c: 3424040611, d: 2412768845 },
+  birth: { a: 718180524, b: 1865918892, c: 3554419986, d: 1463748394 },
+  gene: { a: 35390755, b: 4240459312, c: 348044899, d: 3659276840 },
+  predator: { a: 77205907, b: 4049053377, c: 2398440535, d: 1357584770 },
 }
 const PRE_G1_RNG_B_20000 = {
-  world: { a: 2108544604, b: 724006586, c: 3541576535, d: 3500638388 },
-  ai: { a: 1617823784, b: 3861126275, c: 1492951682, d: 1383984856 },
-  birth: { a: 1253031795, b: 2514815994, c: 3402312044, d: 3188214866 },
-  gene: { a: 3196473882, b: 199176989, c: 758345062, d: 4005965875 },
-  predator: { a: 1831911369, b: 62834866, c: 4158602971, d: 2899175820 },
+  world: { a: 1846205129, b: 4169043728, c: 2857540989, d: 3500638510 },
+  ai: { a: 2047296717, b: 4185308583, c: 3584611433, d: 1384268924 },
+  birth: { a: 3220379027, b: 3263758896, c: 1101571585, d: 3188241382 },
+  gene: { a: 4083626834, b: 718183317, c: 337725763, d: 4005967769 },
+  predator: { a: 2235276326, b: 1873852087, c: 3347887013, d: 2899231927 },
 }
 
 // The unit tests start from the rules with mate choice off (on in Eden since G2) and switch it on where they test it.

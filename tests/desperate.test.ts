@@ -33,12 +33,12 @@ describe('desperateFraction', () => {
 
   it('is higher for a reckless bot and lower for a cautious one, in a straight line between the clamps', () => {
     const founder = desperateFraction(botWith(0.5), tuning)
-    const reckless = desperateFraction(botWith(0.4), tuning)
-    const cautious = desperateFraction(botWith(0.6), tuning)
+    const reckless = desperateFraction(botWith(0.48), tuning)
+    const cautious = desperateFraction(botWith(0.52), tuning)
     expect(reckless).toBeGreaterThan(founder)
     expect(cautious).toBeLessThan(founder)
-    expect(reckless).toBeCloseTo(brain.desperateBelow * (1 + brain.cautionDesperate * 0.1), 12)
-    expect(cautious).toBeCloseTo(brain.desperateBelow * (1 - brain.cautionDesperate * 0.1), 12)
+    expect(reckless).toBeCloseTo(brain.desperateBelow * (1 + brain.cautionDesperate * 0.02), 12)
+    expect(cautious).toBeCloseTo(brain.desperateBelow * (1 - brain.cautionDesperate * 0.02), 12)
   })
 
   it('is clamped into [minDesperate, maxDesperate]', () => {

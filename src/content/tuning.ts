@@ -37,7 +37,9 @@ export const tuning: Tuning = {
     // in the selection test (tests/traits.test.ts) once water existed. At 3 a hot bot's thirst (x4.1 at
     // 1.6) cancels that. Scaling a cool bot's thirst down too (so below 1 it thirsts less) pinned the
     // population mean at the 0.7 lower bound over 60,000 ticks, so below 1 the drain stays the plain one.
-    thirstMetabolismPower: 3,
+    // map120: 3 -> 3.5. On the larger Eden a hot bot's speed advantage found water and food more cheaply than before, and the metabolism lineage race
+    // in tests/traits.test.ts (0.9 against 1.6, seeds a..f) was lost on a, d and e; 3.5 wins it on every seed (4 and 5 won it by far more but moved the world more).
+    thirstMetabolismPower: 3.5,
     thirstyBelow: 0.5,
     quenchedAbove: 0.95,
     drinkRate: 5,
@@ -128,7 +130,7 @@ export const tuning: Tuning = {
     // nothing and mean caution drifted from 0.5 to about 0.3 over 60,000 ticks. 1 and 2 left the
     // drift mostly in place (seeds above 0.4: 5 and 7 of 10); 4 held 10 of 10; 6 and 10 cut danger
     // deaths a little more but pushed the lowest population down to 18 and 11.
-    cautionDesperate: 4,
+    cautionDesperate: 12,
     minDesperate: 0.05,
     maxDesperate: 0.4,
     restBelow: 0.7,
@@ -296,7 +298,7 @@ export const tuning: Tuning = {
       price: { sense: 0.15, speed: 0.3, stamina: 0.06 },
     },
     // Predator sexes (PS1 mechanics, OFF; works only with ecology on): a predator is female or male (the sex there are fewer of, no draw). Only a female bears a cub, and only
-    // with an adult male within `mateRange` of her (120 covers the whole 96 x 64 map: no courtship, the male pays nothing); she needs `killsPerCub` kills (replaces
+    // with an adult male within `mateRange` of her (120 covers the map's width, 120 in Eden; the diagonal is longer, so since map120 a far male can be out of range; PS1 predates the larger map and is off); she needs `killsPerCub` kills (replaces
     // ecology.killsPerCub). If one sex has been missing for `loneAfter` ticks any predator breeds alone (the E1 rule) and the cub is the missing sex. With `crossover` a cub takes each
     // trait from its mother or its father (one draw a trait, then the usual mutation). Numbers are first guesses, not retuned. See src/sim/predatorSexes.ts.
     sexes: { enabled: false, mateRange: 120, loneAfter: 3000, killsPerCub: 3, crossover: true },

@@ -16,7 +16,7 @@ export type CameraWorld = Pick<World, 'width' | 'height'>
 export type ViewSize = { width: number; height: number }
 
 export const ZOOM_STEPS: readonly number[] = [1, 1.5, 2, 3, 4]
-export const MAX_ZOOM = 4
+export const MAX_ZOOM = 5
 
 /** The whole map in view, not following. The centre is a placeholder: `clampCamera` puts it at the map's middle at zoom 1. */
 export const DEFAULT_CAMERA: Camera = { zoom: 1, cx: 0, cy: 0, follow: false }

@@ -13,9 +13,9 @@ import { noPredatorHarm, staticPredators, withEcology, withPredatorHarm } from '
 // Events hurt predators (EP1, off in the shipped numbers): a meteor kills the predators in its core, a plague drains their energy.
 
 /** Eden seed a, plague on the first den at tick 1000, meteor on it at tick 1500, to tick 3000, taken from UNMODIFIED code before EP1. */
-const PRE_EP1_HASH = 'cc06cb95f6a22c7d'
+const PRE_EP1_HASH = 'f3895b73215c7953'
 const PRE_EP1_RNG =
-  '{"world":{"a":3688263227,"b":3154447763,"c":1166763587,"d":3567969820},"ai":{"a":1253416535,"b":328513030,"c":3889496964,"d":2412688508},"birth":{"a":3626714101,"b":1287960309,"c":2169393930,"d":1463742682},"gene":{"a":74850136,"b":2885107963,"c":1864739671,"d":3659276432},"predator":{"a":3033782908,"b":4051452684,"c":1619399037,"d":1357567091}}'
+  '{"world":{"a":4041835896,"b":1899320074,"c":4088289150,"d":3567969942},"ai":{"a":3965987695,"b":1320152023,"c":1619987300,"d":2412713377},"birth":{"a":3930042201,"b":1141131709,"c":2556608536,"d":1463744110},"gene":{"a":2388676217,"b":1210227665,"c":559620326,"d":3659276534},"predator":{"a":3825219407,"b":4008292639,"c":3775811187,"d":1357573091}}'
 
 const harm = withPredatorHarm(withEcology(rules))
 const h = harm.tuning.events.predatorHarm

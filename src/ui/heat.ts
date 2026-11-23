@@ -153,7 +153,7 @@ export function observeWorld(heat: HeatGrid, world: Observable): void {
 
 // ---- What the page gets ----
 
-/** One layer of the grid, in the compact form that crosses to the page (96 x 64 = 6,144 numbers), with the summary the legend shows. */
+/** One layer of the grid, in the compact form that crosses to the page (120 x 80 = 9,600 numbers in Eden), with the summary the legend shows. */
 export type HeatSnapshot = {
   /** The run it belongs to (matches `RunInfo.runId`), so a late snapshot of an old run is ignored. */
   runId: number

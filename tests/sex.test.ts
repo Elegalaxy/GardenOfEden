@@ -8,7 +8,7 @@ import { replayWorld } from '../src/sim/replay.ts'
 import { step } from '../src/sim/step.ts'
 import type { Bot, Preset, Rules, Sex, World } from '../src/sim/types.ts'
 import { autoSex, createWorld } from '../src/sim/world.ts'
-import { edenWithDanger, neutralTraits, noCone, noSeasons, stage1 } from './variants.ts'
+import { edenWithDanger, neutralTraits, oldCaution, noCone, noSeasons, stage1 } from './variants.ts'
 
 // Two sexes (M17): founders alternate, children get a sex, and a birth needs a ready female and a ready
 // male in shelters within mateRange. The one-tick scenes use rules with speed 0, so nobody walks and
@@ -54,10 +54,10 @@ function births(world: World): Bot[] {
 }
 
 describe('founders and sex of newborns', () => {
-  it('starts the eden preset with 20 females and 20 males, alternating by id', () => {
+  it('starts the eden preset with 31 females and 31 males, alternating by id', () => {
     const world = createWorld('a', edenPreset, rules)
-    expect(world.bots).toHaveLength(40)
-    expect(world.bots.filter((bot) => bot.sex === 'female')).toHaveLength(20)
+    expect(world.bots).toHaveLength(62)
+    expect(world.bots.filter((bot) => bot.sex === 'female')).toHaveLength(31)
     world.bots.forEach((bot, index) => expect(bot.sex).toBe(index % 2 === 0 ? 'female' : 'male'))
     expect(world.lineage.map((record) => record.sex)).toEqual(world.bots.map((bot) => bot.sex))
   })
@@ -322,7 +322,7 @@ describe('asexual control', () => {
   it.each(['a', 'b'] as const)('reproduces the pre-M17 numbers on seed %s', { timeout: 60_000 }, (seed) => {
     // Without seasons (S2): the pre-M17 world had a fixed regrowth rate.
     // And without the V2 vision cone.
-    const old = noCone(noSeasons(stage1(neutralTraits(rules))))
+    const old = oldCaution(noCone(noSeasons(stage1(neutralTraits(rules)))))
     // Eden as it was before M21b (`edenWithDanger`): the numbers belong to that map.
     const world = createWorld(seed, edenWithDanger(), old)
     for (let i = 0; i < 5000; i += 1) step(world, old)

@@ -77,14 +77,14 @@ describe('sexes off equals before PS1', () => {
     it(`Eden seed a with a placed and a removed predator hashes as before PS1 (${name})`, () => {
       const world = runA(r)
       // Recorded on the untouched tree (before PS1) with the shipped rules.
-      expect(stateHash(world)).toBe('0ab398a9ceffe321')
-      expect(world.rng.predator).toEqual({ a: 2214138660, b: 1494278904, c: 863515736, d: 1357574558 })
+      expect(stateHash(world)).toBe('3b28b72779e42c51')
+      expect(world.rng.predator).toEqual({ a: 3601039151, b: 1593024896, c: 1034893919, d: 1357583488 })
     })
 
     it(`Eden seed b at 20,000 ticks hashes as before PS1 (${name})`, () => {
       const world = runB(r)
-      expect(stateHash(world)).toBe('be462fac79aff2af')
-      expect(world.rng.predator).toEqual({ a: 3978175041, b: 1841855835, c: 2416030862, d: 2899171380 })
+      expect(stateHash(world)).toBe('a44d483eff987840')
+      expect(world.rng.predator).toEqual({ a: 1664120539, b: 560783549, c: 2628320706, d: 2899233424 })
     })
   }
 
@@ -109,9 +109,9 @@ describe('sexes off equals before PS1', () => {
 })
 
 describe('who gets which sex', () => {
-  it('Eden founders are female, male, female and the keys come after generation', () => {
+  it('Eden founders are female, male, female, male, female and the keys come after generation', () => {
     const world = createWorld('a', edenPreset, withPredatorSexes(rules))
-    expect(predatorsOf(world).map(sexOf)).toEqual(['female', 'male', 'female'])
+    expect(predatorsOf(world).map(sexOf)).toEqual(['female', 'male', 'female', 'male', 'female'])
     for (const node of predatorsOf(world)) expect(Object.keys(node.hunt!).slice(-3)).toEqual(['traits', 'generation', 'sex'])
     expect(world.ecology!.sexes).toEqual({ oneSexSince: null, mated: 0, alone: 0 })
     expect(Object.keys(world.ecology!).slice(-1)).toEqual(['sexes'])

@@ -13,18 +13,41 @@ export function asexual(rules: Rules): Rules {
   return { ...rules, tuning: { ...rules.tuning, sex: { ...rules.tuning.sex, enabled: false } } }
 }
 
-/** Eden before M21b: the preset's predators are danger zones at the same points and the four scattered danger zones are back. */
+/**
+ * Eden before M21b, on the old 96 x 64 map (before map120): the three groves are danger zones, the four fixed springs and the
+ * scattered counts (34 food, 4 danger, 12 shelter, 4 water) and 40 bots are the old ones, so the control tests that pin
+ * pre-M17 or pre-M20 numbers still run on the map those numbers belong to. Pair it with `oldCaution`.
+ */
 export function edenWithDanger(): Preset {
   return {
     ...edenPreset,
-    nodes: edenPreset.nodes.map((node) => (node.kind === 'predator' ? { ...node, kind: 'danger' as const } : node)),
+    width: 96,
+    height: 64,
+    nodes: [
+      { kind: 'danger', x: 24, y: 16 },
+      { kind: 'resource', x: 24, y: 16 },
+      { kind: 'danger', x: 72, y: 48 },
+      { kind: 'resource', x: 72, y: 48 },
+      { kind: 'danger', x: 48, y: 34 },
+      { kind: 'resource', x: 48, y: 34 },
+      { kind: 'water', x: 14, y: 44 },
+      { kind: 'water', x: 82, y: 14 },
+      { kind: 'water', x: 36, y: 54 },
+      { kind: 'water', x: 78, y: 48 },
+    ],
     scatter: [
       { kind: 'resource', count: 34 },
       { kind: 'danger', count: 4 },
       { kind: 'shelter', count: 12 },
       { kind: 'water', count: 4 },
     ],
+    scatterBots: 40,
   }
+}
+
+/** The two numbers map120 retuned, as they were before it (`brain.cautionDesperate` 4, now 12; `bot.thirstMetabolismPower` 3, now 3.5): control tests on the old map run with them. */
+export function oldCaution(rules: Rules): Rules {
+  return { ...rules, tuning: { ...rules.tuning, brain: { ...rules.tuning.brain, cautionDesperate: 4 }, bot: { ...rules.tuning.bot, thirstMetabolismPower: 3 } } }
 }
 
 /**

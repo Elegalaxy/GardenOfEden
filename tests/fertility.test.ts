@@ -6,7 +6,7 @@ import { fertilityAt, meetsReproductionNeeds } from '../src/sim/reproduction.ts'
 import { step } from '../src/sim/step.ts'
 import type { Preset, Rules } from '../src/sim/types.ts'
 import { createWorld } from '../src/sim/world.ts'
-import { asexual, edenWithDanger, neutralTraits, noCone, noSeasons, stage1 } from './variants.ts'
+import { asexual, edenWithDanger, neutralTraits, oldCaution, noCone, noSeasons, stage1 } from './variants.ts'
 
 // Aging fertility (M16): the curve, the breeding gate, the cooldown after a birth, and a control
 // run showing that neutral settings give back the pre-M16 world bit for bit.
@@ -90,7 +90,7 @@ describe('neutral control', () => {
   it('with neutral fertility, eden seed a at 3,000 ticks has the pre-M16 hash', () => {
     // Seasons (S2) are a rule the pre-M16 world did not have, so the control runs without them.
     // The vision cone (V2) is a rule the pre-M16 world did not have either.
-    const old = noCone(noSeasons(stage1(neutralTraits(rules))))
+    const old = oldCaution(noCone(noSeasons(stage1(neutralTraits(rules)))))
     const neutral: Rules = {
       ...old,
       tuning: {

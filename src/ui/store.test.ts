@@ -226,15 +226,18 @@ describe('clickMap', () => {
   })
 
   it('remove deletes the node under the click, and says so when there is none', async () => {
+    // A cell with no node within 8, so the second remove finds nothing.
+    const taken = getSnapshot().world.nodes
+    const spot = Array.from({ length: 120 * 80 }, (_, k) => ({ x: (k % 120) + 0.5, y: Math.floor(k / 120) + 0.5 })).find((p) => taken.every((n) => Math.hypot(n.x - p.x, n.y - p.y) > 8))!
     setTool('shelter')
-    clickMap(90.5, 60.5, 1)
+    clickMap(spot.x, spot.y, 1)
     await settled()
     const id = getSnapshot().world.nodes.at(-1)!.id
     setTool('remove')
-    clickMap(90.5, 60.5, 1)
+    clickMap(spot.x, spot.y, 1)
     await settled()
     expect(getSnapshot().world.nodes.some((node) => node.id === id)).toBe(false)
-    clickMap(90.5, 60.5, 1)
+    clickMap(spot.x, spot.y, 1)
     await settled()
     expect(getSnapshot().notice).toMatchObject({ ok: false })
   })
@@ -408,7 +411,10 @@ describe('dispatchBatch (bulk placing)', () => {
 
   it('stops at the node cap and says so', async () => {
     const max = tuning.player.maxNodes
-    const commands = Array.from({ length: max + 10 }, (_, i) => ({ type: 'placeNode' as const, kind: 'shelter' as const, x: (i % 90) + 0.5, y: Math.floor(i / 90) * 2 + 0.5 }))
+    // Free cells only (more than 4 from every node), so the first refusal is the cap and not a collision with the larger Eden's nodes.
+    const taken = getSnapshot().world.nodes
+    const free = Array.from({ length: 120 * 40 }, (_, i) => ({ x: (i % 120) + 0.5, y: Math.floor(i / 120) * 2 + 0.5 })).filter((p) => taken.every((n) => Math.hypot(n.x - p.x, n.y - p.y) > 4))
+    const commands = free.slice(0, max + 10).map((p) => ({ type: 'placeNode' as const, kind: 'shelter' as const, x: p.x, y: p.y }))
     const result = await dispatchBatch(commands, 'shelter nodes')
     expect(result.placed + result.refused).toBe(max + 10)
     expect(result.placed).toBeGreaterThan(0)

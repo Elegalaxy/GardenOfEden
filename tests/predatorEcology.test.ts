@@ -85,7 +85,7 @@ describe('ecology off equals before E1', () => {
       step(world, off)
     }
     // Recorded on the untouched tree (before E1) with the same script.
-    expect(stateHash(world)).toBe('a055e51d6b1c90a7')
+    expect(stateHash(world)).toBe('c20682b1ffad6f00')
     expect(world.ecology).toBeUndefined()
     expect('ecology' in world).toBe(false)
     expect(predatorsOf(world).every((node) => node.hunt !== null && !('life' in node.hunt))).toBe(true)
@@ -417,8 +417,8 @@ describe('harness', () => {
 
   it('the survey table ends with the predator and prey columns, one cell per heading', () => {
     const row = surveySeed('a', edenPreset, staticPredators(rules), 300, 100)
-    expect(row.preds).toBe(3)
-    expect(row.predMin).toBe(3)
+    expect(row.preds).toBe(5)
+    expect(row.predMin).toBe(5)
     expect(row.predBorn + row.predArrived + row.predStarved + row.predAged).toBe(0)
     const [head, line] = formatSurvey([row]).split('\n') as [string, string]
     const headings = head.trim().split(/\s+/)

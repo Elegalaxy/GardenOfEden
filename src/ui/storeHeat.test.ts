@@ -22,7 +22,7 @@ describe('the heat layer in the store', () => {
     expect(getSnapshot()).toMatchObject({ heatLayer: 'traffic', heat: null })
     await settled()
     const heat = getSnapshot().heat
-    expect(heat).toMatchObject({ layer: 'traffic', range: 'all', runId: getSnapshot().runId, width: 96, height: 64 })
+    expect(heat).toMatchObject({ layer: 'traffic', range: 'all', runId: getSnapshot().runId, width: 120, height: 80 })
     setHeatLayer(null)
     expect(getSnapshot()).toMatchObject({ heatLayer: null, heat: null })
     await settled()

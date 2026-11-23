@@ -16,9 +16,9 @@ import { noMateChoice, noPoison, withPoison } from './variants.ts'
 // Toxic food (T1): mechanics, switched off in the shipped numbers. These need the real rules, so they live here.
 
 /** Eden seed a at 5,000 ticks, taken from the shipped rules before any T1 change (poison is off, so it must not move). */
-const PRE_T1_HASH_A_5000 = 'bf108e00ab1fdc98'
+const PRE_T1_HASH_A_5000 = 'cd4e9e5c7ac79f8f'
 /** Eden seed b at 20,000 ticks, same origin. */
-const PRE_T1_HASH_B_20000 = '34829c673e410693'
+const PRE_T1_HASH_B_20000 = 'f49fe34b3f6a615f'
 
 const { bot: botRules } = rules.tuning
 
@@ -57,8 +57,8 @@ describe('pins with poison off', () => {
     while (a.tick < 5000) step(a, pinned)
     expect(stateHash(a)).toBe(PRE_T1_HASH_A_5000)
     while (a.tick < 20000) step(a, pinned)
-    // The 20,000-tick survey row of seed a (recorded before T1): final population 57, births 1,235.
-    expect([a.bots.length, a.totalBirths]).toEqual([57, 1235])
+    // The 20,000-tick survey row of seed a (recorded before T1): final population 76, births 1,396.
+    expect([a.bots.length, a.totalBirths]).toEqual([76, 1396])
 
     const b = createWorld('b', edenPreset, pinned)
     while (b.tick < 20000) step(b, pinned)
@@ -85,7 +85,7 @@ describe('which nodes are toxic', () => {
     const toxic = on.nodes.filter((node) => node.toxin !== undefined)
     expect(toxic).toHaveLength(6)
     const scattered = on.nodes.filter((node) => node.kind === 'resource' && node.id > edenPreset.nodes.length)
-    expect(scattered).toHaveLength(34)
+    expect(scattered).toHaveLength(53)
     expect(toxic.map((node) => node.id)).toEqual(scattered.slice(-6).map((node) => node.id))
     for (const node of toxic) expect(node.toxin).toBe(rules.tuning.poison.damagePerUnit)
     expect(on.nodes.map((node) => [node.id, node.kind, node.x, node.y])).toEqual(off.nodes.map((node) => [node.id, node.kind, node.x, node.y]))
@@ -102,7 +102,7 @@ describe('which nodes are toxic', () => {
     const few = createWorld('a', edenPreset, withPoison(rules, { toxicCount: 3 }))
     expect(few.nodes.filter((node) => node.toxin !== undefined)).toHaveLength(3)
     const many = createWorld('a', edenPreset, withPoison(rules, { toxicCount: 500 }))
-    expect(many.nodes.filter((node) => node.toxin !== undefined)).toHaveLength(34)
+    expect(many.nodes.filter((node) => node.toxin !== undefined)).toHaveLength(53)
     expect(many.nodes.filter((node) => node.toxin !== undefined).every((node) => node.id > edenPreset.nodes.length)).toBe(true)
     const none = createWorld('a', edenPreset, withPoison(rules, { toxicCount: 0 }))
     expect(none.nodes.some((node) => node.toxin !== undefined)).toBe(false)

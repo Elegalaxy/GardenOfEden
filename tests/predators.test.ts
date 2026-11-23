@@ -382,13 +382,15 @@ describe('what bots remember of a predator', () => {
 })
 
 describe('the presets (M21b)', () => {
-  it('gives Eden three predators at the old grove centres, each with its food, and no danger zone', () => {
+  it('gives Eden five predators at the grove centres, each with its food, and no danger zone', () => {
     const world = createWorld('a', edenPreset, rules)
     const predators = predatorsOf(world)
     expect(predators.map((node) => [node.x, node.y])).toEqual([
-      [24, 16],
-      [72, 48],
-      [48, 34],
+      [30, 20],
+      [90, 60],
+      [60, 42],
+      [38, 74],
+      [92, 34],
     ])
     for (const node of predators) {
       expect(node.hunt).toMatchObject({ homeX: node.x, homeY: node.y, kills: 0 })

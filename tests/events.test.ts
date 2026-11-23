@@ -436,10 +436,10 @@ describe('blight', () => {
     const world = createWorld('a', edenPreset, rules)
     advanceTo(world, 500)
     const rng = JSON.stringify(world.rng)
-    trigger(world, 'blight', 24, 16)
+    trigger(world, 'blight', 30, 20)
     expect(JSON.stringify(world.rng)).toBe(rng)
     advanceTo(world, 2000)
-    trigger(world, 'blight', 72, 48)
+    trigger(world, 'blight', 90, 60)
     advanceTo(world, 3000)
     expect(stateHash(replayWorld('a', edenPreset, rules, world.commands, world.tick))).toBe(stateHash(world))
   })
@@ -448,7 +448,7 @@ describe('blight', () => {
 describe('determinism and replay', () => {
   const script: { tick: number; cmd: Command }[] = [
     { tick: 300, cmd: { type: 'triggerEvent', event: 'drought' } },
-    { tick: 700, cmd: { type: 'triggerEvent', event: 'plague', x: 48, y: 32 } },
+    { tick: 700, cmd: { type: 'triggerEvent', event: 'plague', x: 60, y: 40 } },
     { tick: 900, cmd: { type: 'triggerEvent', event: 'meteor', x: 30.5, y: 20.5 } },
     { tick: 1200, cmd: { type: 'triggerEvent', event: 'bounty' } },
     { tick: 1300, cmd: { type: 'placeNode', kind: 'shelter', x: 60.5, y: 30.5 } },
@@ -511,7 +511,7 @@ const MIN_ALIVE = 5
 describe('eden survives scripted events', () => {
   const droughtThenPlague: { tick: number; cmd: Command }[] = [
     { tick: 3000, cmd: { type: 'triggerEvent', event: 'drought' } },
-    { tick: 6000, cmd: { type: 'triggerEvent', event: 'plague', x: 48, y: 32 } },
+    { tick: 6000, cmd: { type: 'triggerEvent', event: 'plague', x: 60, y: 40 } },
   ]
   const everything: { tick: number; cmd: Command }[] = [
     { tick: 3000, cmd: { type: 'triggerEvent', event: 'drought' } },
@@ -532,8 +532,8 @@ describe('eden survives scripted events', () => {
 
   it.concurrent.each(SEEDS)('a blight on two groves at 3000 and 6000, seed %s', { timeout: 180_000 }, (seed) => {
     const blights: { tick: number; cmd: Command }[] = [
-      { tick: 3000, cmd: { type: 'triggerEvent', event: 'blight', x: 24, y: 16 } },
-      { tick: 6000, cmd: { type: 'triggerEvent', event: 'blight', x: 48, y: 34 } },
+      { tick: 3000, cmd: { type: 'triggerEvent', event: 'blight', x: 30, y: 20 } },
+      { tick: 6000, cmd: { type: 'triggerEvent', event: 'blight', x: 60, y: 42 } },
     ]
     const result = surveySeed(seed, edenPreset, rules, TICKS, WARMUP, blights)
     expect(result.refused).toEqual([])
@@ -553,7 +553,7 @@ describe('eden survives scripted events', () => {
 // D2: the outbreak (disease is on in the shipped numbers) at a spring where bots gather, on the same seeds and length.
 describe('outbreak', () => {
   it.concurrent.each(SEEDS)('an outbreak at the west spring at 3000, seed %s', { timeout: 180_000 }, (seed) => {
-    const outbreak: { tick: number; cmd: Command }[] = [{ tick: 3000, cmd: { type: 'triggerEvent', event: 'outbreak', x: 14, y: 44 } }]
+    const outbreak: { tick: number; cmd: Command }[] = [{ tick: 3000, cmd: { type: 'triggerEvent', event: 'outbreak', x: 18, y: 55 } }]
     const result = surveySeed(seed, edenPreset, rules, TICKS, WARMUP, outbreak)
     expect(result.refused).toEqual([])
     expect(result.min).toBeGreaterThanOrEqual(MIN_ALIVE)

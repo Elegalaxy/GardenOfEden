@@ -70,12 +70,12 @@ describe('the heat message', () => {
     const reply = host.handle({ type: 'heat', layer: 'traffic', range: 'all' })
     expect(reply.map((m) => m.type)).toEqual(['heatSnapshot'])
     const snap = snapshots(reply)[0]!
-    expect(snap).toMatchObject({ runId: 0, layer: 'traffic', range: 'all', width: 96, height: 64, tick: 80 })
+    expect(snap).toMatchObject({ runId: 0, layer: 'traffic', range: 'all', width: 120, height: 80, tick: 80 })
     expect(snap.cells).toBeInstanceOf(Float32Array)
-    expect(snap.cells).toHaveLength(96 * 64)
+    expect(snap.cells).toHaveLength(120 * 80)
     expect(snap.max).toBe(Math.max(...snap.cells))
     expect(snap.hottest).not.toBeNull()
-    expect(snap.cells[snap.hottest!.y * 96 + snap.hottest!.x]).toBe(snap.max)
+    expect(snap.cells[snap.hottest!.y * 120 + snap.hottest!.x]).toBe(snap.max)
     // Each bot adds one per tick, so the cells sum to the bot-ticks (more than one tick's worth of founders).
     expect(snap.total).toBe(host.heat.total.traffic.reduce((a, b) => a + b, 0))
     expect(snap.total).toBeGreaterThanOrEqual(80 * 20)
@@ -154,7 +154,7 @@ describe('when snapshots are sent', () => {
     const after = snapshots(messages)[0]!
     expect(host.world.deathsByCause.meteor).toBeGreaterThan(0)
     expect(after.total - before.total).toBe(host.world.deathsByCause.meteor)
-    expect(after.cells[Math.floor(bot.y) * 96 + Math.floor(bot.x)]).toBeGreaterThan(0)
+    expect(after.cells[Math.floor(bot.y) * 120 + Math.floor(bot.x)]).toBeGreaterThan(0)
   })
 
   it('does not send one for a refused command, which changed nothing', () => {
