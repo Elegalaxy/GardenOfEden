@@ -1,7 +1,7 @@
 // Rough ground (R1, `Tuning.terrain`, off). A node of kind `rough` is a permanent disc (radius only: every other field is 0 and drainMult 1,
 // so it adds no key to WorldNode). A mover whose step STARTS inside any rough disc walks its normal step length times the multiplier
 // (`botSpeedMult` for bots, `predatorSpeedMult` for predators); discs that overlap do not compound. Slow only: the step costs the usual
-// energy (R2b: `fleeExempt` true lets a FLEEING bot ignore rough ground; it is only read with terrain on), and bots do not perceive rough ground (perception.ts skips the kind), so it is never remembered or avoided.
+// energy (R2b: `fleeExempt` true lets a FLEEING bot ignore rough ground; it is only read with terrain on), (R2c: `wanderOnly` true slows a bot only on a wander step, when it has no target: every flee step and every walk to food, water, shelter or a mate keeps the full speed; it is only read with terrain on, predators are unchanged), and bots do not perceive rough ground (perception.ts skips the kind), so it is never remembered or avoided.
 //
 // `step` builds one list of rough nodes per tick (`roughNodes`) and passes it to the movers, or passes null with terrain off, in which
 // case no step is ever multiplied and the code path is the old one. The test is a squared-distance compare (dx*dx + dy*dy <= r*r), only
@@ -10,9 +10,9 @@
 
 import type { Tuning, World, WorldNode } from './types.ts'
 
-/** Throws when the terrain numbers cannot work: both multipliers finite in (0, 1], `fleeExempt` a boolean, `maxCount` a whole number from 0. */
+/** Throws when the terrain numbers cannot work: both multipliers finite in (0, 1], `fleeExempt` and `wanderOnly` booleans, `maxCount` a whole number from 0. */
 export function checkTerrain(terrain: Tuning['terrain']): void {
-  const { botSpeedMult, predatorSpeedMult, maxCount, fleeExempt } = terrain
+  const { botSpeedMult, predatorSpeedMult, maxCount, fleeExempt, wanderOnly } = terrain
   if (!(Number.isFinite(botSpeedMult) && botSpeedMult > 0 && botSpeedMult <= 1)) {
     throw new RangeError(`terrain.botSpeedMult must be a finite number above 0 and at most 1, received ${botSpeedMult}`)
   }
@@ -21,6 +21,9 @@ export function checkTerrain(terrain: Tuning['terrain']): void {
   }
   if (typeof fleeExempt !== 'boolean') {
     throw new RangeError(`terrain.fleeExempt must be true or false, received ${String(fleeExempt)}`)
+  }
+  if (typeof wanderOnly !== 'boolean') {
+    throw new RangeError(`terrain.wanderOnly must be true or false, received ${String(wanderOnly)}`)
   }
   if (!(Number.isInteger(maxCount) && maxCount >= 0)) {
     throw new RangeError(`terrain.maxCount must be a whole number from 0, received ${maxCount}`)

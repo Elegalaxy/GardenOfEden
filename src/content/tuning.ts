@@ -326,7 +326,7 @@ export const tuning: Tuning = {
   // Rough ground (R1, mechanics only, OFF): with it on, a world made from a preset that lists `terrain` gets permanent rough discs, and a mover
   // that starts its step inside one walks only this fraction of its normal step (bots and predators have their own number, equal for now). fleeExempt (R2b): a fleeing bot is not slowed.
   // No energy cost and bots do not see it. maxCount caps the rough nodes in a world (the player tool comes later). See src/sim/terrain.ts.
-  terrain: { enabled: false, botSpeedMult: 0.5, predatorSpeedMult: 0.5, fleeExempt: false, maxCount: 24 },
+  terrain: { enabled: false, botSpeedMult: 0.5, predatorSpeedMult: 0.5, fleeExempt: false, maxCount: 24, wanderOnly: false },
   // Disease with immunity (D1 mechanics, ON since D2; nothing happens until the player starts an outbreak): the `outbreak` event makes
   // every bot within `outbreakRadius` sick at once. A bot that stays within `contactRadius` of a sick bot for `catchAfter` ticks falls sick too (the count falls by 1 a tick without
   // contact). A sick bot takes `sickDrain` health damage a tick (divided by hardiness) for `sickTicks` ticks, then is immune for `immuneTicks`

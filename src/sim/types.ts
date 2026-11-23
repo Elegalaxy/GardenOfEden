@@ -858,6 +858,8 @@ export type Tuning = {
     fleeExempt: boolean
     /** Most rough nodes the player may have in the world (a whole number from 0; checked on placing, preset ones count). */
     maxCount: number
+    /** R2c: when true rough ground slows a bot only on a wander step (no target: not fleeing, not walking to food, water, shelter or a mate); every walk toward a target and every flee step keeps full speed. Only read with terrain on; predators are unchanged. */
+    wanderOnly: boolean
   }
   /**
    * Disease (D1, off). The player starts an `outbreak` event: every bot within `outbreakRadius` falls sick at once. A bot within

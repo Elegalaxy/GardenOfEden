@@ -161,6 +161,55 @@ describe('speed on rough ground', () => {
     expect(wSlow).toBeCloseTo(wFree * exempt.tuning.terrain.botSpeedMult, 9)
   })
 
+  it('with wanderOnly a wandering bot is slowed, but a fleeing bot and a bot walking to food keep their full speed (R2c)', () => {
+    const only = withTerrain(rules, { wanderOnly: true })
+    const disc = [{ x: 20, y: 20, radius: 5 }]
+    // Wander: slowed as before.
+    const wFree = moved(createWorld('a', scene({ bots: [{ x: 20, y: 20 }], terrain: disc }), noTerrain(only)), noTerrain(only), 'bot')
+    const wSlow = moved(createWorld('a', scene({ bots: [{ x: 20, y: 20 }], terrain: disc }), only), only, 'bot')
+    expect(wSlow).toBeCloseTo(wFree * only.tuning.terrain.botSpeedMult, 9)
+    // Flee: not slowed.
+    const fleeRun = (active: Rules): { world: World; d: number } => {
+      const world = createWorld('a', scene({ bots: [{ x: 20, y: 20 }], terrain: disc, nodes: [{ kind: 'danger', x: 22, y: 20 }] }), active)
+      world.bots[0]!.traits.sprint = 1.5
+      return { world, d: moved(world, active, 'bot') }
+    }
+    const fFree = fleeRun(noTerrain(only))
+    const fRough = fleeRun(only)
+    expect(fRough.world.bots[0]!.intent.kind).toBe('flee')
+    expect(fRough.d).toBe(fFree.d)
+    // Seek food: not slowed.
+    const foodRun = (active: Rules): { world: World; d: number } => {
+      const world = createWorld('a', scene({ bots: [{ x: 20, y: 20 }], terrain: disc, nodes: [{ kind: 'resource', x: 25, y: 20 }] }), active)
+      world.bots[0]!.energy = 20
+      return { world, d: moved(world, active, 'bot') }
+    }
+    const eFree = foodRun(noTerrain(only))
+    const eRough = foodRun(only)
+    expect(eRough.world.bots[0]!.intent.kind).toBe('seekFood')
+    expect(eRough.d).toBeGreaterThan(0)
+    expect(eRough.d).toBe(eFree.d)
+    // With it off the same food walk is slowed.
+    const slowFood = foodRun(on)
+    expect(slowFood.d).toBeCloseTo(eFree.d * on.tuning.terrain.botSpeedMult, 9)
+  })
+
+  it('reads wanderOnly only with terrain on, and replays to the same hash with it on (R2c)', () => {
+    const only = withTerrain(rules, { wanderOnly: true })
+    const offA = noTerrain(only)
+    const w1 = createWorld('a', edenPreset, offA)
+    const w2 = createWorld('a', edenPreset, noTerrain(rules))
+    for (let i = 0; i < 800; i += 1) {
+      step(w1, offA)
+      step(w2, noTerrain(rules))
+    }
+    expect(stateHash(w1)).toBe(stateHash(w2))
+    expect(rules.tuning.terrain.wanderOnly).toBe(false)
+    const live = createWorld('a', edenPreset, only)
+    while (live.tick < 800) step(live, only)
+    expect(stateHash(replayWorld('a', edenPreset, only, [], 800))).toBe(stateHash(live))
+  })
+
   it('leaves a predator on rough ground unchanged by fleeExempt', () => {
     const predScene = (): Preset => scene({ nodes: [{ kind: 'predator', x: 20, y: 20 }], terrain: [{ x: 20, y: 20, radius: 5 }] })
     const a = withTerrain(rules, { predatorSpeedMult: 0.4, botSpeedMult: 0.9 })
@@ -234,6 +283,7 @@ describe('checkTerrain', () => {
     expect(() => checkTerrain({ ...base, predatorSpeedMult: Number.NaN })).toThrow(/NaN/)
     expect(() => checkTerrain({ ...base, predatorSpeedMult: 0 })).toThrow(/predatorSpeedMult/)
     expect(() => checkTerrain({ ...base, fleeExempt: 1 as unknown as boolean })).toThrow(/fleeExempt/)
+    expect(() => checkTerrain({ ...base, wanderOnly: 1 as unknown as boolean })).toThrow(/wanderOnly/)
     expect(() => checkTerrain({ ...base, maxCount: 2.5 })).toThrow(/2\.5/)
     expect(() => checkTerrain({ ...base, maxCount: -1 })).toThrow(RangeError)
   })
