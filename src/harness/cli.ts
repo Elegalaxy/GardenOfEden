@@ -6,6 +6,7 @@
 // (final, min and max population after the warmup, births, deaths by cause).
 // Both print the mean of each trait over the living bots (sense, caution,
 // reproAt, metab), after a line with the founders' values.
+// `--caution-bar` runs the survey for the seeds a..t at 60,000 ticks (or `--seeds` / `--ticks`) and prints per-seed final population and caution plus a PASS or FAIL against the map's caution bar (cautionBar.ts); exit code 1 on FAIL.
 // `learned` counts memory entries bots took from a parent or child (M10); the last two columns are the
 // lineage records kept and the ones pruned so far (M11);
 // `pAge` (M16) is the mean parent age at a birth over the kept lineage records.
@@ -54,6 +55,7 @@ import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
 import { parseOverride, withOverrides } from './overrides.ts'
 import type { Override } from './overrides.ts'
+import { CAUTION_BAR_SEEDS, CAUTION_BAR_TICKS, cautionRow, formatCautionBar, judgeCautionBar } from './cautionBar.ts'
 import { formatSurvey, withPredatorSexes, meanParentAge, parentAgeCell, ruinShareCell, surveySeed, traitCell, withoutCone, withoutCulture, withoutDisease, withoutEcology, withoutFamily, withoutMateChoice, withoutPoison, withoutPredatorHarm, withoutPredatorSexes, withoutPrey, withoutResistance, withoutSeasons, withoutSex, withoutTerrain } from './survey.ts'
 
 const USAGE = [
@@ -69,6 +71,7 @@ const USAGE = [
   '       and --no-culture (C1 elders teaching off; turn it on with --set culture.enabled=true)',
   '       and --no-predator-harm (EP1: events do not hurt predators; turn it on with --set events.predatorHarm.enabled=true)',
   '       and --no-terrain (R1 rough ground off; turn it on with --set terrain.enabled=true)',
+  '       npm run sim -- --caution-bar [--seeds <list>] [--ticks <n>] [--preset <id>] [--set ...] (the 60k caution bar: default seeds a..t, 60000 ticks; prints PASS or FAIL, exit code 1 on FAIL)',
   '       and --set path.to.setting=value (repeatable: replace one existing tuning number or boolean for this run)',
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
 ].join('\n')
@@ -81,6 +84,7 @@ const DEFAULT_WARMUP = 1000
 type Options = {
   seeds: string[]
   survey: boolean
+  cautionBar: boolean
   ticks: number
   preset: string
   every: number
@@ -115,6 +119,7 @@ function parseCount(name: string, text: string | undefined, min = 1): number {
 function parseArgs(argv: string[]): Options {
   let seeds: string[] | undefined
   let survey = false
+  let cautionBar = false
   let warmup = DEFAULT_WARMUP
   let ticks: number | undefined
   let preset = DEFAULT_PRESET
@@ -188,6 +193,10 @@ function parseArgs(argv: string[]): Options {
     } else if (flag === '--no-mate-choice') {
       noMateChoice = true
       i -= 1
+    } else if (flag === '--caution-bar') {
+      // R: the map's 60k caution bar (cautionBar.ts); no value, seeds and ticks default to the official a..t and 60,000.
+      cautionBar = true
+      i -= 1
     } else if (flag === '--set') {
       overrides.push(parseOverride(value))
     } else if (flag === '--seed') {
@@ -219,9 +228,14 @@ function parseArgs(argv: string[]): Options {
       throw new Error(`unknown argument ${flag}`)
     }
   }
+  if (cautionBar) {
+    seeds ??= CAUTION_BAR_SEEDS
+    ticks ??= CAUTION_BAR_TICKS
+    survey = true
+  }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, noResistance, predatorSexes, noPredatorSexes, overrides, script }
+  return { seeds, survey, cautionBar, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, noResistance, predatorSexes, noPredatorSexes, overrides, script }
 }
 
 function row(world: World): string {
@@ -314,6 +328,12 @@ function main(argv: string[]): void {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine(active))
     const rows = options.seeds.map((seed) => surveySeed(seed, preset, active, options.ticks, options.warmup, options.script))
+    if (options.cautionBar) {
+      const cautionRows = rows.map(cautionRow)
+      console.log(formatCautionBar(cautionRows))
+      if (!judgeCautionBar(cautionRows).pass) process.exitCode = 1
+      return
+    }
     console.log(formatSurvey(rows))
     for (const result of rows) for (const line of result.refused) console.log(`seed ${result.seed}: ${line}`)
     return

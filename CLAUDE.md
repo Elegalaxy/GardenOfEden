@@ -29,6 +29,7 @@ npx vitest run -t "some test name"             # one test by name
 npm run sim -- --seed a --ticks 5000 [--preset eden] [--every 500]   # headless run: tick, population, births, deaths by cause, food
 npm run sim -- --preset plague-world --seeds a,b,c --ticks 20000        # scenario presets: quiet, plague-world, drought-bounty, predator-heavy, hard-times (preset layout plus scripted events at fixed ticks; blank and eden are the plain worlds)
 npm run sim -- --seeds a,b,c --ticks 20000 [--warmup 1000]           # per-seed survey: final/min/max population, births, deaths by cause, lineage records kept / pruned
+npm run sim -- --caution-bar [--seeds a,...,t] [--ticks 60000] [--set ...]   # the map's 60k caution bar (default seeds a..t, 60000 ticks, about 5 minutes alone: per-seed final population and mean caution, then PASS or FAIL (median caution of living seeds >= 0.41 and at most 1 extinct of 20; the count of living seeds below 0.39 is informational); exit code 1 on FAIL; no-terrain baseline is median 0.415, 0 extinct
 npm run sim -- --seeds a,b,c --ticks 20000 --no-family               # same, with parent-child knowledge sharing off (A/B); the column `learned` counts shared memory entries
 npm run sim -- --seeds a,b,c --ticks 20000 --asexual                 # same, with the two sexes off (a bot breeds alone); the last survey column `fem` is the females alive at the end
 npm run sim -- --seeds a,b,c --ticks 20000 --no-seasons                # same, with seasonal regrowth off (S2 switched seasons on in Eden; this is the pre-season control)
