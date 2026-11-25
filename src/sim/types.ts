@@ -10,6 +10,12 @@ export const RNG_STREAM_NAMES = ['world', 'ai', 'birth', 'gene', 'predator'] as 
 export type RngStreamName = (typeof RNG_STREAM_NAMES)[number]
 
 /**
+ * A rule that is built but off, which a new world may opt into. The order here is the canonical order (feature lists are kept
+ * in it). The sim never reads this type: content turns a list into rules and a preset (src/content/features.ts).
+ */
+export type WorldFeature = 'poison' | 'terrain' | 'culture' | 'predatorSexes' | 'resistance'
+
+/**
  * One named random stream.
  *
  * `a`, `b`, `c`, and `d` are the sfc32 state: four unsigned 32-bit integers.

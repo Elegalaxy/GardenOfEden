@@ -31,11 +31,14 @@
 // E2 adds `pZero` (longest run of ticks after the warmup with no predator) and `pCap%` (share of those ticks at `predator.maxCount`).
 // `--set seasons.amplitude=0.4` (repeatable, either form) replaces one existing number or boolean of the tuning for this run only
 // (an unknown path is an error), so a sweep needs no edit to tuning.ts; applied after the other switches, in order.
+// `--feature poison[,terrain]` (repeatable, either form) switches experimental world rules on (src/content/features.ts: poison, terrain,
+// culture, predatorSexes, resistance), with their own settings and, for terrain, their own rough discs. Applied after the other switches and
+// before `--set`, so a `--set` wins over a feature.
 // `--event drought@3000` (repeatable) applies a world event at a tick in either
 // form (see script.ts: `plague@6000:48,32`, `meteor@5000:30,20`, `outbreak@4000:48,32`).
 // Same arguments always print the same output.
 
-import { findPreset, presets, rules } from '../content/index.ts'
+import { FEATURES, findPreset, presetWithFeatures, presets, rules, rulesWithFeatures } from '../content/index.ts'
 import { checkEcology, checkPredatorHarm, checkPrey } from '../sim/predators.ts'
 import { checkPerception } from '../sim/perception.ts'
 import { checkMateChoice } from '../sim/kin.ts'
@@ -50,7 +53,7 @@ import { stateHash } from '../sim/hash.ts'
 import { step } from '../sim/step.ts'
 import { meanTraits } from '../sim/traits.ts'
 import { createWorld, totalDeaths, totalFood, totalRuinFood } from '../sim/world.ts'
-import type { Rules, World } from '../sim/types.ts'
+import type { Rules, World, WorldFeature } from '../sim/types.ts'
 import { EVENT_USAGE, makeScript, parseEventSpec } from './script.ts'
 import type { ScriptedCommand } from './script.ts'
 import { parseOverride, withOverrides } from './overrides.ts'
@@ -73,6 +76,7 @@ const USAGE = [
   '       and --no-terrain (R1 rough ground off; turn it on with --set terrain.enabled=true)',
   '       npm run sim -- --caution-bar [--seeds <list>] [--ticks <n>] [--preset <id>] [--set ...] (the 60k caution bar: default seeds a..t, 60000 ticks; prints PASS or FAIL, exit code 1 on FAIL)',
   '       and --set path.to.setting=value (repeatable: replace one existing tuning number or boolean for this run)',
+  `       and --feature <id[,id]> (repeatable: experimental world rules, applied before --set): ${FEATURES.map((feature) => feature.id).join(', ')}`,
   `       presets: ${presets.map((preset) => preset.id).join(', ')}`,
 ].join('\n')
 const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
@@ -104,6 +108,8 @@ type Options = {
   noResistance: boolean
   predatorSexes: boolean
   noPredatorSexes: boolean
+  /** Experimental world rules, in canonical order without repeats. */
+  features: WorldFeature[]
   overrides: Override[]
   script: ScriptedCommand[]
 }
@@ -139,6 +145,7 @@ function parseArgs(argv: string[]): Options {
   let noResistance = false
   let predatorSexes = false
   let noPredatorSexes = false
+  const wanted = new Set<string>()
   const overrides: Override[] = []
   const script: ScriptedCommand[] = []
   for (let i = 0; i < argv.length; i += 2) {
@@ -197,6 +204,13 @@ function parseArgs(argv: string[]): Options {
       // R: the map's 60k caution bar (cautionBar.ts); no value, seeds and ticks default to the official a..t and 60,000.
       cautionBar = true
       i -= 1
+    } else if (flag === '--feature') {
+      for (const id of (value ?? '').split(',')) {
+        if (!FEATURES.some((feature) => feature.id === id)) {
+          throw new Error(`--feature must be a comma-separated list of: ${FEATURES.map((feature) => feature.id).join(', ')}`)
+        }
+        wanted.add(id)
+      }
     } else if (flag === '--set') {
       overrides.push(parseOverride(value))
     } else if (flag === '--seed') {
@@ -235,7 +249,8 @@ function parseArgs(argv: string[]): Options {
   }
   if (seeds === undefined) throw new Error('--seed or --seeds is required')
   if (ticks === undefined) throw new Error('--ticks is required')
-  return { seeds, survey, cautionBar, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, noResistance, predatorSexes, noPredatorSexes, overrides, script }
+  const features = FEATURES.map((feature) => feature.id).filter((id) => wanted.has(id))
+  return { seeds, survey, cautionBar, ticks, preset, every, warmup, noFamily, asexual, noSeasons, noCone, staticPredators, noPrey, noPoison, noTerrain, noPredatorHarm, noMateChoice, noDisease, noCulture, noResistance, predatorSexes, noPredatorSexes, features, overrides, script }
 }
 
 function row(world: World): string {
@@ -287,8 +302,9 @@ function main(argv: string[]): void {
     process.exitCode = 1
     return
   }
-  const preset = findPreset(options.preset)
-  if (preset === undefined) return
+  const basePreset = findPreset(options.preset)
+  if (basePreset === undefined) return
+  const preset = presetWithFeatures(basePreset, options.features)
   const familyRules = options.noFamily ? withoutFamily(rules) : rules
   const sexRules = options.asexual ? withoutSex(familyRules) : familyRules
   const seasonRules = options.noSeasons ? withoutSeasons(sexRules) : sexRules
@@ -303,9 +319,10 @@ function main(argv: string[]): void {
   const cultureRules = options.noCulture ? withoutCulture(diseaseRules) : diseaseRules
   const resistRules = options.noResistance ? withoutResistance(cultureRules) : cultureRules
   const sexesRules = options.noPredatorSexes ? withoutPredatorSexes(resistRules) : options.predatorSexes ? withPredatorSexes(resistRules) : resistRules
+  const featuredRules = rulesWithFeatures(sexesRules, options.features)
   let active: Rules
   try {
-    active = withOverrides(sexesRules, options.overrides)
+    active = withOverrides(featuredRules, options.overrides)
     checkSeasons(active.tuning.seasons)
     if (active.tuning.predator.ecology.enabled) checkEcology(active.tuning.predator.ecology)
     if (active.tuning.predator.ecology.enabled && active.tuning.predator.prey.enabled) checkPrey(active.tuning.predator.prey, active.tuning.predator.maxCount)
@@ -323,7 +340,7 @@ function main(argv: string[]): void {
     process.exitCode = 1
     return
   }
-  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.noDisease ? ' no-disease' : ''}${options.noCulture ? ' no-culture' : ''}${options.noResistance ? ' no-resistance' : ''}${options.predatorSexes ? ' predator-sexes' : ''}${options.noPredatorSexes ? ' no-predator-sexes' : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
+  const flags = `${options.noFamily ? ' no-family' : ''}${options.asexual ? ' asexual' : ''}${options.noSeasons ? ' no-seasons' : ''}${options.noCone ? ' no-cone' : ''}${options.staticPredators ? ' static-predators' : ''}${options.noPrey ? ' no-prey' : ''}${options.noPoison ? ' no-poison' : ''}${options.noTerrain ? ' no-terrain' : ''}${options.noPredatorHarm ? ' no-predator-harm' : ''}${options.noMateChoice ? ' no-mate-choice' : ''}${options.noDisease ? ' no-disease' : ''}${options.noCulture ? ' no-culture' : ''}${options.noResistance ? ' no-resistance' : ''}${options.predatorSexes ? ' predator-sexes' : ''}${options.noPredatorSexes ? ' no-predator-sexes' : ''}${options.features.length > 0 ? ' feature ' + options.features.join(',') : ''}${options.overrides.map((o) => ' set ' + o.path.join('.') + '=' + o.value).join('')}`
   if (options.survey) {
     console.log(`preset=${options.preset} ticks=${options.ticks} warmup=${options.warmup}${flags}`)
     console.log(foundersLine(active))
