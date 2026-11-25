@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -191,6 +191,14 @@ describe('sightText', () => {
   it('follows the real tuning', () => {
     const { botFront, botRear } = tuning.perception.cone
     expect(sightText(tuning.traits.senseRadius, botFront, botRear, true)).toContain('ahead')
+  })
+})
+
+describe('toxic food wording', () => {
+  it('words the node row and flags a remembered toxic place', () => {
+    expect(toxicText(3)).toBe('3 damage per unit eaten')
+    expect(memoryFlags({})).toEqual([])
+    expect(memoryFlags({ toxic: true })).toEqual(['Toxic'])
   })
 })
 

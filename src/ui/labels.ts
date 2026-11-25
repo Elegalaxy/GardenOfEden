@@ -1,7 +1,7 @@
 // Words for things, shared by the inspector, the event log, the chart and the
 // notices, so the same thing is always called the same name.
 
-import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
+import type { CommandType, DeathCause, EventKind, IntentKind, MemoryEntry, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
 import { fertilityAt } from '../sim/reproduction.ts'
 import { autoSex } from '../sim/world.ts'
 import { FEATURES } from '../content/index.ts'
@@ -279,6 +279,16 @@ export function featureNames(features: readonly WorldFeature[]): string {
   return FEATURES.filter((feature) => features.includes(feature.id))
     .map((feature) => feature.label)
     .join(', ')
+}
+
+/** What a remembered place is flagged with, as words. */
+export function memoryFlags(entry: Pick<MemoryEntry, 'toxic'>): string[] {
+  return entry.toxic === true ? ['Toxic'] : []
+}
+
+/** The Inspector's row for a toxic food node: "3 damage per unit eaten". */
+export function toxicText(damagePerUnit: number): string {
+  return `${damagePerUnit} damage per unit eaten`
 }
 
 export function inbredBirthsLabel(inbred: number, births: number): string {

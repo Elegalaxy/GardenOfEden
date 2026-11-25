@@ -33,14 +33,14 @@ function without(tuning: Tuning, feature: WorldFeature): unknown {
 }
 
 describe('the feature list', () => {
-  it('lists every feature once, in canonical order, none pickable yet', () => {
+  it('lists every feature once, in canonical order, and offers the ones with a UI', () => {
     expect(FEATURES.map((feature) => feature.id)).toEqual(IDS)
     for (const feature of FEATURES) {
       expect(feature.label.length).toBeGreaterThan(0)
       expect(feature.summary.length).toBeGreaterThan(0)
       expect(feature.caveat.length).toBeGreaterThan(0)
-      expect(feature.pickable).toBe(false)
     }
+    expect(FEATURES.filter((feature) => feature.pickable).map((feature) => feature.id)).toEqual(['poison'])
   })
 
   it('accepts known features in canonical order and refuses unknown, repeated or out of order ones', () => {

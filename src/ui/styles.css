@@ -23,6 +23,7 @@
   --ruin: #bc8cff;
   --water: #4dd0e1;
   --plague: #ff7ab6;
+  --toxic: #ff6b6b; /* toxic food: a dashed ring and a "!" */
   --blight: #a8b83c; /* sickly olive: apart from the food greens, the bot yellow and the heat ambers */
   --disease: #e056fd; /* sick bots and the outbreak pulse: magenta violet, apart from plague pink, ruin purple and the flee ring (about 5.4:1 on the map) */
   --meteor: #ff9f43;
@@ -269,6 +270,12 @@ button:disabled {
 
 .key-shelter {
   border-color: var(--shelter);
+}
+
+/* Toxic food (experimental): a dashed ring around a "!", as on the map. */
+.key-toxic {
+  border-color: var(--toxic);
+  border-style: dashed;
 }
 
 .key-ruin {

@@ -840,6 +840,56 @@ h4 {
   background: var(--predator);
 }
 
+.toxic-text {
+  color: var(--toxic);
+}
+
+/* The selected bot's remembered places (experimental rules). */
+.memory-list summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #9ec1ff;
+  cursor: pointer;
+}
+
+.memory-list summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.memory-list ul {
+  display: grid;
+  gap: 2px;
+  max-height: 16rem;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0 8px 0 0;
+  list-style: none;
+  font-size: 0.85rem;
+}
+
+.memory-list li {
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 10px;
+}
+
+.memory-spot {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.memory-flag {
+  padding: 0 6px;
+  color: var(--text-strong);
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-size: 0.75rem;
+}
+
 .cause-poison {
   background: var(--bounty);
 }

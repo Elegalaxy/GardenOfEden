@@ -84,6 +84,7 @@ export const COLORS = {
   blight: '#a8b83c',
   disease: '#e056fd',
   meteor: '#ff9f43',
+  toxic: '#ff6b6b',
   bot: '#f2cc60',
   family: '#f2cc60',
   botEdge: '#0e1118',
@@ -215,6 +216,35 @@ function drawResource(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
     ctx.stroke()
   }
   drawLetter(ctx, NODE_LETTER.resource, cx, cy, layout.scale * 1.3)
+  if (node.toxin !== undefined) drawToxic(ctx, cx, cy, r + ringWidth / 2 + 2, layout.scale)
+}
+
+/** Toxic food: a dashed ring outside the food ring and a "!" badge at its upper right, so the mark never rests on colour alone. */
+function drawToxic(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, scale: number): void {
+  ctx.save()
+  ctx.lineWidth = 2
+  ctx.strokeStyle = COLORS.toxic
+  ctx.setLineDash([4, 3])
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
+  ctx.setLineDash([])
+  const badge = Math.min(16, Math.max(6, scale * 0.65))
+  const bx = cx + r * Math.SQRT1_2
+  const by = cy - r * Math.SQRT1_2
+  ctx.beginPath()
+  ctx.arc(bx, by, badge, 0, Math.PI * 2)
+  ctx.fillStyle = COLORS.toxic
+  ctx.fill()
+  ctx.lineWidth = 1
+  ctx.strokeStyle = COLORS.botEdge
+  ctx.stroke()
+  ctx.fillStyle = COLORS.botEdge
+  ctx.font = `800 ${Math.round(badge * 1.6)}px "Segoe UI", system-ui, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('!', bx, by + 0.5)
+  ctx.restore()
 }
 
 /** A ruin is a diamond (a circle's corners pulled out), filled in by how much food is left. */

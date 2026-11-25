@@ -9,7 +9,9 @@ const CAUSES: readonly DeathCause[] = ['starve', 'thirst', 'danger', 'plague', '
 const numberFormat = new Intl.NumberFormat('en-US')
 
 export function DeathCauses() {
-  const { deathsByCause, deaths } = useWorldStore()
+  const { world, deathsByCause, deaths } = useWorldStore()
+  // Present only in a run with toxic food.
+  const toxicEaten = world.eaten.toxic
   return (
     <section className="panel death-causes" aria-label="Deaths by cause">
       <h2>Deaths by cause</h2>
@@ -33,7 +35,10 @@ export function DeathCauses() {
             const count = deathsByCause[cause] ?? 0
             const share = deaths > 0 ? count / deaths : 0
             return (
-              <tr key={cause}>
+              <tr
+                key={cause}
+                title={cause === 'poison' && toxicEaten !== undefined ? `${numberFormat.format(Math.round(toxicEaten))} units of toxic food eaten` : undefined}
+              >
                 <th scope="row">{CAUSE_LABEL[cause]}</th>
                 <td className="bar-col">
                   <span className="cause-bar" aria-hidden="true">

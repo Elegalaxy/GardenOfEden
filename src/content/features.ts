@@ -27,7 +27,7 @@ export const FEATURES: readonly FeatureInfo[] = [
     label: 'Toxic food',
     summary: 'Two food nodes are toxic: they feed a bot but cost health, and bots learn to avoid them.',
     caveat: 'Missed the 60,000-tick caution bar on the old 96 x 64 map (0.4007 against 0.402).',
-    pickable: false,
+    pickable: true,
   },
   {
     id: 'terrain',

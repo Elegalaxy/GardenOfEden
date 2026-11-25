@@ -19,18 +19,26 @@ import { startAutosave } from './autosave.ts'
 import { startLoop } from './loop.ts'
 import { tuning } from '../content/index.ts'
 import { watchShareLinks } from './shareLink.ts'
-import { useEngine, useWorldStore } from './store.ts'
+import { useEngine, useRunTuning, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import './styles.css'
 import './panels.css'
 
 function Legend() {
+  // Rows for the experimental rules appear only while the run has them.
+  const run = useRunTuning()
   return (
     <ul className="panel legend" aria-label="Map key">
       <li>
         <span className="key key-resource" aria-hidden="true">R</span> Resource
         <span className="legend-note">ring shows what is left</span>
       </li>
+      {run.poison.enabled && (
+        <li>
+          <span className="key key-toxic" aria-hidden="true">!</span> Toxic food
+          <span className="legend-note">dashed ring and !, a bite costs health</span>
+        </li>
+      )}
       <li>
         <span className="key key-water" aria-hidden="true"><span>W</span></span> Water
         <span className="legend-note">droplet, bots drink, never runs dry</span>

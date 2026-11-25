@@ -13,8 +13,9 @@ import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText } from './labels.ts'
-import { select, useWorldStore } from './store.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText } from './labels.ts'
+import { MemoryList } from './MemoryList.tsx'
+import { select, useRunTuning, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
 import type { ViewBot } from './protocol.ts'
 import type { Selection } from './tools.ts'
@@ -107,6 +108,9 @@ const MAX_CHILD_LINKS = 4
 
 function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   const { intent } = bot
+  const run = useRunTuning()
+  // The full record (with memory) arrives with the slow data, so it may briefly be missing or another bot's.
+  const full = world.selectedBot?.id === bot.id ? world.selectedBot : null
   const mateTarget = intent.kind === 'seekMate' && intent.targetId !== null ? findBot(world, intent.targetId) : undefined
   const target = intent.targetId === null || intent.kind === 'seekMate' ? undefined : findNode(world, intent.targetId)
   const mother = bot.parentId === null ? undefined : findBot(world, bot.parentId)
@@ -161,6 +165,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
           {bot.memoryCount} / {memoryCapacity(tuning.memory)} nodes · {bot.learnedCount} from family
         </Row>
       </dl>
+      {run.poison.enabled && <MemoryList memory={full?.memory ?? []} world={world} />}
       <h4>Family</h4>
       <dl className="kv">
         <Row label="Mother">
@@ -347,6 +352,7 @@ function PredatorLifeSection({ hunt, life, world }: { hunt: NonNullable<WorldNod
 
 function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const crater = node.expires > 0
+  const run = useRunTuning()
   return (
     <>
       <h3>
@@ -360,6 +366,13 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
           <>
             <Meter label="Amount" value={node.amount} max={node.capacity} low={node.amount <= 0} />
             <Row label="Regrowth">+{fixed2(node.regen)} / tick</Row>
+            {node.toxin !== undefined && (
+              <Row label="Toxic" title="Toxic food feeds in full, but each unit eaten costs health. A bot that has tasted it avoids it unless desperate.">
+                <span className="toxic-text">
+                  <span aria-hidden="true">!</span> {toxicText(run.poison.damagePerUnit)}
+                </span>
+              </Row>
+            )}
           </>
         )}
         {node.kind === 'ruin' && (
