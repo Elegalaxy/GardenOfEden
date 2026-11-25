@@ -39,11 +39,11 @@
 // `settled()` to wait until every earlier message has been answered.
 
 import { useSyncExternalStore } from 'react'
-import { SIM_VERSION, edenPreset, rules, tuning } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, featureRules, rules, tuning } from '../content/index.ts'
 import type { Save } from '../persist/save.ts'
 import type { CommandResult } from '../sim/commands.ts'
 import type { FamilyView, FounderLine } from '../sim/lineage.ts'
-import type { Command, DeathsByCause, NodeKind, Sex, SimEvent } from '../sim/types.ts'
+import type { Command, DeathsByCause, NodeKind, Rules, Sex, SimEvent, WorldFeature } from '../sim/types.ts'
 import { createWorld, totalDeaths, totalFood } from '../sim/world.ts'
 import { DEFAULT_PLACE_COUNT, batchNotice, botCommand, bulkCommands } from './bulk.ts'
 import type { BatchResult, PlaceCount } from './bulk.ts'
@@ -111,6 +111,8 @@ export type WorldSnapshot = {
   world: ViewWorld
   seed: string
   presetId: string
+  /** Experimental world rules of the run (empty for a plain world). */
+  features: WorldFeature[]
   /** Changes whenever a different run replaces the current one (new world, or a load). */
   runId: number
   tick: number
@@ -191,6 +193,7 @@ function makeSnapshot(): WorldSnapshot {
     world: view,
     seed: view.seed,
     presetId: view.presetId,
+    features: view.features,
     runId: view.runId,
     tick: view.tick,
     population: view.bots.length,
@@ -254,6 +257,11 @@ export function useEngine(): WorldSnapshot['engine'] {
  */
 export function useStoreValue<T>(pick: (snapshot: WorldSnapshot) => T): T {
   return useSyncExternalStore(subscribe, () => pick(getSnapshot()), () => pick(getSnapshot()))
+}
+
+/** The tuning of the run on screen (`runRules`), for a panel that words a number a run may change. The same object while the run's features stay. */
+export function useRunTuning(): Rules['tuning'] {
+  return useStoreValue((current) => featureRules(current.features).tuning)
 }
 
 // ---- Talking to the worker ----
@@ -791,10 +799,15 @@ export function select(next: Selection | null): void {
   publish()
 }
 
+/** The rules of the run on screen: the shipped ones, with its experimental world rules on. For page-side checks and wording. */
+export function runRules(): Rules {
+  return featureRules(view.features)
+}
+
 function describeApplied(cmd: Command, id: number, killed: number): string {
   switch (cmd.type) {
     case 'triggerEvent':
-      return startedMessage(cmd, rules.tuning, killed)
+      return startedMessage(cmd, runRules().tuning, killed)
     case 'placeNode':
       return `Placed ${cmd.kind} #${id} at ${formatPoint(cmd.x, cmd.y)}.`
     case 'placeBot':
@@ -922,10 +935,11 @@ export function clickMap(x: number, y: number, reach: number): void {
 }
 
 /**
- * Starts a fresh world for `seed` (the eden preset unless `presetId` names another). Returns false (and changes nothing) for an invalid seed or while a load runs.
+ * Starts a fresh world for `seed` (the eden preset unless `presetId` names another) with the experimental rules in
+ * `features` (canonical order, none by default). Returns false (and changes nothing) for an invalid seed or while a load runs.
  * The new world appears when the worker's first frame for it arrives (use `settled()` to wait for it).
  */
-export function resetWorld(seed: string, presetId?: string): boolean {
+export function resetWorld(seed: string, presetId?: string, features: readonly WorldFeature[] = []): boolean {
   if (!isValidSeed(seed) || load !== null) return false
   due = 0
   saveNotice = null
@@ -933,7 +947,7 @@ export function resetWorld(seed: string, presetId?: string): boolean {
   resetCamera()
   alpha = 1
   say(true, `Started a new world with seed "${seed}".`)
-  client.post({ type: 'reset', seed, presetId })
+  client.post({ type: 'reset', seed, presetId, ...(features.length > 0 ? { features: [...features] } : {}) })
   publish()
   return true
 }

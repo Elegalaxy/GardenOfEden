@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { SIM_VERSION, edenPreset, rules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, featureRules, findPreset, presetWithFeatures, rules } from '../content/index.ts'
 import { SAVE_VERSION } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { stateHash } from '../sim/hash.ts'
 import { familyView, founderLines } from '../sim/lineage.ts'
 import { replayWorld } from '../sim/replay.ts'
-import type { Command } from '../sim/types.ts'
+import type { Command, WorldFeature } from '../sim/types.ts'
 import { unpackBots } from './botColumns.ts'
 import type { FromWorker, Frame, ToWorker } from './protocol.ts'
-import { LOADING_REASON, createHostRunner, createSimHost } from './simHost.ts'
+import { LOADING_REASON, checkLoad, createHostRunner, createSimHost } from './simHost.ts'
 import type { SimHost } from './simHost.ts'
 
 // The host is driven directly here, with a clock the test controls.
@@ -62,6 +62,66 @@ function someRun(host: SimHost): void {
   command(host, { type: 'triggerEvent', event: 'drought' })
   advance(host, 15)
 }
+
+describe('experimental rules', () => {
+  const FEATURES_ON: WorldFeature[] = ['poison', 'terrain', 'culture']
+
+  function reset(host: SimHost, features?: WorldFeature[]): Frame {
+    return framesOf(host.handle({ type: 'reset', seed: 'feat', presetId: 'blank', ...(features === undefined ? {} : { features }) }))[0]!
+  }
+
+  it('starts a plain world with none', () => {
+    const host = makeHost()
+    expect(advance(host, 0).run.features).toEqual([])
+    expect(reset(host).run.features).toEqual([])
+    expect('features' in exportSave(host)).toBe(false)
+  })
+
+  it('shows them in the frame and the save, and runs on their rules', () => {
+    const host = makeHost()
+    const frame = reset(host, FEATURES_ON)
+    expect(frame.run.features).toEqual(FEATURES_ON)
+    // The blank world gets the rough belt, and a rough node counts as one of its nodes.
+    expect(host.world.nodes.map((node) => node.kind)).toEqual(['rough', 'rough', 'rough', 'rough'])
+    expect(host.world.culture).toEqual({ taught: 0 })
+    someRun(host)
+    const save = exportSave(host)
+    expect(save.features).toEqual(FEATURES_ON)
+    const replayed = replayWorld('feat', presetWithFeatures(findPreset('blank')!, FEATURES_ON), featureRules(FEATURES_ON), save.commands, save.tick)
+    expect(save.hash).toBe(stateHash(replayed))
+    // A later plain world is plain again.
+    expect(reset(host).run.features).toEqual([])
+    expect(host.world.nodes).toEqual([])
+  })
+
+  it('ignores a reset with a list it does not know', () => {
+    const host = makeHost()
+    const before = host.world
+    const frame = reset(host, ['culture', 'poison'])
+    expect(host.world).toBe(before)
+    expect(frame.run).toMatchObject({ runId: 0, features: [] })
+  })
+
+  it('loads a saved featured run to the same hash and keeps running on its rules', () => {
+    const source = makeHost()
+    framesOf(source.handle({ type: 'reset', seed: 'feat', features: FEATURES_ON }))
+    someRun(source)
+    const save = exportSave(source)
+    const host = makeHost()
+    host.handle({ type: 'load', save })
+    const messages = finishLoad(host)
+    expect(only(messages, 'loadDone').outcome).toMatchObject({ status: 'loaded', hashMatches: true })
+    expect(framesOf(messages)[0]!.run.features).toEqual(FEATURES_ON)
+    advance(source, 200)
+    advance(host, 200)
+    expect(exportSave(host)).toEqual(exportSave(source))
+  })
+
+  it('refuses to check a save that lists rules it does not have', () => {
+    expect(checkLoad({ seed: 'a', presetId: 'eden', features: ['gravity' as WorldFeature] })).toMatch(/experimental rules/)
+    expect(checkLoad({ seed: 'a', presetId: 'eden', features: ['poison'] })).toBeNull()
+  })
+})
 
 describe('advance and commands', () => {
   it('gives the same state hash as replaying the same seed and commands', () => {

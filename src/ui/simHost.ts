@@ -20,7 +20,7 @@
 //    the selected bot's memory) ride along at most about four times a second, when asked for,
 //    and with every answer to a command, a selection or a new run (see protocol.ts).
 
-import { SIM_VERSION, edenPreset, findPreset, rules as defaultRules } from '../content/index.ts'
+import { SIM_VERSION, edenPreset, featureRules, findPreset, isFeatureList, presetWithFeatures, rules as defaultRules, rulesWithFeatures } from '../content/index.ts'
 import { makeSave } from '../persist/save.ts'
 import type { Save } from '../persist/save.ts'
 import { applyCommand } from '../sim/commands.ts'
@@ -28,7 +28,7 @@ import type { CommandResult } from '../sim/commands.ts'
 import { stateHash } from '../sim/hash.ts'
 import { familyView, founderLines } from '../sim/lineage.ts'
 import { step } from '../sim/step.ts'
-import type { Rules, World } from '../sim/types.ts'
+import type { Rules, World, WorldFeature } from '../sim/types.ts'
 import { createWorld } from '../sim/world.ts'
 import { packBots } from './botColumns.ts'
 import { findBot } from './geometry.ts'
@@ -61,10 +61,11 @@ export function replayFailureMessage(saveSim: number, reason: string): string {
 }
 
 /** Why a save cannot be loaded by this version (unknown preset, bad seed), or null. The text has no "kept" suffix. */
-export function checkLoad(save: Pick<Save, 'seed' | 'presetId'>): string | null {
+export function checkLoad(save: Pick<Save, 'seed' | 'presetId' | 'features'>): string | null {
   if (findPreset(save.presetId) === undefined) {
     return `This save needs the "${save.presetId}" preset, which this version does not have.`
   }
+  if (!isFeatureList(save.features ?? [])) return 'This save lists experimental rules this version does not have.'
   if (!isValidSeed(save.seed)) return 'This save has an invalid seed.'
   return null
 }
@@ -144,13 +145,17 @@ export type HostOptions = {
 }
 
 export function createSimHost(options: HostOptions = {}): SimHost {
-  const rules = options.rules ?? defaultRules
+  const baseRules = options.rules ?? defaultRules
+  /** The base rules with a run's experimental rules on (the base itself when there are none). */
+  const rulesFor = (list: readonly WorldFeature[]): Rules => (baseRules === defaultRules ? featureRules(list) : rulesWithFeatures(baseRules, list))
   const now = options.now ?? ((): number => performance.now())
   const slowIntervalMs = options.slowIntervalMs ?? SLOW_INTERVAL_MS
   const loadSliceMs = options.loadSliceMs ?? LOAD_SLICE_MS
   const heatIntervalMs = options.heatIntervalMs ?? HEAT_INTERVAL_MS
 
-  let world = createWorld(DEFAULT_SEED, edenPreset, rules)
+  let features: WorldFeature[] = []
+  let runRules = rulesFor(features)
+  let world = createWorld(DEFAULT_SEED, edenPreset, runRules)
   let presetId: string = edenPreset.id
   let runId = 0
   let selectedId: number | null = null
@@ -174,7 +179,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     const t = now()
     const slow = forceSlow || t - lastSlowAt >= slowIntervalMs
     if (slow) lastSlowAt = t
-    return buildFrame(world, { runId, seed: world.seed, presetId, width: world.width, height: world.height }, selectedId, slow)
+    return buildFrame(world, { runId, seed: world.seed, presetId, features, width: world.width, height: world.height }, selectedId, slow)
   }
 
   const kept = (message: string): string => `${message} Your current run was kept.`
@@ -189,7 +194,9 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     try {
       // The replay builds its own heat grid, observing the same moments as the live host does.
       const loadHeat = createHeat(preset.width, preset.height)
-      load = { job: createReplayJob(save.seed, preset, rules, save.commands, save.tick, (replayed) => observeWorld(loadHeat, replayed)), save, heat: loadHeat }
+      const wanted = save.features ?? []
+      const job = createReplayJob(save.seed, presetWithFeatures(preset, wanted), rulesFor(wanted), save.commands, save.tick, (replayed) => observeWorld(loadHeat, replayed))
+      load = { job, save, heat: loadHeat }
     } catch (error) {
       const reason = error instanceof Error ? error.message : 'unknown error'
       return [{ type: 'loadDone', outcome: { status: 'failed', message: kept(`This save could not be started (${reason}).`) } }]
@@ -217,6 +224,8 @@ export function createSimHost(options: HostOptions = {}): SimHost {
     world = job.world
     heat = current.heat
     presetId = save.presetId
+    features = [...(save.features ?? [])]
+    runRules = rulesFor(features)
     runId += 1
     selectedId = null
     load = null
@@ -242,7 +251,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
       case 'advance': {
         if (load === null && Number.isFinite(msg.ticks)) {
           for (let i = Math.floor(msg.ticks); i > 0; i -= 1) {
-            step(world, rules)
+            step(world, runRules)
             observeWorld(heat, world)
           }
         }
@@ -250,7 +259,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
       }
       case 'command': {
         const meteorBefore = world.deathsByCause.meteor
-        const result: CommandResult = load !== null ? { ok: false, reason: LOADING_REASON } : applyCommand(world, rules, msg.cmd)
+        const result: CommandResult = load !== null ? { ok: false, reason: LOADING_REASON } : applyCommand(world, runRules, msg.cmd)
         // A meteor kills at command time, so the heat must see the world right after a command, too.
         if (result.ok) observeWorld(heat, world)
         return [
@@ -267,7 +276,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
           if (load !== null) return { ok: false, reason: LOADING_REASON }
           if (index >= MAX_BATCH) return { ok: false, reason: BATCH_SIZE_REASON }
           if (cmd.type !== 'placeNode' && cmd.type !== 'placeBot') return { ok: false, reason: BATCH_KIND_REASON }
-          const result = applyCommand(world, rules, cmd)
+          const result = applyCommand(world, runRules, cmd)
           if (result.ok) anyApplied = true
           return result
         })
@@ -276,8 +285,11 @@ export function createSimHost(options: HostOptions = {}): SimHost {
       }
       case 'reset': {
         const preset = findPreset(msg.presetId ?? edenPreset.id)
-        if (load === null && preset !== undefined && isValidSeed(msg.seed)) {
-          world = createWorld(msg.seed, preset, rules)
+        const wanted: unknown = msg.features ?? []
+        if (load === null && preset !== undefined && isValidSeed(msg.seed) && isFeatureList(wanted)) {
+          features = [...wanted]
+          runRules = rulesFor(features)
+          world = createWorld(msg.seed, presetWithFeatures(preset, features), runRules)
           heat = createHeat(world.width, world.height)
           presetId = preset.id
           runId += 1
@@ -293,7 +305,7 @@ export function createSimHost(options: HostOptions = {}): SimHost {
         return [{ type: 'loadDone', outcome: { status: 'cancelled' } }]
       }
       case 'exportSave':
-        return [{ type: 'save', reqId: msg.reqId, save: makeSave(world, presetId, stateHash(world), SIM_VERSION) }]
+        return [{ type: 'save', reqId: msg.reqId, save: makeSave(world, presetId, stateHash(world), SIM_VERSION, features) }]
       case 'select':
         selectedId = typeof msg.id === 'number' ? msg.id : null
         return [{ type: 'frame', frame: frame(true) }]

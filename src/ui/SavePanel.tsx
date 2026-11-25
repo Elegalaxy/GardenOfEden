@@ -37,7 +37,7 @@ function describe(save: Pick<Save, 'seed' | 'tick' | 'commands'>): string {
 }
 
 export function SavePanel() {
-  const { world, seed, presetId, runId, tick, commandCount, load, saveNotice } = useWorldStore()
+  const { world, seed, presetId, features, runId, tick, commandCount, load, saveNotice } = useWorldStore()
   const autosave = useAutosave()
   const [pending, setPending] = useState<Save | null>(null)
   const [linkText, setLinkText] = useState<string | null>(null)
@@ -51,7 +51,7 @@ export function SavePanel() {
   const [shareFit, setShareFit] = useState<ShareEncoding | null>(null)
   useEffect(() => {
     let current = true
-    void encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH, SIM_VERSION)).then(
+    void encodeShare(makeSave(world, presetId, PLACEHOLDER_HASH, SIM_VERSION, features)).then(
       (fit) => current && setShareFit(fit),
       () => undefined,
     )
@@ -59,7 +59,7 @@ export function SavePanel() {
       current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commandCount, runId, presetId])
+  }, [commandCount, runId, presetId, features])
 
   const requestLoad = (save: Save): void => {
     if (commandCount > 0) setPending(save)

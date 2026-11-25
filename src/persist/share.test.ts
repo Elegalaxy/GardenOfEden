@@ -152,6 +152,17 @@ describe('share links', () => {
     }
   })
 
+  it('carry experimental rules in both link forms', async () => {
+    const original: Save = { ...save(40), features: ['poison', 'terrain', 'predatorSexes'] }
+    const packed = await encodeShare(original)
+    const plain = encodeShareLegacy(original)
+    expect(packed.ok && packed.format).toBe('deflate')
+    expect(plain.ok).toBe(true)
+    if (!packed.ok || !plain.ok) return
+    expect(await readShareFragment(packed.fragment)).toEqual({ ok: true, save: original })
+    expect(await readShareFragment(plain.fragment)).toEqual({ ok: true, save: original })
+  })
+
   it('uses the compressed form for a real run and it is much shorter than the plain form', async () => {
     const original = save(150)
     const encoded = await encodeShare(original)

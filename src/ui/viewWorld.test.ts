@@ -36,6 +36,7 @@ function busyWorld(): World {
 const run = (world: World, runId = 0): Frame['run'] => ({
   runId,
   seed: world.seed,
+  features: [],
   presetId: 'eden',
   width: world.width,
   height: world.height,

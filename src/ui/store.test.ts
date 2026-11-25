@@ -20,6 +20,7 @@ import {
   queryFamily,
   queryFounders,
   resetWorld,
+  runRules,
   select,
   setPaused,
   setBotSex,
@@ -267,6 +268,18 @@ describe('resetWorld', () => {
     // Placing something still works in a blank world.
     await dispatch({ type: 'placeBot', x: 3.5, y: 3.5 })
     expect(getSnapshot().world.bots).toHaveLength(1)
+  })
+
+  it('starts a world with experimental rules and checks commands on them', async () => {
+    expect(resetWorld('plain', 'blank', ['terrain'])).toBe(true)
+    await settled()
+    expect(getSnapshot().features).toEqual(['terrain'])
+    expect(runRules().tuning.terrain.enabled).toBe(true)
+    expect(getSnapshot().world.nodes).toHaveLength(4)
+    resetWorld('plain', 'blank')
+    await settled()
+    expect(getSnapshot().features).toEqual([])
+    expect(runRules().tuning.terrain.enabled).toBe(false)
   })
 
   it('changes the run id only when a different run replaces the current one', async () => {

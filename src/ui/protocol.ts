@@ -13,7 +13,9 @@
 //                           hashes are the same as for the same commands sent one by one). Only placeNode and placeBot
 //                           are accepted, at most MAX_BATCH (simHost.ts) per message. One frame, one heat snapshot and one
 //                           commandsResult answer the whole batch.
-//   reset{seed, presetId?}  start a new world (the eden preset when no preset is given).
+//   reset{seed, presetId?, features?}
+//                           start a new world (the eden preset when no preset is given; `features` are the experimental
+//                           world rules to switch on, none when absent).
 //   load{save}              rebuild a saved run in slices; progress comes back as messages.
 //   cancelLoad              stop that load; the current run is kept.
 //   exportSave{reqId}       the run as a Save (the state hash is computed here, off the page's thread).
@@ -50,6 +52,7 @@ import type {
   PredatorEcology,
   Sample,
   SimEvent,
+  WorldFeature,
   WorldNode,
 } from '../sim/types.ts'
 
@@ -85,6 +88,8 @@ export type RunInfo = {
   runId: number
   seed: string
   presetId: string
+  /** Experimental world rules the run was made with, in canonical order (empty for a plain world). */
+  features: WorldFeature[]
   width: number
   height: number
 }
@@ -155,7 +160,7 @@ export type ToWorker =
   | { type: 'advance'; ticks: number; slow?: boolean }
   | { type: 'command'; reqId: number; cmd: Command }
   | { type: 'commands'; reqId: number; cmds: Command[] }
-  | { type: 'reset'; seed: string; presetId?: string }
+  | { type: 'reset'; seed: string; presetId?: string; features?: WorldFeature[] }
   | { type: 'load'; save: Save }
   | { type: 'cancelLoad' }
   | { type: 'exportSave'; reqId: number }

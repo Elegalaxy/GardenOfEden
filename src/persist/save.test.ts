@@ -370,6 +370,53 @@ describe('decodeSave rejects', () => {
   })
 })
 
+describe('experimental rules in a save', () => {
+  /** What `encodeSave(sample())` gave before saves could list experimental rules. */
+  const PLAIN_TEXT =
+    '{"version":3,"seed":"Run-7","presetId":"eden","sim":1,"tick":1500,"hash":"0123456789abcdef","commands":[' +
+    '{"tick":0,"cmd":{"type":"placeNode","kind":"water","x":10.5,"y":20.5}},' +
+    '{"tick":100,"cmd":{"type":"placeBot","x":3.5,"y":4.5}},' +
+    '{"tick":100,"cmd":{"type":"removeNode","id":12}},' +
+    '{"tick":900,"cmd":{"type":"triggerEvent","event":"drought"}},' +
+    '{"tick":1200,"cmd":{"type":"triggerEvent","event":"meteor","x":30.5,"y":40.5}}]}'
+
+  it('leaves a save without them byte for byte as before, with no key', () => {
+    expect(encodeSave(sample())).toBe(PLAIN_TEXT)
+    expect(encodeSave({ ...sample(), features: [] })).toBe(PLAIN_TEXT)
+    const decoded = decodeSave(PLAIN_TEXT)
+    expect(decoded.ok && 'features' in decoded.save).toBe(false)
+    expect('features' in makeSave({ seed: 'a', tick: 5, commands: [] }, 'eden', HASH, 1, [])).toBe(false)
+  })
+
+  it('roundtrips them as the last key', () => {
+    const save: Save = { ...sample(), features: ['poison', 'culture', 'resistance'] }
+    const text = encodeSave(save)
+    expect(text).toBe(`${PLAIN_TEXT.slice(0, -1)},"features":["poison","culture","resistance"]}`)
+    expect(decodeSave(text)).toEqual({ ok: true, save })
+  })
+
+  it('copies the list in makeSave', () => {
+    const features: NonNullable<Save['features']> = ['terrain']
+    const save = makeSave({ seed: 'a', tick: 5, commands: [] }, 'eden', HASH, 1, features)
+    features.push('culture')
+    expect(save.features).toEqual(['terrain'])
+    expect(Object.keys(save).at(-1)).toBe('features')
+  })
+
+  it.each([
+    ['an empty list', []],
+    ['an unknown rule', ['gravity']],
+    ['a repeated rule', ['poison', 'poison']],
+    ['rules out of order', ['culture', 'poison']],
+    ['a rule that is not text', [1]],
+    ['no list', 'poison'],
+    ['null', null],
+  ])('refuses %s', (_label, features) => {
+    const message = expectError({ ...raw(), features }, 'bad-field')
+    expect(message).toBe('The save lists experimental rules this version does not know.')
+  })
+})
+
 describe('kind lists', () => {
   it('list every placeable kind and event kind once', () => {
     expect(new Set(PLACEABLE_KINDS).size).toBe(PLACEABLE_KINDS.length)

@@ -12,7 +12,7 @@
 // new object. The slow lists are replaced whole (never edited), so their identity says
 // when they changed.
 
-import type { Bot, World } from '../sim/types.ts'
+import type { Bot, World, WorldFeature } from '../sim/types.ts'
 import { unpackBots } from './botColumns.ts'
 import { transferListOf } from './protocol.ts'
 import type { Frame, ViewBot } from './protocol.ts'
@@ -39,6 +39,8 @@ export type ViewWorld = Pick<
 > & {
   runId: number
   presetId: string
+  /** Experimental world rules of the run (empty for a plain world). */
+  features: WorldFeature[]
   /** Player commands applied so far (exact every frame; `commands` itself is only as fresh as the slow data). */
   commandCount: number
   bots: ViewBot[]
@@ -52,6 +54,7 @@ function fresh(frame: Frame): ViewWorld {
   return {
     runId: run.runId,
     presetId: run.presetId,
+    features: run.features,
     seed: run.seed,
     width: run.width,
     height: run.height,
@@ -110,7 +113,7 @@ export function cloneFrame(frame: Frame): Frame {
 }
 
 /** A ViewWorld for a World: the first frame of a run, as the page sees it (used for the page's first paint, and by tests). */
-export function toViewWorld(world: World, presetId: string, runId = 0, selectedId: number | null = null): ViewWorld {
-  const run = { runId, seed: world.seed, presetId, width: world.width, height: world.height }
+export function toViewWorld(world: World, presetId: string, runId = 0, selectedId: number | null = null, features: WorldFeature[] = []): ViewWorld {
+  const run = { runId, seed: world.seed, presetId, features, width: world.width, height: world.height }
   return applyFrame(null, cloneFrame(buildFrame(world, run, selectedId, true)))
 }

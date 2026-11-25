@@ -142,7 +142,7 @@ describe('packBots / unpackBots', () => {
 
 describe('frames with packed bots', () => {
   const world = busy()
-  const run = { runId: 0, seed: world.seed, presetId: 'eden', width: world.width, height: world.height }
+  const run = { runId: 0, seed: world.seed, presetId: 'eden', features: [], width: world.width, height: world.height }
 
   it('lists the packed buffers, and only for frames, in the transfer list', () => {
     const frame = buildFrame(world, run, null, false)

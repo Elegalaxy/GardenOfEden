@@ -47,6 +47,13 @@ describe('autosave', () => {
     expect(readAutosave(storage)).toBeNull()
   })
 
+  it('keeps the experimental rules of the run', () => {
+    const storage = memory()
+    const featured: Save = { ...run, features: ['culture', 'resistance'] }
+    expect(writeAutosave(storage, featured)).toBe(true)
+    expect(readAutosave(storage)).toEqual(featured)
+  })
+
   it('treats damaged stored text as no autosave', () => {
     const storage = memory()
     storage.setItem(AUTOSAVE_KEY, '{"version":1,"seed":"a"}')

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { SIM_VERSION, edenPreset, nodeDefs, rules, tuning } from '../src/content/index.ts'
-import { EVENT_KINDS, PLACEABLE_KINDS, decodeSave, encodeSave, makeSave } from '../src/persist/save.ts'
+import { FEATURES, SIM_VERSION, edenPreset, nodeDefs, rules, tuning } from '../src/content/index.ts'
+import { EVENT_KINDS, FEATURE_IDS, PLACEABLE_KINDS, decodeSave, encodeSave, makeSave } from '../src/persist/save.ts'
 import type { Save } from '../src/persist/save.ts'
 import { decodeShare, encodeShare } from '../src/persist/share.ts'
 import { applyCommand } from '../src/sim/commands.ts'
@@ -53,6 +53,10 @@ function saveOf(world: World): Save {
 }
 
 describe('save format and content', () => {
+  it('lists the same experimental rules as the content, in the same order', () => {
+    expect([...FEATURE_IDS]).toEqual(FEATURES.map((feature) => feature.id))
+  })
+
   it('lists the same placeable node kinds and event kinds as the content', () => {
     // Ruins are made by the sim and danger zones were retired in M21b (craters keep the internal kind), so neither is placeable; rough ground (R1) is not placeable by saves until the R3 tool.
     expect([...PLACEABLE_KINDS].sort()).toEqual(Object.keys(nodeDefs).filter((kind) => kind !== 'ruin' && kind !== 'danger' && kind !== 'rough').sort())

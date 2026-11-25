@@ -3,7 +3,11 @@
 // the state hash it had there. Loading replays the commands up to `tick` and
 // compares the hash (a mismatch means the simulation changed since the save).
 //
-//   { version: 3, seed, presetId, sim, tick, hash, commands: [{ tick, cmd }, ...] }
+//   { version: 3, seed, presetId, sim, tick, hash, commands: [{ tick, cmd }, ...], features? }
+//
+// `features` is the optional last key: the experimental world rules the run was made with, in canonical order. It is
+// written only when there is at least one, so a plain save reads as before; no `SAVE_VERSION` bump, and an older build
+// refuses a save that has it (unknown field).
 //
 // `sim` is the simulation (rules) version that made the save (`SIM_VERSION` in content);
 // the ui compares it with the current one to word a hash mismatch.
@@ -22,7 +26,7 @@
 // is absent for Auto, so older saves read unchanged, but a save that has it cannot be opened by an older build.
 // A `placeNode` of a predator may likewise carry an optional last key `sex` (PS1, predator sexes); no `SAVE_VERSION` bump, an older build refuses such a save as a bad command.
 
-import type { Command, EventKind, NodeKind, Sex } from '../sim/types.ts'
+import type { Command, EventKind, NodeKind, Sex, WorldFeature } from '../sim/types.ts'
 
 export const SAVE_VERSION = 3
 
@@ -43,6 +47,9 @@ export const PLACEABLE_KINDS = ['resource', 'predator', 'shelter', 'water'] as c
 export const SEXES = ['female', 'male'] as const satisfies readonly Sex[]
 export const EVENT_KINDS = ['drought', 'bounty', 'plague', 'meteor', 'blight', 'outbreak'] as const satisfies readonly EventKind[]
 
+/** The experimental world rules a save may list, in canonical order. Kept in step with content by tests/save.test.ts. */
+export const FEATURE_IDS = ['poison', 'terrain', 'culture', 'predatorSexes', 'resistance'] as const satisfies readonly WorldFeature[]
+
 export type SavedCommand = { tick: number; cmd: Command }
 
 export type Save = {
@@ -56,6 +63,8 @@ export type Save = {
   /** `stateHash` of the world at `tick`: 16 lowercase hex characters. */
   hash: string
   commands: SavedCommand[]
+  /** Experimental world rules the run was made with: never empty, absent for a plain world. */
+  features?: WorldFeature[]
 }
 
 export type SaveErrorCode =
@@ -76,7 +85,7 @@ export type SaveResult = { ok: true; save: Save } | { ok: false; error: SaveErro
 const SEED_PATTERN = /^[A-Za-z0-9-]{1,32}$/
 const PRESET_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
 const HASH_PATTERN = /^[0-9a-f]{16}$/
-const TOP_KEYS = ['version', 'seed', 'presetId', 'sim', 'tick', 'hash', 'commands']
+const TOP_KEYS = ['version', 'seed', 'presetId', 'sim', 'tick', 'hash', 'commands', 'features']
 
 function fail(code: SaveErrorCode, message: string): { ok: false; error: SaveError } {
   return { ok: false, error: { code, message } }
@@ -136,6 +145,21 @@ function readCommand(raw: unknown): Command | null {
   }
 }
 
+/** The feature list rebuilt from known ids, or null unless it is non-empty, each known, once and in canonical order. */
+function readFeatures(raw: unknown): WorldFeature[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null
+  const out: WorldFeature[] = []
+  let last = -1
+  for (const item of raw as unknown[]) {
+    if (!inList(FEATURE_IDS, item)) return null
+    const at = FEATURE_IDS.indexOf(item)
+    if (at <= last) return null
+    last = at
+    out.push(item)
+  }
+  return out
+}
+
 /** Hook for older formats. Version 1 had no `sim` field; it was made by simulation version 1. Version 2 became 3 unchanged (see `placesDanger`). */
 function upgradeSave(raw: Record<string, unknown>): Record<string, unknown> {
   let out = raw
@@ -193,6 +217,10 @@ export function validateSave(value: unknown): SaveResult {
   if (typeof raw.hash !== 'string' || !HASH_PATTERN.test(raw.hash)) {
     return fail('bad-field', 'The save has an invalid state hash.')
   }
+  const features = raw.features === undefined ? undefined : readFeatures(raw.features)
+  if (features === null) {
+    return fail('bad-field', 'The save lists experimental rules this version does not know.')
+  }
   if (!Array.isArray(raw.commands)) return fail('bad-field', 'The save has no list of commands.')
   if (raw.commands.length > MAX_COMMANDS) {
     return fail('too-many-commands', `The save has too many commands (the limit is ${MAX_COMMANDS}).`)
@@ -229,6 +257,7 @@ export function validateSave(value: unknown): SaveResult {
       tick: raw.tick,
       hash: raw.hash,
       commands,
+      ...(features === undefined ? {} : { features }),
     },
   }
 }
@@ -258,6 +287,7 @@ export function encodeSave(save: Save): string {
     tick: save.tick,
     hash: save.hash,
     commands: save.commands.map((entry) => ({ tick: entry.tick, cmd: entry.cmd })),
+    ...(save.features !== undefined && save.features.length > 0 ? { features: save.features } : {}),
   })
 }
 
@@ -267,6 +297,7 @@ export function makeSave(
   presetId: string,
   hash: string,
   sim: number,
+  features: readonly WorldFeature[] = [],
 ): Save {
   return {
     version: SAVE_VERSION,
@@ -276,6 +307,7 @@ export function makeSave(
     tick: run.tick,
     hash,
     commands: run.commands.map((entry) => ({ tick: entry.tick, cmd: { ...entry.cmd } })),
+    ...(features.length > 0 ? { features: [...features] } : {}),
   }
 }
 

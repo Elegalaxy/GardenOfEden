@@ -18,7 +18,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { rules, tuning } from '../content/index.ts'
+import { tuning } from '../content/index.ts'
 import { checkCommand } from '../sim/commands.ts'
 import type { Command } from '../sim/types.ts'
 import { effectSummary, eventInfo, formatTicks } from './eventInfo.ts'
@@ -31,7 +31,7 @@ import type { Tool } from './tools.ts'
 import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
 import { PULSE_MS } from './highlights.ts'
-import { checkFollow, clickMap, setCamera, setHoverCell, useCamera, usePulse, useWorldStore } from './store.ts'
+import { checkFollow, clickMap, runRules, setCamera, setHoverCell, useCamera, usePulse, useWorldStore } from './store.ts'
 import { Minimap } from './Minimap.tsx'
 import { ViewControls } from './ViewControls.tsx'
 
@@ -113,14 +113,15 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
     } else {
       const cmd = placementAt(tool, cell)
       if (cmd !== null) {
-        const valid = checkCommand(world, rules, cmd) === null
+        const active = runRules()
+        const valid = checkCommand(world, active, cmd) === null
         const kind = cmd.type === 'placeNode' ? cmd.kind : cmd.type === 'triggerEvent' ? cmd.event : 'bot'
         let radius = 0
-        if (cmd.type === 'placeNode') radius = rules.nodeDefs[cmd.kind].radius
-        else if (cmd.type === 'triggerEvent' && cmd.event === 'plague') radius = rules.tuning.events.plague.radius
-        else if (cmd.type === 'triggerEvent' && cmd.event === 'blight') radius = rules.tuning.events.blight.radius
-        else if (cmd.type === 'triggerEvent' && cmd.event === 'outbreak') radius = rules.tuning.disease.outbreakRadius
-        else if (cmd.type === 'triggerEvent' && cmd.event === 'meteor') radius = rules.tuning.events.meteor.radius
+        if (cmd.type === 'placeNode') radius = active.nodeDefs[cmd.kind].radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'plague') radius = active.tuning.events.plague.radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'blight') radius = active.tuning.events.blight.radius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'outbreak') radius = active.tuning.disease.outbreakRadius
+        else if (cmd.type === 'triggerEvent' && cmd.event === 'meteor') radius = active.tuning.events.meteor.radius
         ghost = { kind: kind as Ghost['kind'], x, y, radius, valid }
       }
     }
