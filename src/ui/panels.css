@@ -215,6 +215,82 @@
   color: #ffb4a8;
 }
 
+/* Experimental world rules (X3): a closed section in the New world form, one row per rule. */
+.run-features summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: #9ec1ff;
+  cursor: pointer;
+}
+
+.run-features summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.feature-warning {
+  margin: 0 0 8px;
+  color: #ffd479;
+  font-size: 0.8rem;
+}
+
+.run-features fieldset {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 1px solid #2a3350;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.feature-row:hover {
+  border-color: #9ec1ff;
+}
+
+.feature-row:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.feature-row input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.feature-text {
+  display: grid;
+  gap: 2px;
+}
+
+.feature-label {
+  color: var(--text-strong);
+}
+
+.feature-summary {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.feature-caveat {
+  color: var(--text-faint);
+  font-size: 0.8rem;
+}
+
 .confirm {
   display: grid;
   gap: 8px;
@@ -1740,6 +1816,35 @@ button.log-button[aria-pressed='true'] {
   .minimap {
     display: none;
   }
+}
+
+/* Experimental rules (X3): a read-only chip in the bottom right corner while the run has any. It floats, so nothing in flow
+   moves; it sits above the empty-world note while that shows. The minimap is bottom left and the view buttons top right. */
+.run-chip {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 2;
+  margin: 0;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  color: #ffd479;
+  background: rgba(14, 17, 24, 0.9);
+  border: 1px dashed #ffd479;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.run-chip:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.run-chip:has(~ .map-note) {
+  bottom: 64px;
 }
 
 /* Shown over the bottom edge of the map while nobody is alive. */

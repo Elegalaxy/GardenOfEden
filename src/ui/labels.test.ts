@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -191,5 +191,13 @@ describe('sightText', () => {
   it('follows the real tuning', () => {
     const { botFront, botRear } = tuning.perception.cone
     expect(sightText(tuning.traits.senseRadius, botFront, botRear, true)).toContain('ahead')
+  })
+})
+
+describe('featureNames', () => {
+  it('lists the names of the experimental rules in canonical order', () => {
+    expect(featureNames([])).toBe('')
+    expect(featureNames(['poison'])).toBe('Toxic food')
+    expect(featureNames(['culture', 'poison'])).toBe('Toxic food, Culture')
   })
 })

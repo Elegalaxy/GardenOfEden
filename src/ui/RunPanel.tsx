@@ -3,10 +3,13 @@
 // control. If the current run holds player commands, the button first asks
 // before throwing them away. It lives in the header's Run & save menu; `onStarted` lets
 // the menu close once a new world is running.
+// Under the world choice a closed "Experimental rules" section switches on rules that are built but off in Eden
+// (src/content/features.ts); it is hidden while there is none to offer.
 
 import { useId, useState } from 'react'
-import { presets } from '../content/index.ts'
-import type { Preset, ScriptEntry } from '../sim/types.ts'
+import { FEATURES, presets } from '../content/index.ts'
+import type { Preset, ScriptEntry, WorldFeature } from '../sim/types.ts'
+import { featureNames } from './labels.ts'
 import { DEFAULT_SEED, isValidSeed, resetWorld, useWorldStore } from './store.ts'
 
 const PLAIN_WORLDS = ['eden', 'blank']
@@ -36,19 +39,51 @@ function ScenarioInfo({ preset }: { preset: Preset | undefined }) {
   )
 }
 
+/**
+ * One checkbox per rule that may be picked, plus any that the run on screen (or the draft) already has, so it can be
+ * switched off. Closed by default; nothing at all when there is no rule to show.
+ */
+function FeaturePicker({ running, draft, onChange }: { running: readonly WorldFeature[]; draft: readonly WorldFeature[]; onChange: (next: WorldFeature[]) => void }) {
+  const shown = FEATURES.filter((feature) => feature.pickable || running.includes(feature.id) || draft.includes(feature.id))
+  if (shown.length === 0) return null
+  const toggle = (id: WorldFeature, on: boolean): void =>
+    onChange(FEATURES.map((feature) => feature.id).filter((other) => (other === id ? on : draft.includes(other))))
+  return (
+    <details className="run-features">
+      <summary>Experimental rules ({draft.length} on)</summary>
+      <p className="feature-warning">
+        <span aria-hidden="true">⚠</span> These rules failed the long-run balance tests, so they stay off in Eden. Worlds may die out; combinations are untested.
+      </p>
+      <fieldset aria-label="Experimental rules">
+        {shown.map((feature) => (
+          <label key={feature.id} className="feature-row">
+            <input type="checkbox" checked={draft.includes(feature.id)} onChange={(event) => toggle(feature.id, event.target.checked)} />
+            <span className="feature-text">
+              <span className="feature-label">{feature.label}</span>
+              <span className="feature-summary">{feature.summary}</span>
+              <span className="feature-caveat">{feature.caveat}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+    </details>
+  )
+}
+
 export function RunPanel({ onStarted }: { onStarted?: () => void }) {
-  const { seed, presetId, commandCount, load } = useWorldStore()
+  const { seed, presetId, features, commandCount, load } = useWorldStore()
   const [draft, setDraft] = useState(seed || DEFAULT_SEED)
   const [draftPreset, setDraftPreset] = useState(presetId)
+  const [draftFeatures, setDraftFeatures] = useState<WorldFeature[]>(features)
   const [confirming, setConfirming] = useState(false)
   const inputId = useId()
   const presetInputId = useId()
   const hintId = useId()
 
   const valid = isValidSeed(draft)
-  const same = draft === seed && draftPreset === presetId
+  const same = draft === seed && draftPreset === presetId && draftFeatures.join() === features.join()
   const start = (): void => {
-    if (resetWorld(draft, draftPreset)) {
+    if (resetWorld(draft, draftPreset, draftFeatures)) {
       setConfirming(false)
       onStarted?.()
     }
@@ -121,9 +156,17 @@ export function RunPanel({ onStarted }: { onStarted?: () => void }) {
         </button>
       </form>
       <ScenarioInfo preset={presets.find((preset) => preset.id === draftPreset)} />
+      <FeaturePicker
+        running={features}
+        draft={draftFeatures}
+        onChange={(next) => {
+          setDraftFeatures(next)
+          setConfirming(false)
+        }}
+      />
       <p id={hintId} className={valid ? 'run-hint' : 'run-hint run-hint-error'}>
         {valid
-          ? `Running ${presetId} seed "${seed}". ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
+          ? `Running ${presetId} seed "${seed}"${features.length > 0 ? ` · experimental: ${featureNames(features)}` : ''}. ${commandCount} command${commandCount === 1 ? '' : 's'} so far.`
           : 'A seed is 1 to 32 letters, digits or dashes.'}
       </p>
       {confirming && (

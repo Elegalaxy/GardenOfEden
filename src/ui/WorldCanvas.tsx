@@ -32,6 +32,7 @@ import { computeLayout, drawWorld } from './render.ts'
 import type { Ghost, Overlay, Size } from './render.ts'
 import { PULSE_MS } from './highlights.ts'
 import { checkFollow, clickMap, runRules, setCamera, setHoverCell, useCamera, usePulse, useWorldStore } from './store.ts'
+import { ExperimentalChip } from './ExperimentalChip.tsx'
 import { Minimap } from './Minimap.tsx'
 import { ViewControls } from './ViewControls.tsx'
 
@@ -329,6 +330,7 @@ export function WorldCanvas({ children }: { children?: ReactNode }) {
       )}
       <Minimap />
       <ViewControls />
+      <ExperimentalChip />
       {children}
     </div>
   )

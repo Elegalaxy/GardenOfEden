@@ -4,7 +4,8 @@
 import type { CommandType, DeathCause, EventKind, IntentKind, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
 import { fertilityAt } from '../sim/reproduction.ts'
 import { autoSex } from '../sim/world.ts'
-import type { Tuning } from '../sim/types.ts'
+import { FEATURES } from '../content/index.ts'
+import type { Tuning, WorldFeature } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
 
 export const KIND_LABEL: Record<NodeKind, string> = {
@@ -273,6 +274,13 @@ export function inbreedingLabel(score: number): string {
 }
 
 /** Inbred births over all births (G3) as a percent with one decimal; a dash before the first birth. */
+/** The names of a run's experimental rules, in canonical order: "Toxic food, Culture" (empty for none). */
+export function featureNames(features: readonly WorldFeature[]): string {
+  return FEATURES.filter((feature) => features.includes(feature.id))
+    .map((feature) => feature.label)
+    .join(', ')
+}
+
 export function inbredBirthsLabel(inbred: number, births: number): string {
   if (births <= 0) return '—'
   return `${((100 * inbred) / births).toFixed(1)}%`
