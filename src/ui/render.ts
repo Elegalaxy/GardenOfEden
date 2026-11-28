@@ -375,7 +375,9 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.setLineDash([])
 
   // Tip ahead, two wings behind, a notch in the back (an arrowhead).
-  const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4)
+  // A predator with a sex is drawn larger, so the F or M fits inside the chevron and the arrow shape still shows around it.
+  const sex = node.hunt?.sex
+  const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4) * (sex === undefined ? 1 : 1.5)
   if (resting) {
     // A resting predator is a token: a dark disc with a thin light ring behind a full-contrast chevron, so it never reads as a ruin.
     ctx.beginPath()
@@ -412,18 +414,10 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
   // With predator sexes the chevron carries F or M in place of its V (the chevron shape still says predator).
-  const sex = node.hunt?.sex
-  if (sex === undefined) ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
-  else {
-    // The sex has to be read, so it is a little larger and sits on a light halo that keeps it apart from the chevron's edge.
-    ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(11, Math.round(layout.scale * 0.95)))}px "Segoe UI", system-ui, sans-serif`
-    ctx.lineJoin = 'round'
-    ctx.lineWidth = 3
-    ctx.strokeStyle = PREDATOR_FILL
-    const letter = sex === 'female' ? 'F' : 'M'
-    ctx.strokeText(letter, cx - r * 0.1, cy + 0.5)
-    ctx.fillText(letter, cx - r * 0.1, cy + 0.5)
-  }
+  // The V sits just behind the centre; F and M sit ahead of it, clear of the notch in the back.
+  const ahead = sex === undefined ? 0 : r * 0.15
+  const letterX = sex === undefined ? cx - r * 0.1 : cx + cos * ahead
+  ctx.fillText(sex === undefined ? NODE_LETTER.predator : sex === 'female' ? 'F' : 'M', letterX, cy + sin * ahead + 0.5)
   if (resting) {
     ctx.globalAlpha = 1
     ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(13, Math.round(layout.scale * 1.7)))}px "Segoe UI", system-ui, sans-serif`
