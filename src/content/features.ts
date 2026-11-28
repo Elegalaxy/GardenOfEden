@@ -54,8 +54,8 @@ export const FEATURES: readonly FeatureInfo[] = [
     id: 'resistance',
     label: 'Disease resistance',
     summary: 'Bots inherit resistance to disease. Nothing happens until an outbreak.',
-    caveat: 'Missed the floor for the drop in shelters by 0.9 points. It needs an outbreak to do anything.',
-    pickable: false,
+    caveat: 'Missed the floor for the drop in shelters by 0.9 points. Needs an outbreak (key I): nothing happens before one.',
+    pickable: true,
   },
 ]
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, resistanceSummary, resistanceText, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -199,6 +199,19 @@ describe('toxic food wording', () => {
     expect(toxicText(3)).toBe('3 damage per unit eaten')
     expect(memoryFlags({})).toEqual([])
     expect(memoryFlags({ toxic: true })).toEqual(['Toxic'])
+  })
+})
+
+describe('resistance wording', () => {
+  it('compares a bot with the founders to two decimals', () => {
+    expect(resistanceText(1.234, 1.2)).toBe('×1.23 ▲')
+    expect(resistanceText(1.1, 1.2)).toBe('×1.10 ▼')
+    expect(resistanceText(1.201, 1.2)).toBe('×1.20 ■')
+  })
+
+  it('words the living mean and highest', () => {
+    expect(resistanceSummary({ mean: 1.125, max: 1.38 })).toBe('×1.13 mean · ×1.38 max')
+    expect(resistanceSummary({ mean: null, max: null })).toBe('— mean · — max')
   })
 })
 

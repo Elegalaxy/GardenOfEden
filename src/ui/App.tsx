@@ -85,6 +85,12 @@ function Legend() {
           <span className="legend-note">dashed ring = sick, dotted = exposed, small dot = immune</span>
         </li>
       )}
+      {run.resistance.enabled && (
+        <li>
+          <span className="key key-rule" aria-hidden="true">×</span> Disease resistance
+          <span className="legend-note">inherited, wakes at the first outbreak; no map mark, see the Inspector</span>
+        </li>
+      )}
       <li>
         <span className="key key-bot" aria-hidden="true" /> Bot
         <span className="legend-note">small = child, ringed = fleeing; colour: see Bot colour</span>

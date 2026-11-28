@@ -34,7 +34,7 @@ import { packBots } from './botColumns.ts'
 import { findBot } from './geometry.ts'
 import { HEAT_LAYERS, HEAT_RANGES, createHeat, observeWorld, snapshotHeat } from './heat.ts'
 import type { HeatGrid, HeatLayer, HeatRange } from './heat.ts'
-import type { Frame, FromWorker, QueryAnswer, RunInfo, ToWorker } from './protocol.ts'
+import type { Frame, FromWorker, QueryAnswer, ResistanceStats, RunInfo, ToWorker } from './protocol.ts'
 import { createReplayJob } from './replayJob.ts'
 import type { ReplayJob } from './replayJob.ts'
 
@@ -85,6 +85,21 @@ export const BATCH_SIZE_REASON = `A batch holds at most ${MAX_BATCH} commands.`
 const MAX_QUERY_NODES = 2000
 const MAX_QUERY_DEPTH = 50
 
+/** The founders' mean resistance and the mean and highest among the living, or null before the gene exists. */
+function resistanceStats(world: World): ResistanceStats | null {
+  if (world.resistance === undefined) return null
+  let sum = 0
+  let count = 0
+  let max: number | null = null
+  for (const bot of world.bots) {
+    if (bot.resist === undefined) continue
+    sum += bot.resist
+    count += 1
+    if (max === null || bot.resist > max) max = bot.resist
+  }
+  return { founderMean: world.resistance.founderMean, mean: count === 0 ? null : sum / count, max }
+}
+
 /**
  * The frame for a world as it stands. The parts are the world's own objects (not copies), except the bots,
  * which are packed into fresh typed arrays; posting the frame (structured clone, with `transferListOf` for the
@@ -107,6 +122,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
       lineageLength: world.lineage.length,
       ecology: world.ecology ?? null,
       disease: world.disease === undefined ? null : { infected: world.disease.infected, recovered: world.disease.recovered },
+      resistance: resistanceStats(world),
     },
     slow: slow
       ? {

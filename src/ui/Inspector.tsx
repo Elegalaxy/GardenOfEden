@@ -13,7 +13,7 @@ import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText, LATENT_RESISTANCE, resistanceText } from './labels.ts'
 import { MemoryList } from './MemoryList.tsx'
 import { select, useRunTuning, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
@@ -132,6 +132,18 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Row label="Illness" title="Outbreak: a sick bot loses health every tick and passes it on by contact; after it recovers it is immune for a while.">
           {illnessLabel(bot.illnessStage, world.selectedBot?.id === bot.id ? world.selectedBot.illness : undefined, world.tick, tuning.disease.catchAfter)}
         </Row>
+        {run.resistance.enabled && (
+          <Row
+            label="Resistance"
+            title={
+              world.resistanceStats === undefined
+                ? 'Inherited resistance to disease. It appears at the first outbreak.'
+                : `Higher resistance shortens sickness and softens its damage. The arrow compares with the founders' mean, ×${world.resistanceStats.founderMean.toFixed(2)}.`
+            }
+          >
+            {world.resistanceStats === undefined ? LATENT_RESISTANCE : full?.resist === undefined ? '—' : resistanceText(full.resist, world.resistanceStats.founderMean)}
+          </Row>
+        )}
         <Row label="Age">
           {bot.age} ticks · {stage}
         </Row>

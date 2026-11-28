@@ -94,6 +94,19 @@ describe('experimental rules', () => {
     expect(host.world.nodes).toEqual([])
   })
 
+  it('sends resistance figures only once an outbreak has woken the gene', () => {
+    const host = makeHost()
+    expect(framesOf(host.handle({ type: 'reset', seed: 'feat', features: ['resistance'] }))[0]!.fast.resistance).toBeNull()
+    expect(command(host, { type: 'triggerEvent', event: 'outbreak', x: 18, y: 55 }).ok).toBe(true)
+    const stats = advance(host, 1).fast.resistance!
+    const living = host.world.bots.map((bot) => bot.resist!)
+    expect(stats.founderMean).toBe(host.world.resistance!.founderMean)
+    expect(stats.mean).toBeCloseTo(living.reduce((sum, r) => sum + r, 0) / living.length, 10)
+    expect(stats.max).toBe(Math.max(...living))
+    // A plain world never has them.
+    expect(framesOf(host.handle({ type: 'reset', seed: 'feat' }))[0]!.fast.resistance).toBeNull()
+  })
+
   it('ignores a reset with a list it does not know', () => {
     const host = makeHost()
     const before = host.world

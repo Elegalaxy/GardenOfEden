@@ -291,6 +291,23 @@ export function toxicText(damagePerUnit: number): string {
   return `${damagePerUnit} damage per unit eaten`
 }
 
+/** What the Inspector and the trait panel say before the first outbreak wakes the resistance gene. */
+export const LATENT_RESISTANCE = 'latent until an outbreak'
+
+/** A bot's resistance as "×1.23 ▲": the arrow compares it with the founders' mean, to two decimals. */
+export function resistanceText(resist: number, founderMean: number): string {
+  const own = Number(resist.toFixed(2))
+  const mean = Number(founderMean.toFixed(2))
+  const glyph = own > mean ? '▲' : own < mean ? '▼' : '■'
+  return `×${resist.toFixed(2)} ${glyph}`
+}
+
+/** The trait panel's line for a woken gene: "×1.12 mean · ×1.38 max" (dashes with nobody alive). */
+export function resistanceSummary(stats: { mean: number | null; max: number | null }): string {
+  const text = (value: number | null): string => (value === null ? '—' : `×${value.toFixed(2)}`)
+  return `${text(stats.mean)} mean · ${text(stats.max)} max`
+}
+
 export function inbredBirthsLabel(inbred: number, births: number): string {
   if (births <= 0) return '—'
   return `${((100 * inbred) / births).toFixed(1)}%`

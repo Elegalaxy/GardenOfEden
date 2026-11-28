@@ -272,6 +272,12 @@ button:disabled {
   border-color: var(--shelter);
 }
 
+/* An experimental rule with no mark on the map. */
+.key-rule {
+  border-color: var(--text-faint);
+  border-style: dotted;
+}
+
 /* Toxic food (experimental): a dashed ring around a "!", as on the map. */
 .key-toxic {
   border-color: var(--toxic);

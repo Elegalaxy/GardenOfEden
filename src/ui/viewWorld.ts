@@ -15,7 +15,7 @@
 import type { Bot, World, WorldFeature } from '../sim/types.ts'
 import { unpackBots } from './botColumns.ts'
 import { transferListOf } from './protocol.ts'
-import type { Frame, ViewBot } from './protocol.ts'
+import type { Frame, ResistanceStats, ViewBot } from './protocol.ts'
 import { buildFrame } from './simHost.ts'
 
 export type ViewWorld = Pick<
@@ -47,6 +47,8 @@ export type ViewWorld = Pick<
   /** The selected bot with its full memory (slow data), or null. */
   selectedBot: Bot | null
   lineageLength: number
+  /** Resistance among the living (experimental rules); absent while the gene is latent. */
+  resistanceStats?: ResistanceStats
 }
 
 function fresh(frame: Frame): ViewWorld {
@@ -76,6 +78,7 @@ function fresh(frame: Frame): ViewWorld {
     // The key stays absent without ecology, so takeSample (which checks `!== undefined`) and toEqual treat it like a World's.
     ...(fast.ecology === null ? {} : { ecology: fast.ecology }),
     ...(fast.disease === null ? {} : { disease: fast.disease }),
+    ...(fast.resistance === null ? {} : { resistanceStats: fast.resistance }),
   }
 }
 
@@ -98,6 +101,8 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   else view.ecology = fast.ecology
   if (fast.disease === null) delete view.disease
   else view.disease = fast.disease
+  if (fast.resistance === null) delete view.resistanceStats
+  else view.resistanceStats = fast.resistance
   if (slow !== null) {
     view.samples = slow.samples
     view.log = slow.log

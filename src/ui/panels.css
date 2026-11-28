@@ -1413,6 +1413,14 @@ button.log-button[aria-pressed='true'] {
   color: var(--text-muted);
 }
 
+/* A line for an experimental rule: on a very narrow panel it takes two reserved lines instead of being cut off. */
+@media (max-width: 340px) {
+  .trait-sexes.trait-rule {
+    min-height: 2.6em;
+    white-space: normal;
+  }
+}
+
 .trait-table {
   width: 100%;
   border-collapse: collapse;

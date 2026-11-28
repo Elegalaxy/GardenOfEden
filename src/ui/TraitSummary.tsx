@@ -9,15 +9,16 @@
 import { tuning } from '../content/index.ts'
 import { PREDATOR_TRAIT_NAMES, predatorTraitStats } from '../sim/predatorTraits.ts'
 import { TRAIT_NAMES, traitStats } from '../sim/traits.ts'
-import { INBRED_BIRTHS_HELP, PREDATOR_TRAIT_HELP, PREDATOR_TRAIT_LABEL, TRAIT_HELP, TRAIT_LABEL, inbredBirthsLabel } from './labels.ts'
+import { INBRED_BIRTHS_HELP, LATENT_RESISTANCE, PREDATOR_TRAIT_HELP, PREDATOR_TRAIT_LABEL, TRAIT_HELP, TRAIT_LABEL, inbredBirthsLabel, resistanceSummary } from './labels.ts'
 import { multiplierText } from './predatorInfo.ts'
-import { useWorldStore } from './store.ts'
+import { useRunTuning, useWorldStore } from './store.ts'
 import { fractionOf, traitNumber } from './traitMath.ts'
 
 const predatorTraitsShown = tuning.predator.traits.enabled && tuning.predator.ecology.enabled
 
 export function TraitSummary() {
   const { world, population } = useWorldStore()
+  const run = useRunTuning()
   const stats = traitStats(world.bots)
   const females = world.bots.filter((bot) => bot.sex === 'female').length
   const males = world.bots.length - females
@@ -45,6 +46,19 @@ export function TraitSummary() {
           {inbredBirthsLabel(world.inbredBirths, world.totalBirths)}
         </span>
       </p>
+      {run.resistance.enabled && (
+        <p
+          className="trait-sexes trait-rule"
+          title={
+            world.resistanceStats === undefined
+              ? 'Inherited resistance to disease. It appears at the first outbreak.'
+              : `Resistance among the living; the founders' mean was ×${world.resistanceStats.founderMean.toFixed(2)}.`
+          }
+        >
+          <span className="trait-sexes-label">Resistance</span>{' '}
+          <span className="figure trait-sexes-value">{world.resistanceStats === undefined ? LATENT_RESISTANCE : resistanceSummary(world.resistanceStats)}</span>
+        </p>
+      )}
       <table className="trait-table">
         <thead>
           <tr>

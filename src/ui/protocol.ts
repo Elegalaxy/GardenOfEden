@@ -94,6 +94,9 @@ export type RunInfo = {
   height: number
 }
 
+/** Disease resistance as the page shows it: the founders' mean, and the mean and highest value alive (null with nobody alive to carry it). */
+export type ResistanceStats = { founderMean: number; mean: number | null; max: number | null }
+
 /** Sent with every frame. */
 export type FastData = {
   tick: number
@@ -114,6 +117,8 @@ export type FastData = {
   ecology: PredatorEcology | null
   /** Disease counters (D3), or null until the first outbreak. Small, so it rides every frame. */
   disease: { infected: number; recovered: number } | null
+  /** Resistance among the living (experimental rules), or null while the gene is latent. Small, so it rides every frame. */
+  resistance: ResistanceStats | null
 }
 
 /** Sent at most about four times a second, when paused, and right after a command, a selection or a new run. */
