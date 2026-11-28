@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Bot, WorldNode } from '../sim/types.ts'
 import { clampCamera } from './camera.ts'
-import { PREDATOR_BODY_CELLS, botAt, cellAtPixel, cellCenter, findBot, nodeAt, pickAt, predatorPosition } from './geometry.ts'
+import { PREDATOR_BODY_CELLS, PREDATOR_SEXED_SCALE, botAt,cellAtPixel, cellCenter, findBot, nodeAt, pickAt, predatorPosition } from './geometry.ts'
 import { computeLayout } from './render.ts'
 
 const world = { width: 10, height: 8 }
@@ -98,6 +98,14 @@ describe('predators', () => {
     expect(nodeAt(w, 5 + PREDATOR_BODY_CELLS - 0.05, 5)?.id).toBe(1)
     expect(nodeAt(w, 5 + PREDATOR_BODY_CELLS + 0.1, 5)).toBeUndefined()
     expect(nodeAt(w, 7, 5)).toBeUndefined()
+  })
+
+  it('gives a predator with a sex a larger body, as it is drawn larger', () => {
+    const plain = hunter(1, 5, 5)
+    const sexed: WorldNode = { ...plain, hunt: { ...plain.hunt!, sex: 'female' } }
+    const x = 5 + PREDATOR_BODY_CELLS * PREDATOR_SEXED_SCALE - 0.05
+    expect(nodeAt({ nodes: [sexed] }, x, 5)?.id).toBe(1)
+    expect(nodeAt({ nodes: [plain] }, x, 5)).toBeUndefined()
   })
 
   it('picks the predator on a click on its body', () => {

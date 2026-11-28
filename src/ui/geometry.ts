@@ -37,6 +37,9 @@ export function botPosition(bot: Pick<Bot, 'x' | 'y' | 'px' | 'py'>, alpha: numb
 /** A predator's body, in cells: what a click can hit. Its `radius` is a threat ring, not something to click inside. */
 export const PREDATOR_BODY_CELLS = 0.8
 
+/** How much larger a predator with a sex is drawn, and so how much larger its clickable body is. */
+export const PREDATOR_SEXED_SCALE = 1.5
+
 /** A predator's drawn position: blended from where its last turn started to where it is, by `alpha` (0 to 1). */
 export function predatorPosition(node: Pick<WorldNode, 'x' | 'y' | 'hunt'>, alpha: number): { x: number; y: number } {
   const hunt = node.hunt
@@ -56,7 +59,7 @@ export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number, alpha 
   for (const node of world.nodes) {
     if (node.kind === 'rough') continue
     const predator = node.kind === 'predator'
-    const radius = predator ? PREDATOR_BODY_CELLS : node.radius
+    const radius = predator ? PREDATOR_BODY_CELLS * (node.hunt?.sex === undefined ? 1 : PREDATOR_SEXED_SCALE) : node.radius
     const at = predator ? predatorPosition(node, alpha) : node
     if (Math.hypot(at.x - x, at.y - y) > radius) continue
     if (radius <= bestRadius) {

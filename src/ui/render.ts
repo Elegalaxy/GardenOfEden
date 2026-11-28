@@ -32,7 +32,7 @@ import type { ActiveEvent, Den, NodeKind, Tuning, World, WorldNode } from '../si
 import type { Camera } from './camera.ts'
 import { DEFAULT_BOT_COLOUR, botFill, botShape, traitRange } from './botColour.ts'
 import type { BotColour } from './botColour.ts'
-import { PREDATOR_BODY_CELLS, botPosition, findBot, findNode, predatorPosition } from './geometry.ts'
+import { PREDATOR_BODY_CELLS, PREDATOR_SEXED_SCALE, botPosition,findBot, findNode, predatorPosition } from './geometry.ts'
 import type { Cell, Layout } from './geometry.ts'
 import { drawHeat, drawHeatCursor } from './heatRender.ts'
 import type { HeatSnapshot } from './heat.ts'
@@ -377,7 +377,7 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   // Tip ahead, two wings behind, a notch in the back (an arrowhead).
   // A predator with a sex is drawn larger, so the F or M fits inside the chevron and the arrow shape still shows around it.
   const sex = node.hunt?.sex
-  const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4) * (sex === undefined ? 1 : 1.5)
+  const r = Math.max(6.5, layout.scale * PREDATOR_BODY_CELLS * 1.4) * (sex === undefined ? 1 : PREDATOR_SEXED_SCALE)
   if (resting) {
     // A resting predator is a token: a dark disc with a thin light ring behind a full-contrast chevron, so it never reads as a ruin.
     ctx.beginPath()
