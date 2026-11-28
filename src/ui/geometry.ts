@@ -47,12 +47,14 @@ export function predatorPosition(node: Pick<WorldNode, 'x' | 'y' | 'hunt'>, alph
 /**
  * The smallest node whose circle contains the point (so a resource inside a crater wins); among equal sizes the
  * newest, so removing what you just placed undoes it. A predator counts only by its body (`PREDATOR_BODY_CELLS`,
- * at its drawn position for `alpha`), never by its threat ring. Undefined when nothing covers the point.
+ * at its drawn position for `alpha`), never by its threat ring. Rough ground is terrain, not a thing to inspect or remove, so it
+ * is never picked (like a den). Undefined when nothing covers the point.
  */
 export function nodeAt(world: Pick<World, 'nodes'>, x: number, y: number, alpha = 1): WorldNode | undefined {
   let best: WorldNode | undefined
   let bestRadius = Infinity
   for (const node of world.nodes) {
+    if (node.kind === 'rough') continue
     const predator = node.kind === 'predator'
     const radius = predator ? PREDATOR_BODY_CELLS : node.radius
     const at = predator ? predatorPosition(node, alpha) : node

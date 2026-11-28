@@ -23,6 +23,7 @@
   --ruin: #bc8cff;
   --water: #4dd0e1;
   --plague: #ff7ab6;
+  --rough: #b0896a; /* rough ground: a muted earth tone */
   --toxic: #ff6b6b; /* toxic food: a dashed ring and a "!" */
   --blight: #a8b83c; /* sickly olive: apart from the food greens, the bot yellow and the heat ambers */
   --disease: #e056fd; /* sick bots and the outbreak pulse: magenta violet, apart from plague pink, ruin purple and the flee ring (about 5.4:1 on the map) */
@@ -276,6 +277,11 @@ button:disabled {
 .key-rule {
   border-color: var(--text-faint);
   border-style: dotted;
+}
+
+/* Rough ground (experimental): the disc's earth-tone edge around its letter. */
+.key-rough {
+  border-color: var(--rough);
 }
 
 /* Toxic food (experimental): a dashed ring around a "!", as on the map. */

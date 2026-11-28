@@ -20,6 +20,7 @@ import { startLoop } from './loop.ts'
 import { tuning } from '../content/index.ts'
 import { watchShareLinks } from './shareLink.ts'
 import { useEngine, useRunTuning, useWorldStore } from './store.ts'
+import { roughGroundNote } from './labels.ts'
 import { toolInfo } from './tools.ts'
 import './styles.css'
 import './panels.css'
@@ -89,6 +90,12 @@ function Legend() {
         <li>
           <span className="key key-disease" aria-hidden="true" /> Illness
           <span className="legend-note">dashed ring = sick, dotted = exposed, small dot = immune</span>
+        </li>
+      )}
+      {run.terrain.enabled && (
+        <li>
+          <span className="key key-rough" aria-hidden="true">G</span> Rough ground
+          <span className="legend-note">tufted disc, {roughGroundNote(run.terrain)}</span>
         </li>
       )}
       {run.culture.enabled && (

@@ -314,6 +314,15 @@ export function resistanceSummary(stats: { mean: number | null; max: number | nu
   return `${text(stats.mean)} mean · ${text(stats.max)} max`
 }
 
+/** The map key's note for rough ground, from the run's numbers: "wandering bots and predators walk at 70%". */
+export function roughGroundNote(terrain: Pick<Tuning['terrain'], 'botSpeedMult' | 'predatorSpeedMult' | 'wanderOnly'>): string {
+  const percent = (value: number): string => `${Math.round(value * 100)}%`
+  const bots = terrain.wanderOnly ? 'wandering bots' : 'bots'
+  return terrain.botSpeedMult === terrain.predatorSpeedMult
+    ? `${bots} and predators walk at ${percent(terrain.botSpeedMult)}`
+    : `${bots} walk at ${percent(terrain.botSpeedMult)}, predators at ${percent(terrain.predatorSpeedMult)}`
+}
+
 export function inbredBirthsLabel(inbred: number, births: number): string {
   if (births <= 0) return '—'
   return `${((100 * inbred) / births).toFixed(1)}%`

@@ -18,7 +18,7 @@ function contrast(a: string, b: string): number {
 }
 
 describe('map colours', () => {
-  it.each(['toxic'] as const)('%s stands out from the map', (name) => {
+  it.each(['toxic', 'rough'] as const)('%s stands out from the map', (name) => {
     expect(contrast(COLORS[name], COLORS.mapFill)).toBeGreaterThanOrEqual(3)
     expect(contrast(COLORS[name], COLORS.background)).toBeGreaterThanOrEqual(3)
   })

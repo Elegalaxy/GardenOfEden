@@ -48,6 +48,12 @@ describe('nodeAt', () => {
     const w = { nodes: [node(1, 'danger', 5, 5, 4), node(9, 'danger', 6, 5, 4)] }
     expect(nodeAt(w, 5.5, 5)?.id).toBe(9)
   })
+
+  it('never picks rough ground, but does pick what stands on it', () => {
+    const w = { nodes: [node(1, 'resource', 5, 5, 2), node(2, 'rough', 5, 5, 8.75)] }
+    expect(nodeAt(w, 5.5, 5)?.id).toBe(1)
+    expect(nodeAt(w, 11, 5)).toBeUndefined()
+  })
 })
 
 describe('botAt and pickAt', () => {

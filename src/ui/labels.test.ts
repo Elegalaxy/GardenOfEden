@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, resistanceSummary, resistanceText, teachingStage, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, resistanceSummary, resistanceText, roughGroundNote, teachingStage, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -225,6 +225,13 @@ describe('culture wording', () => {
     expect(at(youngAge)).toBe('adult')
     expect(at(elderAge)).toBe('elder')
     expect(at(elderAge, 1.5)).toBe('adult')
+  })
+})
+
+describe('rough ground wording', () => {
+  it('words the speeds from the numbers', () => {
+    expect(roughGroundNote({ botSpeedMult: 0.7, predatorSpeedMult: 0.7, wanderOnly: true })).toBe('wandering bots and predators walk at 70%')
+    expect(roughGroundNote({ botSpeedMult: 0.5, predatorSpeedMult: 0.6, wanderOnly: false })).toBe('bots walk at 50%, predators at 60%')
   })
 })
 

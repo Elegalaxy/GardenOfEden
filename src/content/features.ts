@@ -34,7 +34,7 @@ export const FEATURES: readonly FeatureInfo[] = [
     label: 'Rough ground',
     summary: 'A belt of marsh in the east slows bots that are wandering and predators.',
     caveat: 'Missed the 60,000-tick caution bar: median 0.36, with only wandering bots slowed.',
-    pickable: false,
+    pickable: true,
   },
   {
     id: 'culture',

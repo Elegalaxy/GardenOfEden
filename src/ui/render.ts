@@ -82,6 +82,7 @@ export const COLORS = {
   predator: '#ff9d5c',
   plague: '#ff7ab6',
   blight: '#a8b83c',
+  rough: '#b0896a',
   disease: '#e056fd',
   meteor: '#ff9f43',
   toxic: '#ff6b6b',
@@ -102,7 +103,7 @@ export const NODE_COLOR: Record<NodeKind, string> = {
   ruin: COLORS.ruin,
   water: COLORS.water,
   predator: COLORS.predator,
-  rough: COLORS.gridMajor, // R1: compile-only entry, drawing comes later
+  rough: COLORS.rough,
 }
 
 /** The predator chevron's fill: a light grey, so it reads against the dark map and apart from every orange and yellow thing. */
@@ -182,6 +183,50 @@ function drawZone(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout
   ctx.setLineDash(node.kind === 'danger' ? [6, 4] : [])
   ctx.stroke()
   ctx.setLineDash([])
+}
+
+/**
+ * Rough ground: a permanent disc stippled with small grass tufts (three short strokes each) inside a solid edge, in a muted earth
+ * tone. Plague is hatched and blight is dotted; this is tufts. It is drawn under the heat layer and every other node.
+ */
+function drawRough(ctx: CanvasRenderingContext2D, node: WorldNode, layout: Layout): void {
+  const cx = layout.offsetX + node.x * layout.scale
+  const cy = layout.offsetY + node.y * layout.scale
+  const r = node.radius * layout.scale
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.globalAlpha = 0.1
+  ctx.fillStyle = COLORS.rough
+  ctx.fill()
+  ctx.clip()
+  ctx.globalAlpha = 0.45
+  ctx.strokeStyle = COLORS.rough
+  ctx.lineWidth = 1
+  ctx.beginPath()
+  const step = 14
+  let row = 0
+  for (let y = cy - r; y <= cy + r + step; y += step * 0.75, row += 1) {
+    const shift = row % 2 === 0 ? 0 : step * 0.5
+    for (let x = cx - r + shift; x <= cx + r; x += step) {
+      ctx.moveTo(x, y)
+      ctx.lineTo(x, y - 5)
+      ctx.moveTo(x - 2, y)
+      ctx.lineTo(x - 4, y - 4)
+      ctx.moveTo(x + 2, y)
+      ctx.lineTo(x + 4, y - 4)
+    }
+  }
+  ctx.stroke()
+  ctx.restore()
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.lineWidth = 1.5
+  ctx.strokeStyle = COLORS.rough
+  ctx.stroke()
+  ctx.restore()
+  drawLetter(ctx, NODE_LETTER.rough, cx, cy - r * 0.8, layout.scale * 1.3)
 }
 
 function drawLetter(ctx: CanvasRenderingContext2D, letter: string, cx: number, cy: number, px: number): void {
@@ -770,6 +815,9 @@ export function drawWorld(
   ctx.fillStyle = COLORS.mapFill
   ctx.fillRect(offsetX, offsetY, world.width * scale, world.height * scale)
   drawGrid(ctx, world, layout)
+  for (const node of world.nodes) {
+    if (node.kind === 'rough') drawRough(ctx, node, layout)
+  }
   if (heat) drawHeat(ctx, heat.snapshot, world, layout)
 
   // Big zones first so smaller things sit on top of them.
