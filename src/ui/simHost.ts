@@ -123,6 +123,7 @@ export function buildFrame(world: World, run: RunInfo, selectedId: number | null
       ecology: world.ecology ?? null,
       disease: world.disease === undefined ? null : { infected: world.disease.infected, recovered: world.disease.recovered },
       resistance: resistanceStats(world),
+      culture: world.culture === undefined ? null : { taught: world.culture.taught },
     },
     slow: slow
       ? {

@@ -107,6 +107,12 @@ describe('experimental rules', () => {
     expect(framesOf(host.handle({ type: 'reset', seed: 'feat' }))[0]!.fast.resistance).toBeNull()
   })
 
+  it('sends the taught count only in a world with elders teaching', () => {
+    const host = makeHost()
+    expect(framesOf(host.handle({ type: 'reset', seed: 'feat', features: ['culture'] }))[0]!.fast.culture).toEqual({ taught: 0 })
+    expect(framesOf(host.handle({ type: 'reset', seed: 'feat' }))[0]!.fast.culture).toBeNull()
+  })
+
   it('ignores a reset with a list it does not know', () => {
     const host = makeHost()
     const before = host.world

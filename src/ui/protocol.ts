@@ -119,6 +119,8 @@ export type FastData = {
   disease: { infected: number; recovered: number } | null
   /** Resistance among the living (experimental rules), or null while the gene is latent. Small, so it rides every frame. */
   resistance: ResistanceStats | null
+  /** Places elders have taught so far (experimental rules), or null in a world made without them. */
+  culture: { taught: number } | null
 }
 
 /** Sent at most about four times a second, when paused, and right after a command, a selection or a new run. */

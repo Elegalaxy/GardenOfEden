@@ -13,7 +13,7 @@ import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
 import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
-import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText, LATENT_RESISTANCE, resistanceText } from './labels.ts'
+import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText, LATENT_RESISTANCE, resistanceText, teachingStage } from './labels.ts'
 import { MemoryList } from './MemoryList.tsx'
 import { select, useRunTuning, useWorldStore } from './store.ts'
 import { toolInfo } from './tools.ts'
@@ -147,6 +147,19 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
         <Row label="Age">
           {bot.age} ticks · {stage}
         </Row>
+        {run.culture.enabled && (
+          <>
+            <Row
+              label="Life stage"
+              title={`For teaching: young bots (under ${run.culture.youngAge} ticks) learn places from elders (from ${run.culture.elderAge} ticks), both scaled by longevity.`}
+            >
+              {teachingStage(bot, run)}
+            </Row>
+            <Row label="Taught places" title="Places it remembers because an elder told it, and has not yet seen itself.">
+              {full === null ? '—' : full.memory.filter((entry) => entry.taught === true).length}
+            </Row>
+          </>
+        )}
         <Row label="Lifespan">{bot.lifespan} ticks</Row>
         <Row label="Inbred" title="Eden avoids pairing close kin, so a bot is inbred only if mate choice is off or the world is from an older save.">{inbreedingLabel(bot.inbreeding)}</Row>
         <Row label="Bloodline">
@@ -177,7 +190,7 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
           {bot.memoryCount} / {memoryCapacity(tuning.memory)} nodes · {bot.learnedCount} from family
         </Row>
       </dl>
-      {run.poison.enabled && <MemoryList memory={full?.memory ?? []} world={world} />}
+      {(run.poison.enabled || run.culture.enabled) && <MemoryList memory={full?.memory ?? []} world={world} />}
       <h4>Family</h4>
       <dl className="kv">
         <Row label="Mother">

@@ -85,6 +85,12 @@ function Legend() {
           <span className="legend-note">dashed ring = sick, dotted = exposed, small dot = immune</span>
         </li>
       )}
+      {run.culture.enabled && (
+        <li>
+          <span className="key key-rule" aria-hidden="true">T</span> Elders teach
+          <span className="legend-note">young bots near an elder learn water and shelter places; no map mark, see the Inspector</span>
+        </li>
+      )}
       {run.resistance.enabled && (
         <li>
           <span className="key key-rule" aria-hidden="true">×</span> Disease resistance

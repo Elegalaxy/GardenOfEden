@@ -1,5 +1,5 @@
 // The places the selected bot remembers, as a closed list under its rows: node, position and what it knows about it. Shown
-// only while the run has a rule that flags memory entries (toxic food). The entries come with the slow data, so they are up
+// only while the run has a rule that flags memory entries (toxic food, elders teach). The entries come with the slow data, so they are up
 // to a quarter of a second old; each flag is a word, never a colour alone.
 
 import type { MemoryEntry } from '../sim/types.ts'

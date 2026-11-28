@@ -40,7 +40,7 @@ describe('the feature list', () => {
       expect(feature.summary.length).toBeGreaterThan(0)
       expect(feature.caveat.length).toBeGreaterThan(0)
     }
-    expect(FEATURES.filter((feature) => feature.pickable).map((feature) => feature.id)).toEqual(['poison', 'resistance'])
+    expect(FEATURES.filter((feature) => feature.pickable).map((feature) => feature.id)).toEqual(['poison', 'culture', 'resistance'])
   })
 
   it('accepts known features in canonical order and refuses unknown, repeated or out of order ones', () => {

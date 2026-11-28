@@ -59,6 +59,11 @@ export function TraitSummary() {
           <span className="figure trait-sexes-value">{world.resistanceStats === undefined ? LATENT_RESISTANCE : resistanceSummary(world.resistanceStats)}</span>
         </p>
       )}
+      {run.culture.enabled && (
+        <p className="trait-sexes trait-rule" title="Places young bots have learned from elders over the whole run.">
+          <span className="trait-sexes-label">Places taught</span> <span className="figure trait-sexes-value">{(world.culture?.taught ?? 0).toLocaleString('en-US')}</span>
+        </p>
+      )}
       <table className="trait-table">
         <thead>
           <tr>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { DeathCause, EventKind, IntentKind, NodeKind } from '../sim/types.ts'
-import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, resistanceSummary, resistanceText, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
+import { CAUSE_LABEL, illnessLabel, CAUSE_SENTENCE, EVENT_LABEL, EVENT_LETTER, INTENT_LABEL, KIND_LABEL, KIND_LETTER, causeSentence, chordWidth, commandLetter, commandName, eventSubject, fertilityLabel, fitLabel, inbreedingLabel, featureNames, inbredBirthsLabel, intentLabel, memoryFlags, resistanceSummary, resistanceText, teachingStage, toxicText, memoryCapacity, predatorActivity, sightText } from './labels.ts'
 import { tuning } from '../content/index.ts'
 import { NODE_LETTER } from './render.ts'
 
@@ -212,6 +212,19 @@ describe('resistance wording', () => {
   it('words the living mean and highest', () => {
     expect(resistanceSummary({ mean: 1.125, max: 1.38 })).toBe('×1.13 mean · ×1.38 max')
     expect(resistanceSummary({ mean: null, max: null })).toBe('— mean · — max')
+  })
+})
+
+describe('culture wording', () => {
+  it('flags a taught place and names the teaching stage, scaled by longevity', () => {
+    expect(memoryFlags({ taught: true })).toEqual(['Taught'])
+    expect(memoryFlags({ toxic: true, taught: true })).toEqual(['Toxic', 'Taught'])
+    const { youngAge, elderAge } = tuning.culture
+    const at = (age: number, longevity = 1) => teachingStage({ age, traits: { ...tuning.traits, longevity } }, tuning)
+    expect(at(youngAge - 1)).toBe('young')
+    expect(at(youngAge)).toBe('adult')
+    expect(at(elderAge)).toBe('elder')
+    expect(at(elderAge, 1.5)).toBe('adult')
   })
 })
 

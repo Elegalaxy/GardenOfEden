@@ -41,7 +41,7 @@ export const FEATURES: readonly FeatureInfo[] = [
     label: 'Culture',
     summary: 'Elders teach young bots where water and shelter are.',
     caveat: 'A seed died out in the 60,000-tick runs.',
-    pickable: false,
+    pickable: true,
   },
   {
     id: 'predatorSexes',

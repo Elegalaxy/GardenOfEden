@@ -36,6 +36,7 @@ export type ViewWorld = Pick<
   | 'commands'
   | 'ecology'
   | 'disease'
+  | 'culture'
 > & {
   runId: number
   presetId: string
@@ -79,6 +80,7 @@ function fresh(frame: Frame): ViewWorld {
     ...(fast.ecology === null ? {} : { ecology: fast.ecology }),
     ...(fast.disease === null ? {} : { disease: fast.disease }),
     ...(fast.resistance === null ? {} : { resistanceStats: fast.resistance }),
+    ...(fast.culture === null ? {} : { culture: fast.culture }),
   }
 }
 
@@ -103,6 +105,8 @@ export function applyFrame(view: ViewWorld | null, frame: Frame): ViewWorld {
   else view.disease = fast.disease
   if (fast.resistance === null) delete view.resistanceStats
   else view.resistanceStats = fast.resistance
+  if (fast.culture === null) delete view.culture
+  else view.culture = fast.culture
   if (slow !== null) {
     view.samples = slow.samples
     view.log = slow.log

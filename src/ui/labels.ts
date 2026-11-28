@@ -1,9 +1,10 @@
 // Words for things, shared by the inspector, the event log, the chart and the
 // notices, so the same thing is always called the same name.
 
-import type { CommandType, DeathCause, EventKind, IntentKind, MemoryEntry, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
+import type { Bot, CommandType, DeathCause, EventKind, IntentKind, MemoryEntry, NodeKind, PredatorTraitName, SimEvent, TraitName } from '../sim/types.ts'
 import { fertilityAt } from '../sim/reproduction.ts'
 import { autoSex } from '../sim/world.ts'
+import { isElder, isYoung } from '../sim/culture.ts'
 import { FEATURES } from '../content/index.ts'
 import type { Tuning, WorldFeature } from '../sim/types.ts'
 import { traitNumber } from './traitMath.ts'
@@ -282,8 +283,13 @@ export function featureNames(features: readonly WorldFeature[]): string {
 }
 
 /** What a remembered place is flagged with, as words. */
-export function memoryFlags(entry: Pick<MemoryEntry, 'toxic'>): string[] {
-  return entry.toxic === true ? ['Toxic'] : []
+export function memoryFlags(entry: Pick<MemoryEntry, 'toxic' | 'taught'>): string[] {
+  return [entry.toxic === true ? 'Toxic' : '', entry.taught === true ? 'Taught' : ''].filter((flag) => flag !== '')
+}
+
+/** A bot's life stage for teaching: young bots learn from elders (ages scale with the longevity trait). */
+export function teachingStage(bot: Pick<Bot, 'age' | 'traits'>, tuning: Pick<Tuning, 'culture'>): 'young' | 'adult' | 'elder' {
+  return isElder(bot, tuning) ? 'elder' : isYoung(bot, tuning) ? 'young' : 'adult'
 }
 
 /** The Inspector's row for a toxic food node: "3 damage per unit eaten". */
