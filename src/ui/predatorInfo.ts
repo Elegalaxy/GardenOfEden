@@ -3,14 +3,21 @@
 // pass their own. `isHungry` is the sim's own rule, so the page can never disagree with the sim about who bites. No state.
 
 import { isHungry, predatorLimit } from '../sim/predators.ts'
+import { predatorSexCounts } from '../sim/predatorSexes.ts'
 import { predatorDrain, PREDATOR_TRAIT_NAMES } from '../sim/predatorTraits.ts'
 import { sampleAtOrBefore } from '../sim/stats.ts'
 import type { Den, PredatorEcology, PredatorEventKind, PredatorOrigin, PredatorState, PredatorTraitName, Sample, Tuning, WorldNode } from '../sim/types.ts'
 
 type EcologyTuning = Pick<Tuning, 'predator'>
 
-/** Why a predator is not breeding yet, in the order the sim checks (kills, age, energy, cap, prey limit); null when nothing blocks it. */
-export type CubBlock = 'kills' | 'age' | 'energy' | 'cap' | 'prey' | null
+/**
+ * Why a predator is not breeding yet; null when nothing blocks it. A male (with predator sexes, unless one sex has been gone long
+ * enough) never bears a cub; then the order the sim checks: kills, age, energy, cap, prey limit and, for a female, an adult male in range.
+ */
+export type CubBlock = 'male' | 'kills' | 'age' | 'energy' | 'cap' | 'prey' | 'mate' | null
+
+/** What predator sexes change about breeding right now: `lone` when any predator breeds alone, `noMate` when no adult male is in this female's range. */
+export type CubSexState = { lone: boolean; noMate: boolean }
 
 export type PredatorLifeInfo = {
   energy: number
@@ -32,18 +39,29 @@ export type PredatorLifeInfo = {
 }
 
 /** A predator's life as numbers, or null when it has none (ecology off). `count` is the predators alive now, for the cap and prey checks; `botCount` the bots alive. */
-export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, count: number, botCount: number): PredatorLifeInfo | null {
+export function predatorLifeInfo(
+  hunt: PredatorState,
+  tuning: EcologyTuning,
+  count: number,
+  botCount: number,
+  sexState: CubSexState = { lone: false, noMate: false },
+): PredatorLifeInfo | null {
   const life = hunt.life
   if (life === undefined) return null
   const eco = tuning.predator.ecology
   const hungry = isHungry(hunt, tuning)
   const drain = predatorDrain(hunt, tuning)
+  // With predator sexes a pair's cubs have their own kill count, and only a female bears them.
+  const sexed = tuning.predator.sexes.enabled && hunt.sex !== undefined
+  const killsPerCub = sexed ? tuning.predator.sexes.killsPerCub : eco.killsPerCub
   let cubBlock: CubBlock = null
-  if (life.kidsKills < eco.killsPerCub) cubBlock = 'kills'
+  if (sexed && !sexState.lone && hunt.sex === 'male') cubBlock = 'male'
+  else if (life.kidsKills < killsPerCub) cubBlock = 'kills'
   else if (life.age < eco.adultAge) cubBlock = 'age'
   else if (life.energy < eco.cubCost + eco.huntBelow) cubBlock = 'energy'
   else if (count >= tuning.predator.maxCount) cubBlock = 'cap'
   else if (count >= predatorLimit(botCount, tuning)) cubBlock = 'prey'
+  else if (sexed && !sexState.lone && sexState.noMate) cubBlock = 'mate'
   return {
     energy: life.energy,
     maxEnergy: eco.maxEnergy,
@@ -55,7 +73,7 @@ export function predatorLifeInfo(hunt: PredatorState, tuning: EcologyTuning, cou
     maxAge: eco.maxAge,
     adult: life.age >= eco.adultAge,
     kidsKills: life.kidsKills,
-    killsPerCub: eco.killsPerCub,
+    killsPerCub,
     cubBlock,
   }
 }
@@ -217,6 +235,26 @@ export function predatorTraitRows(hunt: Pick<PredatorState, 'traits' | 'generati
   }))
   rows.push({ key: 'generation', label: 'Generation', value: String(hunt.generation ?? 0), multiplier: null, trend: null, note: 'Founders, placed and arriving predators are generation 0; a cub is its parent plus 1.' })
   return rows
+}
+
+/** True once only one sex has been alive for `loneAfter` ticks, so any predator breeds alone (the sim's rule). */
+export function loneBreeding(ecology: Pick<PredatorEcology, 'sexes'> | undefined, tick: number, tuning: EcologyTuning): boolean {
+  const since = ecology?.sexes?.oneSexSince ?? null
+  return since !== null && tick - since >= tuning.predator.sexes.loneAfter
+}
+
+/** The Predators tile's extra sentence with predator sexes: "2 F · 1 M, cubs of pairs 3, lone 0."; empty in a world without them. */
+export function predatorSexHint(nodes: readonly WorldNode[], ecology: Pick<PredatorEcology, 'sexes'> | undefined): string {
+  const sexes = ecology?.sexes
+  if (sexes === undefined) return ''
+  const { females, males } = predatorSexCounts(nodes)
+  return `${females} F · ${males} M, cubs of pairs ${sexes.mated}, lone ${sexes.alone}.`
+}
+
+/** A birth in the log: with predator sexes and the cub still alive, whether a pair or a lone parent had it; otherwise just "born". */
+export function predatorBornPhrase(hunt: Pick<PredatorState, 'sex' | 'life'> | null | undefined): string {
+  if (hunt?.sex === undefined || hunt.life?.origin !== 'cub') return 'born'
+  return hunt.life.fatherId === undefined ? 'born alone' : 'born to a pair'
 }
 
 /** What happened to a predator, as a short lower-case phrase (the log: "Predator #5 killed by a meteor at ..."). */

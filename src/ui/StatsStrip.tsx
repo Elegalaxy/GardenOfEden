@@ -12,9 +12,9 @@ import { tuning } from '../content/index.ts'
 import { ratePer, windowChange } from '../sim/stats.ts'
 import { takeSample, totalRuinFood } from '../sim/world.ts'
 import { predatorTraitStats } from '../sim/predatorTraits.ts'
-import { multiplierText, predatorChange, predatorEventDeaths, predatorCounts, preyPressure } from './predatorInfo.ts'
+import { multiplierText, predatorChange, predatorEventDeaths, predatorCounts, predatorSexHint, preyPressure } from './predatorInfo.ts'
 import { seasonSummary } from './seasonInfo.ts'
-import { useWorldStore } from './store.ts'
+import { useRunTuning, useWorldStore } from './store.ts'
 
 const numberFormat = new Intl.NumberFormat('en-US')
 const rateFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
@@ -39,6 +39,7 @@ function changeText(delta: number): string {
 
 export function StatsStrip() {
   const { world, tick, births, deaths } = useWorldStore()
+  const run = useRunTuning()
   const { minuteTicks, sampleEvery } = tuning.stats
   const current = takeSample(world)
   const change = windowChange(world.samples, current, 'pop', minuteTicks)
@@ -70,6 +71,7 @@ export function StatsStrip() {
       : ` Mean traits (vs founders): sense ${multiplierText(traitStats.stats.sense.mean)}, speed ${multiplierText(traitStats.stats.speed.mean)}, stamina ${multiplierText(traitStats.stats.stamina.mean)}; newest generation ${traitStats.maxGeneration}.`
   const eventKills = predatorEventDeaths(world.ecology)
   const eventHint = tuning.events.predatorHarm.enabled ? ` Killed by a meteor or plague: ${eventKills}.` : ''
+  const sexHint = run.predator.sexes.enabled ? ` ${predatorSexHint(world.nodes, world.ecology)}` : ''
   const rate = (value: number | null): string => (value === null ? '—' : rateFormat.format(value))
   return (
     <section className="panel stats-panel" aria-label="Society">
@@ -97,7 +99,7 @@ export function StatsStrip() {
           label="Predators"
           value={numberFormat.format(predators.total)}
           detail={predatorDelta === null ? cap : `${changeText(predatorDelta.delta)} · ${cap}`}
-          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}${traitHint}${eventHint}`}
+          hint={`${predators.hungry} hungry${origins.length === 0 ? '' : `, ${origins.join(', ')}`}${preyOn ? `.${preyHint}` : ` (${cap})`}${traitHint}${eventHint}${sexHint}`}
         />
       </dl>
     </section>

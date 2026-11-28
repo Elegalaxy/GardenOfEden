@@ -16,7 +16,7 @@ import { tuning } from '../content/index.ts'
 import type { SimEvent, SimEventType } from '../sim/types.ts'
 import { findBot, findNode } from './geometry.ts'
 import { EVENT_LABEL, KIND_LABEL, causeSentence, commandName, formatPoint } from './labels.ts'
-import { predatorEventPhrase } from './predatorInfo.ts'
+import { predatorBornPhrase, predatorEventPhrase } from './predatorInfo.ts'
 import { mergeLog } from './logMerge.ts'
 import type { LogEntry } from './logMerge.ts'
 import { centreOn, select, useWorldStore } from './store.ts'
@@ -47,7 +47,7 @@ function exists(world: ViewWorld, target: Selection): boolean {
   return target.kind === 'bot' ? findBot(world, target.id) !== undefined : findNode(world, target.id) !== undefined
 }
 
-function describe({ event, located }: LogEntry): string {
+function describe({ event, located }: LogEntry, world: ViewWorld): string {
   const where = formatPoint(event.x, event.y)
   switch (event.type) {
     case 'birth':
@@ -59,7 +59,8 @@ function describe({ event, located }: LogEntry): string {
       return kind === 'meteor' ? `Meteor crater faded at ${where}` : `${EVENT_LABEL[kind]} ended`
     }
     case 'predator': {
-      const what = predatorEventPhrase(event.predatorEvent)
+      const cub = event.predatorEvent === 'born' && event.nodeId !== undefined ? findNode(world, event.nodeId) : undefined
+      const what = cub === undefined ? predatorEventPhrase(event.predatorEvent) : predatorBornPhrase(cub.hunt)
       return `Predator #${event.nodeId} ${what} at ${where}`
     }
     case 'command': {
@@ -111,7 +112,7 @@ function buildRows(
         <span className="log-type">
           <span aria-hidden="true">{GLYPH[event.type]}</span> {TYPE_LABEL[event.type]}
         </span>
-        <span className="log-text">{describe(entry)}</span>
+        <span className="log-text">{describe(entry, world)}</span>
         <span className="log-status">{target === null ? '' : alive ? 'select' : 'gone'}</span>
       </>
     )

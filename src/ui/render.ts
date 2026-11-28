@@ -366,7 +366,19 @@ function drawPredator(ctx: CanvasRenderingContext2D, node: WorldNode, layout: La
   ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(8, Math.round(layout.scale * 0.85)))}px "Segoe UI", system-ui, sans-serif`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
+  // With predator sexes the chevron carries F or M in place of its V (the chevron shape still says predator).
+  const sex = node.hunt?.sex
+  if (sex === undefined) ctx.fillText(NODE_LETTER.predator, cx - r * 0.1, cy + 0.5)
+  else {
+    // The sex has to be read, so it is a little larger and sits on a light halo that keeps it apart from the chevron's edge.
+    ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(11, Math.round(layout.scale * 0.95)))}px "Segoe UI", system-ui, sans-serif`
+    ctx.lineJoin = 'round'
+    ctx.lineWidth = 3
+    ctx.strokeStyle = PREDATOR_FILL
+    const letter = sex === 'female' ? 'F' : 'M'
+    ctx.strokeText(letter, cx - r * 0.1, cy + 0.5)
+    ctx.fillText(letter, cx - r * 0.1, cy + 0.5)
+  }
   if (resting) {
     ctx.globalAlpha = 1
     ctx.font = `800 ${Math.min(MAX_TEXT_PX, Math.max(13, Math.round(layout.scale * 1.7)))}px "Segoe UI", system-ui, sans-serif`

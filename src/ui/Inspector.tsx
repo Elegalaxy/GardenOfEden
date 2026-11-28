@@ -5,13 +5,14 @@
 
 import type { ReactNode } from 'react'
 import { tuning } from '../content/index.ts'
+import { findMate } from '../sim/predatorSexes.ts'
 import { predatorTrait } from '../sim/predatorTraits.ts'
 import { ruinDecayRate } from '../sim/ruins.ts'
 import { TRAIT_NAMES, meanTraits } from '../sim/traits.ts'
-import type { TraitName, WorldNode } from '../sim/types.ts'
+import type { TraitName, Tuning, WorldNode } from '../sim/types.ts'
 import { revealFamily } from './familyFocus.ts'
 import { findBot, findNode } from './geometry.ts'
-import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
+import { MULTIPLIER_GLYPH, denFor, isPredatorEnd, loneBreeding, predatorEventSentence, originText, predatorCounts, predatorLifeInfo, predatorTraitRows } from './predatorInfo.ts'
 import type { PredatorLifeInfo } from './predatorInfo.ts'
 import { FERTILITY_PHASE_LABEL, KIND_LABEL, TRAIT_HELP, TRAIT_LABEL, causeSentence, fertilityLabel, formatPoint, illnessLabel, formatTrait, hueLabel, inbreedingLabel, intentLabel, memoryCapacity, predatorActivity, SIGHT_HELP, sightText, toxicText, LATENT_RESISTANCE, resistanceText, teachingStage } from './labels.ts'
 import { MemoryList } from './MemoryList.tsx'
@@ -248,10 +249,21 @@ function BotDetails({ bot, world }: { bot: ViewBot; world: ViewWorld }) {
   )
 }
 
+/** A predator's life numbers on the run's rules, with what predator sexes add (lone breeding, a mate in range). */
+function lifeOf(node: WorldNode, world: ViewWorld, run: Tuning): PredatorLifeInfo | null {
+  if (node.hunt === null) return null
+  const sexState = {
+    lone: loneBreeding(world.ecology, world.tick, run),
+    noMate: node.hunt.sex === 'female' && findMate(world.nodes, node, run) === null,
+  }
+  return predatorLifeInfo(node.hunt, run, predatorCounts(world.nodes, run).total, world.bots.length, sexState)
+}
+
 /** A predator's extra rows (M21c): what it is doing, its record and the numbers that make it dangerous. */
 function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
   const hunt = node.hunt
-  const life = hunt === null ? null : predatorLifeInfo(hunt, tuning, predatorCounts(world.nodes, tuning).total, world.bots.length)
+  const run = useRunTuning()
+  const life = lifeOf(node, world, run)
   const activity = predatorActivity(hunt, world.tick, life !== null && !life.hungry)
   const prey = activity.kind === 'hunting' ? findBot(world, activity.targetId) : undefined
   return (
@@ -273,6 +285,11 @@ function PredatorRows({ node, world }: { node: WorldNode; world: ViewWorld }) {
           'Prowling'
         )}
       </Row>
+      {hunt?.sex !== undefined && (
+        <Row label="Sex" title="Only a female bears a cub, with an adult male in range, unless one sex has been gone for a long time.">
+          {hunt.sex === 'female' ? 'Female' : 'Male'}
+        </Row>
+      )}
       <Row label="Kills">{hunt === null ? 0 : hunt.kills.toLocaleString('en-US')}</Row>
       {hunt !== null && (
         <Row label="Home">
@@ -319,12 +336,13 @@ function PredatorTraitSection({ hunt }: { hunt: NonNullable<WorldNode['hunt']> }
   )
 }
 
-/** Why the next cub has to wait, in a few words (the kills case shows the kill count itself). */
+/** Why the next cub has to wait, in a few words (the kills case shows the kill count itself, a male's case has no count). */
 const CUB_BLOCK_TEXT = {
   age: 'too young',
   energy: 'needs more energy',
   cap: 'predator cap reached',
   prey: 'too few bots',
+  mate: 'no adult male in range',
 } as const
 
 /** The ecology rows of a predator (E3), under the main rows: energy, hunger, age, the next cub, where it came from and its den. */
@@ -332,6 +350,8 @@ function PredatorLifeSection({ hunt, life, world }: { hunt: NonNullable<WorldNod
   const { ecology } = tuning.predator
   const origin = originText(hunt.life!)
   const parent = origin.parentId === null ? undefined : findNode(world, origin.parentId)
+  const fatherId = hunt.life!.fatherId
+  const father = fatherId === undefined ? undefined : findNode(world, fatherId)
   const ticks = (value: number): string => `${value.toLocaleString('en-US')} ticks`
   return (
     <>
@@ -351,7 +371,9 @@ function PredatorLifeSection({ hunt, life, world }: { hunt: NonNullable<WorldNod
           {life.adult ? '' : ` · young, breeds from ${ecology.adultAge.toLocaleString('en-US')}`}
         </Row>
         <Row label="Next cub">
-          {life.cubBlock === null
+          {life.cubBlock === 'male'
+            ? 'males do not bear cubs'
+            : life.cubBlock === null
             ? 'ready, looking for territory'
             : life.cubBlock === 'kills'
               ? `${life.kidsKills} / ${life.killsPerCub} kills`
@@ -370,6 +392,17 @@ function PredatorLifeSection({ hunt, life, world }: { hunt: NonNullable<WorldNod
             </>
           )}
         </Row>
+        {fatherId !== undefined && (
+          <Row label="Father">
+            {father === undefined ? (
+              <>#{fatherId} · gone</>
+            ) : (
+              <>
+                <SelectButton target={{ kind: 'node', id: father.id }}>#{father.id}</SelectButton> · alive
+              </>
+            )}
+          </Row>
+        )}
       </dl>
     </>
   )
@@ -428,7 +461,7 @@ function NodeDetails({ node, world }: { node: WorldNode; world: ViewWorld }) {
         <Row label="Bots inside">{botsInside(world, node)}</Row>
       </dl>
       {node.kind === 'predator' && node.hunt !== null && node.hunt.life !== undefined && (
-        <PredatorLifeSection hunt={node.hunt} life={predatorLifeInfo(node.hunt, tuning, predatorCounts(world.nodes, tuning).total, world.bots.length)!} world={world} />
+        <PredatorLifeSection hunt={node.hunt} life={lifeOf(node, world, run)!} world={world} />
       )}
       {node.kind === 'predator' && node.hunt !== null && tuning.predator.traits.enabled && tuning.predator.ecology.enabled && <PredatorTraitSection hunt={node.hunt} />}
     </>

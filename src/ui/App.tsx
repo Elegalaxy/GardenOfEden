@@ -51,6 +51,12 @@ function Legend() {
             : 'chevron, hunts bots, cannot enter shelters'}
         </span>
       </li>
+      {run.predator.sexes.enabled && (
+        <li>
+          <span className="key key-rule" aria-hidden="true">F</span> Predator sexes
+          <span className="legend-note">F or M on the chevron; a cub needs a female and an adult male, unless one sex has long been gone</span>
+        </li>
+      )}
       {tuning.predator.ecology.enabled && (
         <li>
           <DenKey /> Den

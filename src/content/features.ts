@@ -48,7 +48,7 @@ export const FEATURES: readonly FeatureInfo[] = [
     label: 'Predator sexes',
     summary: 'Predators are female or male, and a cub needs a pair unless one sex has gone.',
     caveat: 'One seed was 0.03 short on caution with a mate range of 120; the range used here, 145, is untested.',
-    pickable: false,
+    pickable: true,
   },
   {
     id: 'resistance',
